@@ -2,7 +2,6 @@ import { useState } from "react";
 import { PortfolioStock, TradeStrategy, calcInvestedValue, calcProfitLoss, calcFinalValue, getSectorAllocation } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
 import { Brain, Loader2, Sparkles, Shield, TrendingUp, AlertTriangle, BarChart3 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,8 +23,8 @@ const AIInsights = ({ stocks, trades }: AIInsightsProps) => {
     const totalValue = stocks.reduce((s, st) => s + calcFinalValue(st), 0);
     const totalPL = stocks.reduce((s, st) => s + calcProfitLoss(st), 0);
     const sectors = getSectorAllocation(stocks);
-    const active = stocks.filter(s => s.status === "Active");
-    const closed = stocks.filter(s => s.status !== "Active");
+    const active = stocks.filter((s) => s.status === "Active");
+    const closed = stocks.filter((s) => s.status !== "Active");
 
     let summary = `Portfolio Overview:\n`;
     summary += `- Total Invested: ₹${totalInvested.toLocaleString("en-IN")}\n`;
@@ -34,19 +33,21 @@ const AIInsights = ({ stocks, trades }: AIInsightsProps) => {
     summary += `- Active Positions: ${active.length}, Closed: ${closed.length}\n\n`;
 
     summary += `Active Positions:\n`;
-    active.forEach(s => {
+    active.forEach((s) => {
       const pl = calcProfitLoss(s);
-      const trade = trades.find(t => t.ticker === s.ticker);
+      const trade = trades.find((t) => t.ticker === s.ticker);
       summary += `- ${s.ticker} (${s.sector || "Unknown"}): Entry ₹${s.entryPrice}, CMP ₹${s.cmp}, Qty ${s.quantity}, P&L ₹${pl.toFixed(0)}`;
       if (trade) summary += `, SL ₹${trade.stopLoss}, T1 ₹${trade.target1}, T3 ₹${trade.target3}`;
       summary += `\n`;
     });
 
     summary += `\nSector Allocation:\n`;
-    sectors.forEach(s => { summary += `- ${s.sector}: ${s.percentage.toFixed(1)}% (₹${s.value.toLocaleString("en-IN")})\n`; });
+    sectors.forEach((s) => {
+      summary += `- ${s.sector}: ${s.percentage.toFixed(1)}% (₹${s.value.toLocaleString("en-IN")})\n`;
+    });
 
     summary += `\nClosed Trades:\n`;
-    closed.forEach(s => {
+    closed.forEach((s) => {
       const pl = calcProfitLoss(s);
       summary += `- ${s.ticker}: ${pl >= 0 ? "Profit" : "Loss"} ₹${Math.abs(pl).toFixed(0)}\n`;
     });
@@ -54,20 +55,41 @@ const AIInsights = ({ stocks, trades }: AIInsightsProps) => {
     return summary;
   };
 
+  const callAiApi = async (prompt: string) => {
+    const response = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    });
+
+    const text = await response.text();
+    let data: any = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {};
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.error || `AI analysis failed (${response.status}).`);
+    }
+
+    return (data?.response || data?.insights) as string;
+  };
+
   const fetchAnalysis = async (type: "portfolio" | "risk") => {
     setLoading(type);
     try {
       const summary = generateSummary();
-      const { data, error } = await supabase.functions.invoke("gemini-portfolio", {
-        body: { type, portfolioSummary: summary },
-      });
+      const prompt =
+        type === "portfolio"
+          ? `You are a professional Indian stock market analyst. Provide actionable insights for retail investors. Use ₹ for currency. Be specific with numbers. Format with markdown headers and bullet points.\n\nAnalyze this stock portfolio and provide insights in these sections:\n\n## Portfolio Insights\nOverall health, performance summary\n\n## Risk Warnings\nStocks close to stop loss, high-risk positions\n\n## Diversification Suggestions\nSector concentration, rebalancing advice\n\n## Trade Observations\nStocks approaching targets, momentum analysis\n\nPortfolio Data:\n${summary}`
+          : `You are a portfolio risk analyst for Indian equity markets. Focus on identifying risks and providing actionable mitigation strategies. Use ₹ for currency.\n\nScan this portfolio and identify:\n\n## High-Risk Positions\nPositions with significant downside risk\n\n## Concentration Risk\nOver-allocation to specific stocks or sectors\n\n## Sector Exposure\nSectors that are overexposed or underrepresented\n\n## Stop Loss Proximity\nPositions near stop loss levels that need attention\n\nPortfolio Data:\n${summary}`;
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const aiResponse = await callAiApi(prompt);
 
-      if (type === "portfolio") setPortfolioInsights(data.insights);
-      else setRiskInsights(data.insights);
-      if (data?.cached) toast({ title: "Cached Result", description: "Returned cached analysis (refreshes every 6 hours)" });
+      if (type === "portfolio") setPortfolioInsights(aiResponse);
+      else setRiskInsights(aiResponse);
     } catch (e: any) {
       toast({ title: "AI Analysis Failed", description: e.message || "Could not generate insights", variant: "destructive" });
     } finally {
@@ -78,16 +100,12 @@ const AIInsights = ({ stocks, trades }: AIInsightsProps) => {
   const fetchTradeInsight = async (stock: PortfolioStock) => {
     setLoading(`trade-${stock.ticker}`);
     try {
-      const trade = trades.find(t => t.ticker === stock.ticker);
+      const trade = trades.find((t) => t.ticker === stock.ticker);
       const tradeData = `Ticker: ${stock.ticker}\nSector: ${stock.sector || "Unknown"}\nEntry Price: ₹${stock.entryPrice}\nCurrent Price: ₹${stock.cmp}\nQuantity: ${stock.quantity}\nP&L: ₹${calcProfitLoss(stock).toFixed(0)}${trade ? `\nStop Loss: ₹${trade.stopLoss}\nTarget 1: ₹${trade.target1}\nTarget 2: ₹${trade.target2}\nTarget 3: ₹${trade.target3}` : ""}`;
+      const prompt = `You are a professional stock trade analyst for Indian markets. Provide concise, actionable analysis. Use ₹ for currency.\n\nAnalyze this stock position and provide:\n• Risk level (Low/Medium/High)\n• Probability assessment of reaching targets\n• Specific trade advice (hold/exit/add)\n\nPosition Details:\n${tradeData}`;
 
-      const { data, error } = await supabase.functions.invoke("gemini-portfolio", {
-        body: { type: "trade", tradeData },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setTradeInsights(prev => ({ ...prev, [stock.ticker]: data.insights }));
+      const aiResponse = await callAiApi(prompt);
+      setTradeInsights((prev) => ({ ...prev, [stock.ticker]: aiResponse }));
     } catch (e: any) {
       toast({ title: "Trade Insight Failed", description: e.message || "Could not analyze trade", variant: "destructive" });
     } finally {
@@ -95,7 +113,7 @@ const AIInsights = ({ stocks, trades }: AIInsightsProps) => {
     }
   };
 
-  const activeStocks = stocks.filter(s => s.status === "Active");
+  const activeStocks = stocks.filter((s) => s.status === "Active");
 
   return (
     <div className="space-y-4">
@@ -162,7 +180,7 @@ const AIInsights = ({ stocks, trades }: AIInsightsProps) => {
               <EmptyState icon={TrendingUp} text="No active positions to analyze" sub="Add active stock positions to get trade-level AI insights" />
             ) : (
               <div className="space-y-3">
-                {activeStocks.map(stock => (
+                {activeStocks.map((stock) => (
                   <div key={stock.ticker} className="border border-border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div>
