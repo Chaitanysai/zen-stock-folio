@@ -67,6 +67,7 @@ const AIInsights = ({ stocks, trades }: AIInsightsProps) => {
 
       if (type === "portfolio") setPortfolioInsights(data.insights);
       else setRiskInsights(data.insights);
+      if (data?.cached) toast({ title: "Cached Result", description: "Returned cached analysis (refreshes every 6 hours)" });
     } catch (e: any) {
       toast({ title: "AI Analysis Failed", description: e.message || "Could not generate insights", variant: "destructive" });
     } finally {
