@@ -1,23 +1,27 @@
-import { portfolioData, calcInvestedValue, calcFinalValue, calcProfitLoss } from "@/data/sampleData";
-import { TrendingUp, TrendingDown, Briefcase, BarChart3, Target, DollarSign } from "lucide-react";
+import { PortfolioStock, calcInvestedValue, calcFinalValue, calcProfitLoss } from "@/data/sampleData";
+import { TrendingUp, TrendingDown, Briefcase, BarChart3, Target, IndianRupee } from "lucide-react";
 
-const DashboardStats = () => {
-  const totalInvested = portfolioData.reduce((sum, s) => sum + calcInvestedValue(s), 0);
-  const totalCurrentValue = portfolioData.reduce((sum, s) => sum + calcFinalValue(s), 0);
-  const totalPL = portfolioData.reduce((sum, s) => sum + calcProfitLoss(s), 0);
-  const activePositions = portfolioData.filter(s => s.status === "Active").length;
-  const soldPositions = portfolioData.filter(s => s.status !== "Active").length;
-  const winCount = portfolioData.filter(s => calcProfitLoss(s) > 0).length;
-  const winRate = (winCount / portfolioData.length) * 100;
+interface DashboardStatsProps {
+  stocks: PortfolioStock[];
+}
+
+const DashboardStats = ({ stocks }: DashboardStatsProps) => {
+  const totalInvested = stocks.reduce((sum, s) => sum + calcInvestedValue(s), 0);
+  const totalCurrentValue = stocks.reduce((sum, s) => sum + calcFinalValue(s), 0);
+  const totalPL = stocks.reduce((sum, s) => sum + calcProfitLoss(s), 0);
+  const activePositions = stocks.filter(s => s.status === "Active").length;
+  const soldPositions = stocks.filter(s => s.status !== "Active").length;
+  const winCount = stocks.filter(s => calcProfitLoss(s) > 0).length;
+  const winRate = stocks.length > 0 ? (winCount / stocks.length) * 100 : 0;
   const isProfit = totalPL >= 0;
 
   const stats = [
-    { label: "Total Invested", value: `₹${totalInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: DollarSign, color: "text-primary" },
-    { label: "Current Value", value: `₹${totalCurrentValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: Briefcase, color: "text-primary" },
-    { label: "Total P&L", value: `${isProfit ? "+" : ""}₹${totalPL.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: isProfit ? TrendingUp : TrendingDown, color: isProfit ? "text-profit" : "text-loss" },
+    { label: "Total Invested (₹)", value: `₹${totalInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: IndianRupee, color: "text-primary" },
+    { label: "Current Value (₹)", value: `₹${totalCurrentValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: Briefcase, color: "text-primary" },
+    { label: "Total P&L (₹)", value: `${isProfit ? "+" : ""}₹${totalPL.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`, icon: isProfit ? TrendingUp : TrendingDown, color: isProfit ? "text-profit" : "text-loss" },
     { label: "Win Rate", value: `${winRate.toFixed(1)}%`, icon: Target, color: winRate >= 50 ? "text-profit" : "text-loss" },
-    { label: "Active", value: activePositions.toString(), icon: BarChart3, color: "text-primary" },
-    { label: "Closed", value: soldPositions.toString(), icon: BarChart3, color: "text-muted-foreground" },
+    { label: "Open Trades", value: activePositions.toString(), icon: BarChart3, color: "text-primary" },
+    { label: "Closed Trades", value: soldPositions.toString(), icon: BarChart3, color: "text-muted-foreground" },
   ];
 
   return (

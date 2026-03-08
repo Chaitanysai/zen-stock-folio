@@ -1,19 +1,50 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield } from "lucide-react";
+import { portfolioData as initialData, PortfolioStock } from "@/data/sampleData";
 import DashboardStats from "@/components/DashboardStats";
 import PortfolioTable from "@/components/PortfolioTable";
 import TradeStrategyTable from "@/components/TradeStrategyTable";
 import WatchlistTable from "@/components/WatchlistTable";
 import PortfolioCharts from "@/components/PortfolioCharts";
 import RiskAnalysis from "@/components/RiskAnalysis";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [stocks, setStocks] = useState<PortfolioStock[]>(initialData);
+  const { toast } = useToast();
+
+  const handleAddStock = (stock: PortfolioStock) => {
+    setStocks((prev) => [...prev, stock]);
+  };
+
+  const handleUpdateStatus = (ticker: string, status: PortfolioStock["status"]) => {
+    setStocks((prev) =>
+      prev.map((s) => {
+        if (s.ticker !== ticker) return s;
+        const updated = { ...s, status };
+        // Auto-set exit price/date when closing
+        if (status !== "Active" && !updated.exitPrice) {
+          updated.exitPrice = updated.cmp;
+          updated.exitDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+        }
+        // Clear exit data when re-opening
+        if (status === "Active") {
+          updated.exitPrice = undefined;
+          updated.exitDate = undefined;
+        }
+        return updated;
+      })
+    );
+    toast({
+      title: "Status updated",
+      description: `${ticker} marked as ${status === "Active" ? "Open" : "Closed"}`,
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container flex items-center justify-between h-14 px-4">
           <div className="flex items-center gap-3">
@@ -22,7 +53,7 @@ const Index = () => {
             </div>
             <div>
               <h1 className="text-sm font-bold tracking-tight">Smart Stock Tracker</h1>
-              <p className="text-[10px] text-muted-foreground">Portfolio & Trade Dashboard</p>
+              <p className="text-[10px] text-muted-foreground">Portfolio & Trade Dashboard · ₹ INR</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -32,9 +63,8 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container px-4 py-4 space-y-4">
-        <DashboardStats />
+        <DashboardStats stocks={stocks} />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="bg-card border border-border h-10">
@@ -56,12 +86,12 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="mt-4 space-y-4">
-            <PortfolioCharts />
-            <PortfolioTable />
+            <PortfolioCharts stocks={stocks} />
+            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onUpdateStatus={handleUpdateStatus} />
           </TabsContent>
 
           <TabsContent value="portfolio" className="mt-4">
-            <PortfolioTable />
+            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onUpdateStatus={handleUpdateStatus} />
           </TabsContent>
 
           <TabsContent value="trades" className="mt-4">

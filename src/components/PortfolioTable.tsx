@@ -1,11 +1,32 @@
-import { portfolioData, calcInvestedValue, calcProfitLoss, calcFinalValue, calcWeeklyGainLoss } from "@/data/sampleData";
+import { PortfolioStock, calcInvestedValue, calcProfitLoss, calcFinalValue, calcWeeklyGainLoss } from "@/data/sampleData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import AddTransactionDialog from "@/components/AddTransactionDialog";
 
-const StatusBadge = ({ status }: { status: string }) => {
-  if (status === "Active") return <Badge variant="outline" className="border-primary/50 text-primary bg-primary/10 text-xs">Active</Badge>;
-  if (status === "Sold Profit") return <Badge variant="outline" className="border-profit text-profit bg-profit/10 text-xs">Sold ✓</Badge>;
-  return <Badge variant="outline" className="border-loss text-loss bg-loss/10 text-xs">Sold ✗</Badge>;
+interface PortfolioTableProps {
+  stocks: PortfolioStock[];
+  onAdd: (stock: PortfolioStock) => void;
+  onUpdateStatus: (ticker: string, status: PortfolioStock["status"]) => void;
+}
+
+const StatusBadge = ({ status, ticker, onUpdate }: { status: string; ticker: string; onUpdate: (ticker: string, status: PortfolioStock["status"]) => void }) => {
+  return (
+    <Select value={status} onValueChange={(v) => onUpdate(ticker, v as PortfolioStock["status"])}>
+      <SelectTrigger className="h-7 w-[110px] border-0 bg-transparent p-0 text-xs focus:ring-0">
+        <SelectValue>
+          {status === "Active" && <Badge variant="outline" className="border-primary/50 text-primary bg-primary/10 text-xs">🟢 Open</Badge>}
+          {status === "Sold Profit" && <Badge variant="outline" className="border-profit text-profit bg-profit/10 text-xs">✅ Closed</Badge>}
+          {status === "Sold Loss" && <Badge variant="outline" className="border-loss text-loss bg-loss/10 text-xs">❌ Closed</Badge>}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent className="bg-popover border-border">
+        <SelectItem value="Active">🟢 Open (Active)</SelectItem>
+        <SelectItem value="Sold Profit">✅ Closed (Profit)</SelectItem>
+        <SelectItem value="Sold Loss">❌ Closed (Loss)</SelectItem>
+      </SelectContent>
+    </Select>
+  );
 };
 
 const PLCell = ({ value }: { value: number }) => (
@@ -14,12 +35,15 @@ const PLCell = ({ value }: { value: number }) => (
   </span>
 );
 
-const PortfolioTable = () => {
+const PortfolioTable = ({ stocks, onAdd, onUpdateStatus }: PortfolioTableProps) => {
   return (
     <div className="bg-card rounded-lg border border-border overflow-hidden">
-      <div className="p-4 border-b border-border">
-        <h2 className="text-lg font-semibold">Portfolio Holdings</h2>
-        <p className="text-xs text-muted-foreground mt-1">{portfolioData.length} positions tracked</p>
+      <div className="p-4 border-b border-border flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Portfolio Holdings</h2>
+          <p className="text-xs text-muted-foreground mt-1">{stocks.length} positions tracked · All values in ₹ INR</p>
+        </div>
+        <AddTransactionDialog onAdd={onAdd} />
       </div>
       <div className="overflow-x-auto">
         <Table>
@@ -28,20 +52,20 @@ const PortfolioTable = () => {
               <TableHead className="table-header">Ticker</TableHead>
               <TableHead className="table-header">Stock Name</TableHead>
               <TableHead className="table-header">Entry Date</TableHead>
-              <TableHead className="table-header text-right">Entry ₹</TableHead>
-              <TableHead className="table-header text-right">CMP</TableHead>
-              <TableHead className="table-header text-right">52W High</TableHead>
+              <TableHead className="table-header text-right">Entry (₹)</TableHead>
+              <TableHead className="table-header text-right">CMP (₹)</TableHead>
+              <TableHead className="table-header text-right">52W High (₹)</TableHead>
               <TableHead className="table-header text-right">Qty</TableHead>
-              <TableHead className="table-header text-right">Invested</TableHead>
+              <TableHead className="table-header text-right">Invested (₹)</TableHead>
               <TableHead className="table-header text-right">Gain %</TableHead>
-              <TableHead className="table-header text-right">Exit ₹</TableHead>
+              <TableHead className="table-header text-right">Exit (₹)</TableHead>
               <TableHead className="table-header">Status</TableHead>
-              <TableHead className="table-header text-right">P&L</TableHead>
-              <TableHead className="table-header text-right">Final Value</TableHead>
+              <TableHead className="table-header text-right">P&L (₹)</TableHead>
+              <TableHead className="table-header text-right">Final Value (₹)</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {portfolioData.map((stock) => {
+            {stocks.map((stock) => {
               const invested = calcInvestedValue(stock);
               const pl = calcProfitLoss(stock);
               const finalVal = calcFinalValue(stock);
@@ -64,7 +88,9 @@ const PortfolioTable = () => {
                   <TableCell className="text-right font-mono text-sm text-muted-foreground">
                     {stock.exitPrice ? `₹${stock.exitPrice.toFixed(2)}` : "—"}
                   </TableCell>
-                  <TableCell><StatusBadge status={stock.status} /></TableCell>
+                  <TableCell>
+                    <StatusBadge status={stock.status} ticker={stock.ticker} onUpdate={onUpdateStatus} />
+                  </TableCell>
                   <TableCell className="text-right"><PLCell value={pl} /></TableCell>
                   <TableCell className="text-right font-mono text-sm">₹{finalVal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</TableCell>
                 </TableRow>
