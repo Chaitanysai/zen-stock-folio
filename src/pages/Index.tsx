@@ -157,7 +157,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="watchlist" className="mt-4">
-            <WatchlistTable watchlist={watchlist} />
+            <WatchlistTable watchlist={watchlist} onEdit={handleEditWatchlist} onDelete={handleDeleteWatchlist} />
           </TabsContent>
 
           <TabsContent value="risk" className="mt-4">
