@@ -54,6 +54,10 @@ const Index = () => {
     setStocks((prev) => [...prev, stock]);
   };
 
+  const handleImportStocks = (imported: PortfolioStock[]) => {
+    setStocks((prev) => [...prev, ...imported]);
+  };
+
   const handleEditStock = (originalTicker: string, updated: PortfolioStock) => {
     setStocks((prev) => prev.map((s) => (s.ticker === originalTicker ? updated : s)));
     toast({ title: "Transaction updated", description: `${updated.ticker} has been updated` });
