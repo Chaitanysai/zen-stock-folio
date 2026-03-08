@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_cache: {
+        Row: {
+          ai_response: string
+          created_at: string
+          id: string
+          input_hash: string
+        }
+        Insert: {
+          ai_response: string
+          created_at?: string
+          id?: string
+          input_hash: string
+        }
+        Update: {
+          ai_response?: string
+          created_at?: string
+          id?: string
+          input_hash?: string
+        }
+        Relationships: []
+      }
+      ai_rate_limits: {
+        Row: {
+          client_id: string
+          id: string
+          requested_at: string
+        }
+        Insert: {
+          client_id: string
+          id?: string
+          requested_at?: string
+        }
+        Update: {
+          client_id?: string
+          id?: string
+          requested_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
