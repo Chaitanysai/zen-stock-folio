@@ -60,6 +60,7 @@ async function fetchPrice(ticker: string): Promise<{ price: number; weekHigh52: 
         return {
           price: meta.regularMarketPrice ?? 0,
           weekHigh52: meta.fiftyTwoWeekHigh ?? 0,
+          weekLow52: meta.fiftyTwoWeekLow ?? 0,
           changePercent: meta.regularMarketPrice && meta.previousClose
             ? ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100
             : 0,
