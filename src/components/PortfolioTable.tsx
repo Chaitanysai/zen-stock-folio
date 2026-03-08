@@ -3,6 +3,7 @@ import { PortfolioStock, calcInvestedValue, calcProfitLoss, calcFinalValue, calc
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import AddTransactionDialog from "@/components/AddTransactionDialog";
@@ -34,6 +35,8 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
   const [editingStock, setEditingStock] = useState<PortfolioStock | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const handleEdit = (stock: PortfolioStock) => {
     setEditingStock(stock);
@@ -53,6 +56,29 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
     }
   };
 
+  const toggleSelect = (ticker: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(ticker)) next.delete(ticker);
+      else next.add(ticker);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === stocks.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(stocks.map(s => s.ticker)));
+    }
+  };
+
+  const confirmBulkDelete = () => {
+    selected.forEach(ticker => onDelete(ticker));
+    setSelected(new Set());
+    setBulkDeleteOpen(false);
+  };
+
   return (
     <>
       <div className="bg-card rounded-lg border border-border overflow-hidden">
@@ -62,6 +88,11 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
             <p className="text-xs text-muted-foreground mt-1">{stocks.length} positions tracked · All values in ₹ INR</p>
           </div>
           <div className="flex items-center gap-2">
+            {selected.size > 0 && (
+              <Button variant="destructive" size="sm" className="gap-1.5 text-xs" onClick={() => setBulkDeleteOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5" /> Delete {selected.size} selected
+              </Button>
+            )}
             <ImportTradesDialog onImport={onImport} />
             <AddTransactionDialog onAdd={onAdd} />
           </div>
@@ -70,6 +101,13 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border">
+                <TableHead className="table-header w-10">
+                  <Checkbox
+                    checked={stocks.length > 0 && selected.size === stocks.length}
+                    onCheckedChange={toggleAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
                 <TableHead className="table-header w-8"></TableHead>
                 <TableHead className="table-header">Ticker</TableHead>
                 <TableHead className="table-header">Stock Name</TableHead>
@@ -93,7 +131,14 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
                 const finalVal = calcFinalValue(stock);
                 const gainPct = calcWeeklyGainLoss(stock);
                 return (
-                  <TableRow key={stock.ticker} className="border-border hover:bg-accent/50">
+                  <TableRow key={stock.ticker} className={`border-border hover:bg-accent/50 ${selected.has(stock.ticker) ? "bg-accent/30" : ""}`}>
+                    <TableCell className="w-10 p-2">
+                      <Checkbox
+                        checked={selected.has(stock.ticker)}
+                        onCheckedChange={() => toggleSelect(stock.ticker)}
+                        aria-label={`Select ${stock.ticker}`}
+                      />
+                    </TableCell>
                     <TableCell className="w-8 p-1">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -145,6 +190,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
         onSave={handleSaveEdit}
       />
 
+      {/* Single delete */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
@@ -157,6 +203,24 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
             <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Delete {selected.size} Transactions</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <span className="font-semibold text-foreground">{selected.size}</span> selected transactions? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmBulkDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
