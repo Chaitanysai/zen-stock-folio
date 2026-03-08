@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface StockPrice {
   price: number;
@@ -33,12 +32,16 @@ export function useLivePrices(tickers: string[], intervalMs = 5 * 60 * 1000): Us
     setError(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("stock-prices", {
-        body: { tickers: uniqueTickers },
+      const response = await fetch("/api/prices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tickers: uniqueTickers }),
       });
 
-      if (fnError) {
-        console.error("Edge function error:", fnError);
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Prices API error:", data);
         setError("Failed to fetch live prices");
         return;
       }
