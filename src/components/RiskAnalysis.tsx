@@ -1,15 +1,19 @@
-import { tradeStrategies, calcInvestedValue, portfolioData } from "@/data/sampleData";
+import { TradeStrategy, PortfolioStock, calcInvestedValue } from "@/data/sampleData";
 import { Shield, AlertTriangle } from "lucide-react";
 
-const RiskAnalysis = () => {
-  const totalPortfolioValue = portfolioData.reduce((sum, s) => sum + calcInvestedValue(s), 0);
+interface RiskAnalysisProps {
+  stocks: PortfolioStock[];
+  trades: TradeStrategy[];
+}
 
-  const riskData = tradeStrategies.map((t) => {
-    const stock = portfolioData.find((s) => s.ticker === t.ticker);
+const RiskAnalysis = ({ stocks, trades }: RiskAnalysisProps) => {
+  const totalPortfolioValue = stocks.reduce((sum, s) => sum + calcInvestedValue(s), 0);
+
+  const riskData = trades.map((t) => {
+    const stock = stocks.find((s) => s.ticker === t.ticker);
     const positionValue = stock ? calcInvestedValue(stock) : t.entryPrice * 10;
-    const positionPct = (positionValue / totalPortfolioValue) * 100;
+    const positionPct = totalPortfolioValue > 0 ? (positionValue / totalPortfolioValue) * 100 : 0;
     const riskToSL = t.entryPrice - t.stopLoss;
-    const rewardToT1 = t.target1 - t.entryPrice;
     const rewardToT3 = t.target3 - t.entryPrice;
     const rrRatio = riskToSL > 0 ? rewardToT3 / riskToSL : 0;
 
@@ -19,7 +23,6 @@ const RiskAnalysis = () => {
       risk: riskToSL,
       reward: rewardToT3,
       rrRatio,
-      rewardT1: rewardToT1,
     };
   });
 
@@ -28,6 +31,7 @@ const RiskAnalysis = () => {
       <div className="p-4 border-b border-border flex items-center gap-2">
         <Shield className="h-4 w-4 text-primary" />
         <h2 className="text-lg font-semibold">Risk Analysis</h2>
+        <span className="text-xs text-muted-foreground ml-2">All values in ₹ INR</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 p-4">
         {riskData.map((r) => (

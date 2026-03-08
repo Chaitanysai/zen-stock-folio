@@ -1,21 +1,25 @@
-import { tradeStrategies, calcPercentChange, getTargetStatus, getSLRiskIndicator, getProgressPercent } from "@/data/sampleData";
+import { TradeStrategy, calcPercentChange, getTargetStatus, getSLRiskIndicator, getProgressPercent } from "@/data/sampleData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 
-const TradeStrategyTable = () => {
+interface TradeStrategyTableProps {
+  trades: TradeStrategy[];
+}
+
+const TradeStrategyTable = ({ trades }: TradeStrategyTableProps) => {
   return (
     <div className="bg-card rounded-lg border border-border overflow-hidden">
       <div className="p-4 border-b border-border">
         <h2 className="text-lg font-semibold">Trade Strategy Tracker</h2>
-        <p className="text-xs text-muted-foreground mt-1">Active trade setups with targets & stop losses</p>
+        <p className="text-xs text-muted-foreground mt-1">Active trade setups with targets & stop losses · Live prices in ₹</p>
       </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-border">
               <TableHead className="table-header">Ticker</TableHead>
-              <TableHead className="table-header text-right">Entry ₹</TableHead>
-              <TableHead className="table-header text-right">Live ₹</TableHead>
+              <TableHead className="table-header text-right">Entry (₹)</TableHead>
+              <TableHead className="table-header text-right">Live (₹)</TableHead>
               <TableHead className="table-header text-right">% Change</TableHead>
               <TableHead className="table-header text-right">T1</TableHead>
               <TableHead className="table-header text-right">T2</TableHead>
@@ -28,7 +32,7 @@ const TradeStrategyTable = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tradeStrategies.map((trade) => {
+            {trades.map((trade) => {
               const pctChange = calcPercentChange(trade.entryPrice, trade.livePrice);
               const targetStatus = getTargetStatus(trade);
               const slRisk = getSLRiskIndicator(trade);

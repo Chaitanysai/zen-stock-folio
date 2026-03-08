@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield } from "lucide-react";
-import { portfolioData as initialData, PortfolioStock } from "@/data/sampleData";
+import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw } from "lucide-react";
+import { portfolioData as initialData, PortfolioStock, tradeStrategies as initialTrades, TradeStrategy, watchlistData as initialWatchlist, WatchlistStock } from "@/data/sampleData";
 import DashboardStats from "@/components/DashboardStats";
 import PortfolioTable from "@/components/PortfolioTable";
 import TradeStrategyTable from "@/components/TradeStrategyTable";
@@ -9,11 +9,53 @@ import WatchlistTable from "@/components/WatchlistTable";
 import PortfolioCharts from "@/components/PortfolioCharts";
 import RiskAnalysis from "@/components/RiskAnalysis";
 import { useToast } from "@/hooks/use-toast";
+import { useLivePrices } from "@/hooks/useLivePrices";
+import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [stocks, setStocks] = useState<PortfolioStock[]>(initialData);
+  const [trades, setTrades] = useState<TradeStrategy[]>(initialTrades);
+  const [watchlist, setWatchlist] = useState<WatchlistStock[]>(initialWatchlist);
   const { toast } = useToast();
+
+  // Collect all tickers that need live prices
+  const allTickers = [
+    ...stocks.filter(s => s.status === "Active").map(s => s.ticker),
+    ...trades.map(t => t.ticker),
+    ...watchlist.map(w => w.stockName),
+  ];
+
+  const { prices, loading, lastUpdated, error, refresh } = useLivePrices(allTickers);
+
+  // Apply live prices when they arrive
+  useEffect(() => {
+    if (Object.keys(prices).length === 0) return;
+
+    setStocks(prev => prev.map(s => {
+      const live = prices[s.ticker];
+      if (!live || s.status !== "Active") return s;
+      return { ...s, cmp: live.price, weekHigh52: live.weekHigh52 || s.weekHigh52 };
+    }));
+
+    setTrades(prev => prev.map(t => {
+      const live = prices[t.ticker];
+      if (!live) return t;
+      return { ...t, livePrice: live.price };
+    }));
+
+    setWatchlist(prev => prev.map(w => {
+      const live = prices[w.stockName];
+      if (!live) return w;
+      return { ...w, cmp: live.price };
+    }));
+  }, [prices]);
+
+  useEffect(() => {
+    if (error) {
+      toast({ title: "Price fetch issue", description: error, variant: "destructive" });
+    }
+  }, [error]);
 
   const handleAddStock = (stock: PortfolioStock) => {
     setStocks((prev) => [...prev, stock]);
@@ -24,12 +66,10 @@ const Index = () => {
       prev.map((s) => {
         if (s.ticker !== ticker) return s;
         const updated = { ...s, status };
-        // Auto-set exit price/date when closing
         if (status !== "Active" && !updated.exitPrice) {
           updated.exitPrice = updated.cmp;
           updated.exitDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
         }
-        // Clear exit data when re-opening
         if (status === "Active") {
           updated.exitPrice = undefined;
           updated.exitDate = undefined;
@@ -37,10 +77,12 @@ const Index = () => {
         return updated;
       })
     );
-    toast({
-      title: "Status updated",
-      description: `${ticker} marked as ${status === "Active" ? "Open" : "Closed"}`,
-    });
+    toast({ title: "Status updated", description: `${ticker} marked as ${status === "Active" ? "Open" : "Closed"}` });
+  };
+
+  const formatTime = (iso: string | null) => {
+    if (!iso) return "";
+    return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
   };
 
   return (
@@ -56,9 +98,17 @@ const Index = () => {
               <p className="text-[10px] text-muted-foreground">Portfolio & Trade Dashboard · ₹ INR</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-profit animate-pulse-glow" />
-            <span className="text-xs text-muted-foreground">Market Open</span>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={refresh} disabled={loading} className="gap-1.5 text-xs text-muted-foreground hover:text-primary">
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              {loading ? "Fetching..." : "Refresh"}
+            </Button>
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
+              <span className="text-xs text-muted-foreground">
+                {lastUpdated ? `Updated ${formatTime(lastUpdated)}` : "Live Prices"}
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -95,15 +145,15 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="trades" className="mt-4">
-            <TradeStrategyTable />
+            <TradeStrategyTable trades={trades} />
           </TabsContent>
 
           <TabsContent value="watchlist" className="mt-4">
-            <WatchlistTable />
+            <WatchlistTable watchlist={watchlist} />
           </TabsContent>
 
           <TabsContent value="risk" className="mt-4">
-            <RiskAnalysis />
+            <RiskAnalysis stocks={stocks} trades={trades} />
           </TabsContent>
         </Tabs>
       </main>
