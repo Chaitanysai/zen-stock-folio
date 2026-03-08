@@ -61,7 +61,10 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
             <h2 className="text-lg font-semibold">Portfolio Holdings</h2>
             <p className="text-xs text-muted-foreground mt-1">{stocks.length} positions tracked · All values in ₹ INR</p>
           </div>
-          <AddTransactionDialog onAdd={onAdd} />
+          <div className="flex items-center gap-2">
+            <ImportTradesDialog onImport={onImport} />
+            <AddTransactionDialog onAdd={onAdd} />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
