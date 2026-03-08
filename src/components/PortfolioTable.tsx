@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 interface PortfolioTableProps {
   stocks: PortfolioStock[];
   onAdd: (stock: PortfolioStock) => void;
+  onImport: (stocks: PortfolioStock[]) => void;
   onEdit: (originalTicker: string, updated: PortfolioStock) => void;
   onDelete: (ticker: string) => void;
 }
