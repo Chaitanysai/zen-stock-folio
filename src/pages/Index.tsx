@@ -129,7 +129,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="portfolio" className="mt-4">
-            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onEdit={handleEditStock} onDelete={handleDeleteStock} />
+            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} />
           </TabsContent>
 
           <TabsContent value="trades" className="mt-4">
