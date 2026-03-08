@@ -18,6 +18,7 @@ import ExportPortfolio from "@/components/ExportPortfolio";
 import { useToast } from "@/hooks/use-toast";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { Button } from "@/components/ui/button";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -126,14 +127,15 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="absolute inset-x-0 top-0 h-[1px] gradient-primary opacity-60" />
         <div className="container flex items-center justify-between h-14 px-4">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center">
-              <BarChart3 className="h-4 w-4 text-primary" />
+            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center shadow-lg">
+              <BarChart3 className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-sm font-bold tracking-tight">Smart Stock Tracker</h1>
+              <h1 className="text-sm font-bold tracking-tight gradient-text">Smart Stock Tracker</h1>
               <p className="text-[10px] text-muted-foreground">Portfolio & Trade Dashboard · ₹ INR</p>
             </div>
           </div>
@@ -143,6 +145,7 @@ const Index = () => {
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               {loading ? "Fetching..." : "Refresh"}
             </Button>
+            <ThemeToggle />
             <div className="flex items-center gap-2">
               <div className={`h-2 w-2 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
               <span className="text-xs text-muted-foreground">
@@ -158,40 +161,40 @@ const Index = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="overflow-x-auto">
-            <TabsList className="bg-card border border-border h-10 inline-flex w-auto min-w-full">
-              <TabsTrigger value="dashboard" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+             <TabsList className="bg-card/50 backdrop-blur-sm border border-border h-11 inline-flex w-auto min-w-full rounded-xl p-1 gap-0.5">
+              <TabsTrigger value="dashboard" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <LayoutDashboard className="h-3.5 w-3.5" /> Dashboard
               </TabsTrigger>
-              <TabsTrigger value="portfolio" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <TabsTrigger value="portfolio" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <BarChart3 className="h-3.5 w-3.5" /> Portfolio
               </TabsTrigger>
-              <TabsTrigger value="trades" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <TabsTrigger value="trades" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Crosshair className="h-3.5 w-3.5" /> Trades
               </TabsTrigger>
-              <TabsTrigger value="history" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <TabsTrigger value="history" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <History className="h-3.5 w-3.5" /> History
               </TabsTrigger>
-              <TabsTrigger value="watchlist" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <TabsTrigger value="watchlist" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Eye className="h-3.5 w-3.5" /> Watchlist
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <TabsTrigger value="analytics" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <PieChart className="h-3.5 w-3.5" /> Analytics
               </TabsTrigger>
-              <TabsTrigger value="journal" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <TabsTrigger value="journal" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <BookOpen className="h-3.5 w-3.5" /> Journal
               </TabsTrigger>
-              <TabsTrigger value="alerts" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary relative">
+              <TabsTrigger value="alerts" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all relative">
                 <Bell className="h-3.5 w-3.5" /> Alerts
                 {alerts.filter(a => a.triggered).length > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-warning text-[10px] font-bold flex items-center justify-center text-warning-foreground">
+                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-loss text-[10px] font-bold flex items-center justify-center text-primary-foreground">
                     {alerts.filter(a => a.triggered).length}
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="risk" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <TabsTrigger value="risk" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Shield className="h-3.5 w-3.5" /> Risk
               </TabsTrigger>
-              <TabsTrigger value="ai" className="text-xs gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <TabsTrigger value="ai" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Brain className="h-3.5 w-3.5" /> AI Insights
               </TabsTrigger>
             </TabsList>
