@@ -100,7 +100,7 @@ serve(async (req) => {
       tickers.map((t: string) => fetchPrice(t).then((data) => ({ ticker: t, data })))
     );
 
-    const prices: Record<string, { price: number; weekHigh52: number; changePercent: number; change: number }> = {};
+    const prices: Record<string, { price: number; weekHigh52: number; weekLow52: number; changePercent: number; change: number }> = {};
 
     for (const result of results) {
       if (result.status === "fulfilled" && result.value.data) {
