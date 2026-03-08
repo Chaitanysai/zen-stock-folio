@@ -18,6 +18,7 @@ import ExportPortfolio from "@/components/ExportPortfolio";
 import { useToast } from "@/hooks/use-toast";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { Button } from "@/components/ui/button";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
