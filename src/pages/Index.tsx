@@ -54,6 +54,10 @@ const Index = () => {
     setStocks((prev) => [...prev, stock]);
   };
 
+  const handleImportStocks = (imported: PortfolioStock[]) => {
+    setStocks((prev) => [...prev, ...imported]);
+  };
+
   const handleEditStock = (originalTicker: string, updated: PortfolioStock) => {
     setStocks((prev) => prev.map((s) => (s.ticker === originalTicker ? updated : s)));
     toast({ title: "Transaction updated", description: `${updated.ticker} has been updated` });
@@ -121,11 +125,11 @@ const Index = () => {
 
           <TabsContent value="dashboard" className="mt-4 space-y-4">
             <PortfolioCharts stocks={stocks} />
-            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onEdit={handleEditStock} onDelete={handleDeleteStock} />
+            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} />
           </TabsContent>
 
           <TabsContent value="portfolio" className="mt-4">
-            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onEdit={handleEditStock} onDelete={handleDeleteStock} />
+            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} />
           </TabsContent>
 
           <TabsContent value="trades" className="mt-4">

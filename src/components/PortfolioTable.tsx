@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import AddTransactionDialog from "@/components/AddTransactionDialog";
+import ImportTradesDialog from "@/components/ImportTradesDialog";
 import EditTransactionDialog from "@/components/EditTransactionDialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface PortfolioTableProps {
   stocks: PortfolioStock[];
   onAdd: (stock: PortfolioStock) => void;
+  onImport: (stocks: PortfolioStock[]) => void;
   onEdit: (originalTicker: string, updated: PortfolioStock) => void;
   onDelete: (ticker: string) => void;
 }
@@ -28,7 +30,7 @@ const PLCell = ({ value }: { value: number }) => (
   </span>
 );
 
-const PortfolioTable = ({ stocks, onAdd, onEdit, onDelete }: PortfolioTableProps) => {
+const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: PortfolioTableProps) => {
   const [editingStock, setEditingStock] = useState<PortfolioStock | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -59,7 +61,10 @@ const PortfolioTable = ({ stocks, onAdd, onEdit, onDelete }: PortfolioTableProps
             <h2 className="text-lg font-semibold">Portfolio Holdings</h2>
             <p className="text-xs text-muted-foreground mt-1">{stocks.length} positions tracked · All values in ₹ INR</p>
           </div>
-          <AddTransactionDialog onAdd={onAdd} />
+          <div className="flex items-center gap-2">
+            <ImportTradesDialog onImport={onImport} />
+            <AddTransactionDialog onAdd={onAdd} />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <Table>
