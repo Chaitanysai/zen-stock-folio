@@ -30,7 +30,7 @@ const PLCell = ({ value }: { value: number }) => (
   </span>
 );
 
-const PortfolioTable = ({ stocks, onAdd, onEdit, onDelete }: PortfolioTableProps) => {
+const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: PortfolioTableProps) => {
   const [editingStock, setEditingStock] = useState<PortfolioStock | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
