@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function fetchPrice(ticker: string): Promise<{ price: number; weekHigh52: number; changePercent: number; change: number } | null> {
+async function fetchPrice(ticker: string): Promise<{ price: number; weekHigh52: number; weekLow52: number; changePercent: number; change: number } | null> {
   const symbol = `${ticker}.NS`;
   
   // Try Yahoo v8 chart API (no auth required)
