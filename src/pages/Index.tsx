@@ -127,14 +127,15 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-50">
+        <div className="absolute inset-x-0 top-0 h-[1px] gradient-primary opacity-60" />
         <div className="container flex items-center justify-between h-14 px-4">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center">
-              <BarChart3 className="h-4 w-4 text-primary" />
+            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center shadow-lg">
+              <BarChart3 className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-sm font-bold tracking-tight">Smart Stock Tracker</h1>
+              <h1 className="text-sm font-bold tracking-tight gradient-text">Smart Stock Tracker</h1>
               <p className="text-[10px] text-muted-foreground">Portfolio & Trade Dashboard · ₹ INR</p>
             </div>
           </div>
@@ -144,6 +145,7 @@ const Index = () => {
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               {loading ? "Fetching..." : "Refresh"}
             </Button>
+            <ThemeToggle />
             <div className="flex items-center gap-2">
               <div className={`h-2 w-2 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
               <span className="text-xs text-muted-foreground">
