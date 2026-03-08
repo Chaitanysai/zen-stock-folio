@@ -1,12 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function hashInput(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     const GOOGLE_API_KEY = Deno.env.get("GOOGLE_API_KEY");
@@ -18,6 +31,30 @@ serve(async (req) => {
 
     const { type, portfolioSummary, tradeData } = await req.json();
 
+    // --- Rate Limiting: 5 requests per minute per client ---
+    const clientId = req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "anonymous";
+    const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
+
+    const { count } = await supabase
+      .from("ai_rate_limits")
+      .select("*", { count: "exact", head: true })
+      .eq("client_id", clientId)
+      .gte("requested_at", oneMinuteAgo);
+
+    if ((count ?? 0) >= 5) {
+      return new Response(JSON.stringify({ error: "Too many AI requests. Please wait a moment." }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Record this request
+    await supabase.from("ai_rate_limits").insert({ client_id: clientId });
+
+    // Clean up old rate limit entries (older than 2 minutes)
+    const twoMinutesAgo = new Date(Date.now() - 120_000).toISOString();
+    await supabase.from("ai_rate_limits").delete().lt("requested_at", twoMinutesAgo);
+
+    // --- Build prompt ---
     let prompt = "";
     let systemInstruction = "";
 
@@ -72,6 +109,25 @@ ${portfolioSummary}`;
       });
     }
 
+    // --- Cache Check ---
+    const cacheInput = `${type}:${systemInstruction}:${prompt}`;
+    const inputHash = await hashInput(cacheInput);
+    const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60_000).toISOString();
+
+    const { data: cached } = await supabase
+      .from("ai_cache")
+      .select("ai_response, created_at")
+      .eq("input_hash", inputHash)
+      .gte("created_at", sixHoursAgo)
+      .maybeSingle();
+
+    if (cached) {
+      return new Response(JSON.stringify({ insights: cached.ai_response, cached: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Call Gemini ---
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_API_KEY}`,
       {
@@ -101,7 +157,15 @@ ${portfolioSummary}`;
     const data = await response.json();
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text || "No insights generated.";
 
-    return new Response(JSON.stringify({ insights: content }), {
+    // --- Store in cache ---
+    // Delete expired entries for this hash first, then insert
+    await supabase.from("ai_cache").delete().eq("input_hash", inputHash);
+    await supabase.from("ai_cache").insert({ input_hash: inputHash, ai_response: content });
+
+    // Clean up expired cache entries periodically
+    await supabase.from("ai_cache").delete().lt("created_at", sixHoursAgo);
+
+    return new Response(JSON.stringify({ insights: content, cached: false }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
