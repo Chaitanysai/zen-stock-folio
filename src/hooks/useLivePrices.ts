@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface StockPrice {
   price: number;
   weekHigh52: number;
+  weekLow52?: number;
   changePercent: number;
   change: number;
 }

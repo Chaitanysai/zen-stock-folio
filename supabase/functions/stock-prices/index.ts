@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function fetchPrice(ticker: string): Promise<{ price: number; weekHigh52: number; changePercent: number; change: number } | null> {
+async function fetchPrice(ticker: string): Promise<{ price: number; weekHigh52: number; weekLow52: number; changePercent: number; change: number } | null> {
   const symbol = `${ticker}.NS`;
   
   // Try Yahoo v8 chart API (no auth required)
@@ -25,6 +25,7 @@ async function fetchPrice(ticker: string): Promise<{ price: number; weekHigh52: 
         return {
           price: meta.regularMarketPrice ?? 0,
           weekHigh52: meta.fiftyTwoWeekHigh ?? 0,
+          weekLow52: meta.fiftyTwoWeekLow ?? 0,
           changePercent: meta.regularMarketPrice && meta.previousClose
             ? ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100
             : 0,
@@ -59,6 +60,7 @@ async function fetchPrice(ticker: string): Promise<{ price: number; weekHigh52: 
         return {
           price: meta.regularMarketPrice ?? 0,
           weekHigh52: meta.fiftyTwoWeekHigh ?? 0,
+          weekLow52: meta.fiftyTwoWeekLow ?? 0,
           changePercent: meta.regularMarketPrice && meta.previousClose
             ? ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100
             : 0,
@@ -98,7 +100,7 @@ serve(async (req) => {
       tickers.map((t: string) => fetchPrice(t).then((data) => ({ ticker: t, data })))
     );
 
-    const prices: Record<string, { price: number; weekHigh52: number; changePercent: number; change: number }> = {};
+    const prices: Record<string, { price: number; weekHigh52: number; weekLow52: number; changePercent: number; change: number }> = {};
 
     for (const result of results) {
       if (result.status === "fulfilled" && result.value.data) {
