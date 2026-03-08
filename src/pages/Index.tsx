@@ -78,6 +78,16 @@ const Index = () => {
     toast({ title: "Trade deleted", description: `${ticker} removed from trades` });
   };
 
+  const handleEditWatchlist = (originalName: string, updated: WatchlistStock) => {
+    setWatchlist((prev) => prev.map((w) => (w.stockName === originalName ? updated : w)));
+    toast({ title: "Watchlist updated", description: `${updated.stockName} has been updated` });
+  };
+
+  const handleDeleteWatchlist = (stockName: string) => {
+    setWatchlist((prev) => prev.filter((w) => w.stockName !== stockName));
+    toast({ title: "Watchlist entry deleted", description: `${stockName} removed from watchlist` });
+  };
+
   const formatTime = (iso: string | null) => {
     if (!iso) return "";
     return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
