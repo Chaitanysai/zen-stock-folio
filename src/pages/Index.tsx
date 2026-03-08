@@ -68,6 +68,16 @@ const Index = () => {
     toast({ title: "Transaction deleted", description: `${ticker} removed from portfolio` });
   };
 
+  const handleEditTrade = (originalTicker: string, updated: TradeStrategy) => {
+    setTrades((prev) => prev.map((t) => (t.ticker === originalTicker ? updated : t)));
+    toast({ title: "Trade updated", description: `${updated.ticker} has been updated` });
+  };
+
+  const handleDeleteTrade = (ticker: string) => {
+    setTrades((prev) => prev.filter((t) => t.ticker !== ticker));
+    toast({ title: "Trade deleted", description: `${ticker} removed from trades` });
+  };
+
   const formatTime = (iso: string | null) => {
     if (!iso) return "";
     return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
