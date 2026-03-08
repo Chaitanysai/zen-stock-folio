@@ -19,7 +19,6 @@ const Index = () => {
   const [watchlist, setWatchlist] = useState<WatchlistStock[]>(initialWatchlist);
   const { toast } = useToast();
 
-  // Collect all tickers that need live prices
   const allTickers = [
     ...stocks.filter(s => s.status === "Active").map(s => s.ticker),
     ...trades.map(t => t.ticker),
@@ -28,22 +27,18 @@ const Index = () => {
 
   const { prices, loading, lastUpdated, error, refresh } = useLivePrices(allTickers);
 
-  // Apply live prices when they arrive
   useEffect(() => {
     if (Object.keys(prices).length === 0) return;
-
     setStocks(prev => prev.map(s => {
       const live = prices[s.ticker];
       if (!live || s.status !== "Active") return s;
       return { ...s, cmp: live.price, weekHigh52: live.weekHigh52 || s.weekHigh52 };
     }));
-
     setTrades(prev => prev.map(t => {
       const live = prices[t.ticker];
       if (!live) return t;
       return { ...t, livePrice: live.price };
     }));
-
     setWatchlist(prev => prev.map(w => {
       const live = prices[w.stockName];
       if (!live) return w;
@@ -52,32 +47,21 @@ const Index = () => {
   }, [prices]);
 
   useEffect(() => {
-    if (error) {
-      toast({ title: "Price fetch issue", description: error, variant: "destructive" });
-    }
+    if (error) toast({ title: "Price fetch issue", description: error, variant: "destructive" });
   }, [error]);
 
   const handleAddStock = (stock: PortfolioStock) => {
     setStocks((prev) => [...prev, stock]);
   };
 
-  const handleUpdateStatus = (ticker: string, status: PortfolioStock["status"]) => {
-    setStocks((prev) =>
-      prev.map((s) => {
-        if (s.ticker !== ticker) return s;
-        const updated = { ...s, status };
-        if (status !== "Active" && !updated.exitPrice) {
-          updated.exitPrice = updated.cmp;
-          updated.exitDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-        }
-        if (status === "Active") {
-          updated.exitPrice = undefined;
-          updated.exitDate = undefined;
-        }
-        return updated;
-      })
-    );
-    toast({ title: "Status updated", description: `${ticker} marked as ${status === "Active" ? "Open" : "Closed"}` });
+  const handleEditStock = (originalTicker: string, updated: PortfolioStock) => {
+    setStocks((prev) => prev.map((s) => (s.ticker === originalTicker ? updated : s)));
+    toast({ title: "Transaction updated", description: `${updated.ticker} has been updated` });
+  };
+
+  const handleDeleteStock = (ticker: string) => {
+    setStocks((prev) => prev.filter((s) => s.ticker !== ticker));
+    toast({ title: "Transaction deleted", description: `${ticker} removed from portfolio` });
   };
 
   const formatTime = (iso: string | null) => {
@@ -137,11 +121,11 @@ const Index = () => {
 
           <TabsContent value="dashboard" className="mt-4 space-y-4">
             <PortfolioCharts stocks={stocks} />
-            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onUpdateStatus={handleUpdateStatus} />
+            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onEdit={handleEditStock} onDelete={handleDeleteStock} />
           </TabsContent>
 
           <TabsContent value="portfolio" className="mt-4">
-            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onUpdateStatus={handleUpdateStatus} />
+            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onEdit={handleEditStock} onDelete={handleDeleteStock} />
           </TabsContent>
 
           <TabsContent value="trades" className="mt-4">
