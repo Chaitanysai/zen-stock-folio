@@ -298,7 +298,7 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="risk" className="mt-4">
-            <RiskAnalysis stocks={stocks} trades={trades} />
+            <RiskAnalysis stocks={stocks} trades={trades} onEditTrade={handleEditTrade} />
           </TabsContent>
 
           <TabsContent value="ai" className="mt-4">
