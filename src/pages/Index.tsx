@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw, History, BookOpen, Bell, Brain, PieChart, Save } from "lucide-react";
+import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw, History, BookOpen, Bell, Brain, PieChart, Save, CloudUpload, CloudDownload } from "lucide-react";
 import { portfolioData as initialData, PortfolioStock, tradeStrategies as initialTrades, TradeStrategy, watchlistData as initialWatchlist, WatchlistStock, PriceAlert, TradeJournalEntry } from "@/data/sampleData";
 import DashboardStats from "@/components/DashboardStats";
 import PortfolioTable from "@/components/PortfolioTable";
@@ -19,6 +19,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type PortfolioSnapshot = {
   stocks: PortfolioStock[];
@@ -28,6 +31,7 @@ type PortfolioSnapshot = {
 };
 
 const STORAGE_KEY = "smart-stock-tracker-data";
+const SYNC_ID_KEY = "smart-stock-tracker-sync-id";
 
 const loadPortfolioSnapshot = (): PortfolioSnapshot | null => {
   if (typeof window === "undefined") {
@@ -64,25 +68,110 @@ const Index = () => {
   const [watchlist, setWatchlist] = useState<WatchlistStock[]>(() => initialSnapshot?.watchlist ?? initialWatchlist);
   const [alerts, setAlerts] = useState<PriceAlert[]>(() => initialSnapshot?.alerts ?? []);
   const { toast } = useToast();
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+  const [syncId, setSyncId] = useState("");
+  const [syncingPull, setSyncingPull] = useState(false);
+  const [syncingPush, setSyncingPush] = useState(false);
 
-  const handleSavePortfolio = () => {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedSyncId = window.localStorage.getItem(SYNC_ID_KEY) ?? "";
+    setSyncId(savedSyncId);
+  }, []);
+
+  const getSnapshot = (): PortfolioSnapshot => ({
+    stocks,
+    trades,
+    watchlist,
+    alerts,
+  });
+
+  const persistSyncId = (value: string) => {
+    if (typeof window === "undefined") return;
+    const normalized = value.trim();
+    if (!normalized) {
+      window.localStorage.removeItem(SYNC_ID_KEY);
+      return;
+    }
+    window.localStorage.setItem(SYNC_ID_KEY, normalized);
+  };
+
+  const pushToCloud = async (id: string) => {
+    const syncIdValue = id.trim();
+    if (!syncIdValue) {
+      toast({ title: "Sync ID required", description: "Enter a Sync ID before cloud sync.", variant: "destructive" });
+      return false;
+    }
+
+    setSyncingPush(true);
+    try {
+      const response = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ syncId: syncIdValue, snapshot: getSnapshot() }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        toast({ title: "Cloud sync failed", description: data?.error || "Failed to push data", variant: "destructive" });
+        return false;
+      }
+      persistSyncId(syncIdValue);
+      toast({ title: "Cloud sync complete", description: "Data pushed and available on your other devices." });
+      return true;
+    } catch {
+      toast({ title: "Cloud sync failed", description: "Unable to connect to sync service.", variant: "destructive" });
+      return false;
+    } finally {
+      setSyncingPush(false);
+    }
+  };
+
+  const pullFromCloud = async (id: string) => {
+    const syncIdValue = id.trim();
+    if (!syncIdValue) {
+      toast({ title: "Sync ID required", description: "Enter a Sync ID before cloud sync.", variant: "destructive" });
+      return;
+    }
+
+    setSyncingPull(true);
+    try {
+      const response = await fetch(`/api/sync?syncId=${encodeURIComponent(syncIdValue)}`);
+      const data = await response.json();
+      if (!response.ok) {
+        toast({ title: "Cloud fetch failed", description: data?.error || "Could not pull data", variant: "destructive" });
+        return;
+      }
+      const snapshot = data?.snapshot as PortfolioSnapshot;
+      setStocks(snapshot.stocks);
+      setTrades(snapshot.trades);
+      setWatchlist(snapshot.watchlist);
+      setAlerts(snapshot.alerts);
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      persistSyncId(syncIdValue);
+      toast({ title: "Cloud sync complete", description: "Latest data pulled from cloud." });
+    } catch {
+      toast({ title: "Cloud fetch failed", description: "Unable to connect to sync service.", variant: "destructive" });
+    } finally {
+      setSyncingPull(false);
+    }
+  };
+
+  const handleSavePortfolio = async () => {
     if (typeof window === "undefined") {
       return;
     }
 
-    const snapshot: PortfolioSnapshot = {
-      stocks,
-      trades,
-      watchlist,
-      alerts,
-    };
-
+    const snapshot = getSnapshot();
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
 
     toast({
       title: "Portfolio saved",
-      description: "Your latest transactions are now saved for the next visit.",
+      description: "Saved on this device. Use Cloud Sync for multi-device access.",
     });
+
+    if (syncId.trim()) {
+      await pushToCloud(syncId);
+    }
   };
 
   const allTickers = [
@@ -202,6 +291,10 @@ const Index = () => {
               <Save className="h-3.5 w-3.5" />
               Save
             </Button>
+            <Button variant="outline" size="sm" onClick={() => setSyncDialogOpen(true)} className="gap-1.5 text-xs">
+              <CloudUpload className="h-3.5 w-3.5" />
+              Cloud Sync
+            </Button>
             <Button variant="ghost" size="sm" onClick={refresh} disabled={loading} className="gap-1.5 text-xs text-muted-foreground hover:text-primary">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               {loading ? "Fetching..." : "Refresh"}
@@ -306,6 +399,31 @@ const Index = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      <Dialog open={syncDialogOpen} onOpenChange={setSyncDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Cloud Sync Across Devices</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Sync ID (use same ID on every device)</Label>
+              <Input value={syncId} onChange={(e) => setSyncId(e.target.value)} placeholder="e.g. my-portfolio-2026" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" onClick={() => pullFromCloud(syncId)} disabled={syncingPull || syncingPush} className="gap-1.5">
+                <CloudDownload className="h-4 w-4" />
+                {syncingPull ? "Pulling..." : "Pull Cloud"}
+              </Button>
+              <Button type="button" onClick={() => pushToCloud(syncId)} disabled={syncingPull || syncingPush} className="gap-1.5">
+                <CloudUpload className="h-4 w-4" />
+                {syncingPush ? "Pushing..." : "Push Cloud"}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">Tip: Save locally first, then Push Cloud. On other devices, enter the same Sync ID and Pull Cloud.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
