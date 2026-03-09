@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw, History, BookOpen, Bell, Brain, PieChart } from "lucide-react";
+import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw, History, BookOpen, Bell, Brain, PieChart, Save } from "lucide-react";
 import { portfolioData as initialData, PortfolioStock, tradeStrategies as initialTrades, TradeStrategy, watchlistData as initialWatchlist, WatchlistStock, PriceAlert, TradeJournalEntry } from "@/data/sampleData";
 import DashboardStats from "@/components/DashboardStats";
 import PortfolioTable from "@/components/PortfolioTable";
@@ -20,13 +20,70 @@ import { useLivePrices } from "@/hooks/useLivePrices";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
 
+type PortfolioSnapshot = {
+  stocks: PortfolioStock[];
+  trades: TradeStrategy[];
+  watchlist: WatchlistStock[];
+  alerts: PriceAlert[];
+};
+
+const STORAGE_KEY = "smart-stock-tracker-data";
+
+const loadPortfolioSnapshot = (): PortfolioSnapshot | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawData = window.localStorage.getItem(STORAGE_KEY);
+  if (!rawData) {
+    return null;
+  }
+
+  try {
+    const parsedData = JSON.parse(rawData) as Partial<PortfolioSnapshot>;
+    if (!Array.isArray(parsedData.stocks) || !Array.isArray(parsedData.trades) || !Array.isArray(parsedData.watchlist) || !Array.isArray(parsedData.alerts)) {
+      return null;
+    }
+
+    return {
+      stocks: parsedData.stocks,
+      trades: parsedData.trades,
+      watchlist: parsedData.watchlist,
+      alerts: parsedData.alerts,
+    };
+  } catch {
+    return null;
+  }
+};
+
 const Index = () => {
+  const initialSnapshot = loadPortfolioSnapshot();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [stocks, setStocks] = useState<PortfolioStock[]>(initialData);
-  const [trades, setTrades] = useState<TradeStrategy[]>(initialTrades);
-  const [watchlist, setWatchlist] = useState<WatchlistStock[]>(initialWatchlist);
-  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const [stocks, setStocks] = useState<PortfolioStock[]>(() => initialSnapshot?.stocks ?? initialData);
+  const [trades, setTrades] = useState<TradeStrategy[]>(() => initialSnapshot?.trades ?? initialTrades);
+  const [watchlist, setWatchlist] = useState<WatchlistStock[]>(() => initialSnapshot?.watchlist ?? initialWatchlist);
+  const [alerts, setAlerts] = useState<PriceAlert[]>(() => initialSnapshot?.alerts ?? []);
   const { toast } = useToast();
+
+  const handleSavePortfolio = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const snapshot: PortfolioSnapshot = {
+      stocks,
+      trades,
+      watchlist,
+      alerts,
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+
+    toast({
+      title: "Portfolio saved",
+      description: "Your latest transactions are now saved for the next visit.",
+    });
+  };
 
   const allTickers = [
     ...stocks.filter(s => s.status === "Active").map(s => s.ticker),
@@ -141,6 +198,10 @@ const Index = () => {
           </div>
           <div className="flex items-center gap-3">
             <ExportPortfolio stocks={stocks} />
+            <Button variant="secondary" size="sm" onClick={handleSavePortfolio} className="gap-1.5 text-xs">
+              <Save className="h-3.5 w-3.5" />
+              Save
+            </Button>
             <Button variant="ghost" size="sm" onClick={refresh} disabled={loading} className="gap-1.5 text-xs text-muted-foreground hover:text-primary">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               {loading ? "Fetching..." : "Refresh"}
