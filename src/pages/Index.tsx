@@ -35,13 +35,13 @@ import { useTheme } from "next-themes";
 
 // Ocean palette — all 7 swatches
 const CARDS = [
-  { cls: "stat-card-1", iconBg: "card-icon-bg-1", color: "hsl(225,68%,32%)",  icon: IndianRupee },
-  { cls: "stat-card-2", iconBg: "card-icon-bg-2", color: "hsl(210,78%,44%)",  icon: Briefcase },
-  { cls: "stat-card-3", iconBg: "card-icon-bg-3", color: "hsl(200,88%,42%)",  icon: TrendingUp },
-  { cls: "stat-card-4", iconBg: "card-icon-bg-4", color: "hsl(192,94%,42%)",  icon: Target },
-  { cls: "stat-card-5", iconBg: "card-icon-bg-5", color: "hsl(187,82%,46%)",  icon: Activity },
-  { cls: "stat-card-6", iconBg: "card-icon-bg-6", color: "hsl(185,72%,52%)",  icon: BarChart3 },
-  { cls: "stat-card-7", iconBg: "card-icon-bg-7", color: "hsl(183,60%,58%)",  icon: Percent },
+  { cls: "stat-card-1", iconBg: "card-icon-bg-1", color: "hsl(230,50%,32%)",  icon: IndianRupee },
+  { cls: "stat-card-2", iconBg: "card-icon-bg-2", color: "hsl(0,72%,35%)",    icon: Briefcase },
+  { cls: "stat-card-3", iconBg: "card-icon-bg-3", color: "hsl(0,85%,42%)",    icon: TrendingUp },
+  { cls: "stat-card-4", iconBg: "card-icon-bg-4", color: "hsl(8,90%,48%)",    icon: Target },
+  { cls: "stat-card-5", iconBg: "card-icon-bg-5", color: "hsl(18,95%,52%)",   icon: Activity },
+  { cls: "stat-card-6", iconBg: "card-icon-bg-6", color: "hsl(28,98%,50%)",   icon: BarChart3 },
+  { cls: "stat-card-7", iconBg: "card-icon-bg-7", color: "hsl(38,100%,46%)",  icon: Percent },
 ];
 
 const NAV_TABS = [
@@ -120,27 +120,27 @@ const SidebarTray = ({
 
       {/* Decorative ocean gradient top strip */}
       <div className="absolute inset-x-0 top-0 h-[3px]"
-           style={{ background: "linear-gradient(90deg, hsl(225,68%,40%), hsl(192,94%,50%), hsl(185,72%,72%))" }} />
+           style={{ background: "linear-gradient(90deg, hsl(230,50%,22%), hsl(8,90%,46%), hsl(28,98%,54%), hsl(46,100%,56%))" }} />
 
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-6 pb-4"
-           style={{ borderBottom: "1px solid hsl(200 60% 50% / 0.15)" }}>
+           style={{ borderBottom: "1px solid hsl(18 50% 40% / 0.15)" }}>
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl flex items-center justify-center"
                style={{
-                 background: "linear-gradient(135deg, hsl(200,88%,42%), hsl(192,94%,50%))",
-                 boxShadow: "0 4px 16px hsl(200,88%,42%,0.4)"
+                 background: "linear-gradient(135deg, hsl(8,90%,46%), hsl(18,95%,52%))",
+                 boxShadow: "0 4px 16px hsl(18,95%,52%,0.4)"
                }}>
-            <Waves className="h-4 w-4" style={{ color: "hsl(225,68%,10%)", width: 17, height: 17 }} />
+            <Waves className="h-4 w-4" style={{ color: "hsl(230,55%,6%)", width: 17, height: 17 }} />
           </div>
           <div>
             <p className="text-sm font-bold leading-none text-white">Smart Stock</p>
-            <p className="text-[10px] mt-0.5" style={{ color: "hsl(200,60%,65%)" }}>Portfolio Tracker</p>
+            <p className="text-[10px] mt-0.5" style={{ color: "hsl(18,60%,65%)" }}>Portfolio Tracker</p>
           </div>
         </div>
         <button onClick={onClose}
           className="h-7 w-7 rounded-lg flex items-center justify-center transition-all"
-          style={{ background: "hsl(200 60% 50% / 0.12)", color: "hsl(200,60%,65%)" }}>
+          style={{ background: "hsl(18 50% 40% / 0.12)", color: "hsl(18,60%,65%)" }}>
           <X className="h-4 w-4" />
         </button>
       </div>
@@ -148,7 +148,7 @@ const SidebarTray = ({
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
         <p className="text-[10px] font-semibold uppercase tracking-widest px-3 mb-2"
-           style={{ color: "hsl(200,40%,50%)" }}>Navigation</p>
+           style={{ color: "hsl(18,40%,50%)" }}>Navigation</p>
         {NAV_TABS.map(({ value, label, icon: Icon }) => {
           const isActive = activeTab === value;
           return (
@@ -156,11 +156,11 @@ const SidebarTray = ({
               onClick={() => { setActiveTab(value); onClose(); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-left relative"
               style={isActive ? {
-                background: "linear-gradient(135deg, hsl(200,88%,42%), hsl(192,94%,50%))",
-                color: "hsl(225,68%,8%)",
-                boxShadow: "0 4px 16px hsl(200,88%,42%,0.35)"
+                background: "linear-gradient(135deg, hsl(8,90%,46%), hsl(18,95%,52%))",
+                color: "hsl(230,55%,5%)",
+                boxShadow: "0 4px 16px hsl(18,95%,52%,0.35)"
               } : {
-                color: "hsl(200,50%,72%)",
+                color: "hsl(20,50%,72%)",
               }}
               onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "hsl(200 55% 50% / 0.12)"; }}
               onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
@@ -178,8 +178,8 @@ const SidebarTray = ({
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-4" style={{ borderTop: "1px solid hsl(200 60% 50% / 0.12)" }}>
-        <p className="text-[10px] text-center" style={{ color: "hsl(200,40%,48%)" }}>
+      <div className="px-5 py-4" style={{ borderTop: "1px solid hsl(18 50% 40% / 0.12)" }}>
+        <p className="text-[10px] text-center" style={{ color: "hsl(18,60%,52%)" }}>
           Portfolio & Trade Dashboard · ₹ INR
         </p>
       </div>
@@ -279,12 +279,12 @@ const Index = () => {
         backdropFilter: "blur(28px) saturate(200%) brightness(1.04)",
         WebkitBackdropFilter: "blur(28px) saturate(200%) brightness(1.04)",
         background: "hsl(0 0% 100% / 0.62)",
-        borderBottom: "1px solid hsl(200 60% 60% / 0.20)",
-        boxShadow: "0 2px 20px hsl(200 88% 42% / 0.08), inset 0 -1px 0 hsl(200 60% 60% / 0.12)"
+        borderBottom: "1px solid hsl(18 50% 45% / 0.20)",
+        boxShadow: "0 2px 20px hsl(18 95% 52% / 0.08), inset 0 -1px 0 hsl(18 50% 45% / 0.12)"
       }}>
         {/* Ocean gradient top line */}
         <div className="absolute inset-x-0 top-0 h-[3px]"
-             style={{ background: "linear-gradient(90deg, hsl(225,68%,28%), hsl(200,88%,42%), hsl(187,82%,60%), hsl(185,72%,78%))" }} />
+             style={{ background: "linear-gradient(90deg, hsl(230,50%,18%), hsl(0,85%,36%), hsl(18,95%,52%), hsl(38,100%,52%), hsl(46,100%,56%))" }} />
 
         <div className="container flex items-center justify-between h-16 px-4 md:px-6">
           <div className="flex items-center gap-3">
@@ -294,7 +294,7 @@ const Index = () => {
               style={{
                 background: "hsl(200 60% 50% / 0.10)",
                 border: "1px solid hsl(200 60% 50% / 0.22)",
-                color: "hsl(200,60%,40%)"
+                color: "hsl(18,60%,40%)"
               }}>
               <Menu className="h-4 w-4" />
             </button>
@@ -303,17 +303,17 @@ const Index = () => {
             <div className="flex items-center gap-2.5">
               <div className="h-9 w-9 rounded-xl flex items-center justify-center relative overflow-hidden"
                    style={{
-                     background: "linear-gradient(135deg, hsl(225,68%,28%), hsl(200,88%,42%))",
-                     boxShadow: "0 4px 16px hsl(200,88%,42%,0.40)"
+                     background: "linear-gradient(135deg, hsl(230,50%,20%), hsl(0,85%,36%))",
+                     boxShadow: "0 4px 16px hsl(18,95%,52%,0.40)"
                    }}>
                 <Waves className="h-4 w-4 text-white" style={{ width: 17, height: 17 }} />
                 <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%)" }} />
               </div>
               <div>
-                <h1 className="text-[15px] font-bold leading-none" style={{ color: "hsl(225,68%,18%)" }}>
+                <h1 className="text-[15px] font-bold leading-none" style={{ color: "hsl(230,55%,12%)" }}>
                   Smart Stock Tracker
                 </h1>
-                <p className="text-[10px] mt-0.5 tracking-wide" style={{ color: "hsl(200,50%,50%)" }}>
+                <p className="text-[10px] mt-0.5 tracking-wide" style={{ color: "hsl(18,60%,50%)" }}>
                   Portfolio & Trade Dashboard · ₹ INR
                 </p>
               </div>
@@ -326,14 +326,14 @@ const Index = () => {
 
             <Button variant="outline" size="sm" onClick={handleSavePortfolio} disabled={syncing}
               className="gap-1.5 text-xs h-8 rounded-xl font-semibold"
-              style={{ borderColor: "hsl(200,60%,50%,0.35)", color: "hsl(200,70%,38%)" }}>
+              style={{ borderColor: "hsl(18,60%,50%,0.35)", color: "hsl(18,80%,40%)" }}>
               <Save className="h-3.5 w-3.5" />
               {syncing ? "Saving…" : user ? "Save & Sync" : "Save"}
             </Button>
 
             <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}
               className="gap-1.5 text-xs h-8 rounded-xl"
-              style={{ color: "hsl(200,50%,50%)" }}>
+              style={{ color: "hsl(18,60%,50%)" }}>
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">{loading ? "Fetching…" : "Refresh"}</span>
             </Button>
@@ -346,7 +346,7 @@ const Index = () => {
               style={{
                 background: "hsl(200 60% 50% / 0.10)",
                 border: "1px solid hsl(200 60% 50% / 0.22)",
-                color: "hsl(200,60%,40%)"
+                color: "hsl(18,60%,40%)"
               }}>
               {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </button>
@@ -354,12 +354,12 @@ const Index = () => {
             {/* Live badge */}
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl"
                  style={{
-                   background: "hsl(200 60% 50% / 0.08)",
-                   border: "1px solid hsl(200 60% 50% / 0.18)",
+                   background: "hsl(18 50% 40% / 0.08)",
+                   border: "1px solid hsl(18 50% 40% / 0.18)",
                    fontSize: 11
                  }}>
               <div className={`h-1.5 w-1.5 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
-              <span className="font-medium" style={{ color: "hsl(200,50%,46%)" }}>
+              <span className="font-medium" style={{ color: "hsl(18,60%,46%)" }}>
                 {lastUpdated ? formatTime(lastUpdated) : "Live"}
               </span>
             </div>
@@ -380,17 +380,17 @@ const Index = () => {
               style={{
                 backdropFilter: "blur(20px) saturate(180%)",
                 background: "hsl(0 0% 100% / 0.55)",
-                border: "1px solid hsl(200 60% 60% / 0.25)",
-                boxShadow: "0 2px 16px hsl(200 88% 42% / 0.08), inset 0 1px 0 hsl(0 0% 100% / 0.70)"
+                border: "1px solid hsl(18 50% 45% / 0.25)",
+                boxShadow: "0 2px 16px hsl(18 95% 52% / 0.08), inset 0 1px 0 hsl(0 0% 100% / 0.70)"
               }}>
               {NAV_TABS.map(({ value, label, icon: Icon }) => (
                 <TabsTrigger key={value} value={value}
                   className="relative text-xs gap-1.5 rounded-xl px-3 font-medium transition-all duration-200 whitespace-nowrap"
                   style={activeTab === value ? {
-                    background: "linear-gradient(135deg, hsl(225,68%,28%), hsl(200,88%,42%), hsl(192,94%,50%))",
+                    background: "linear-gradient(135deg, hsl(230,50%,20%), hsl(8,90%,46%), hsl(38,100%,52%))",
                     color: "white",
-                    boxShadow: "0 4px 16px hsl(200,88%,42%,0.40)"
-                  } : { color: "hsl(200,40%,48%)" }}>
+                    boxShadow: "0 4px 16px hsl(18,95%,52%,0.40)"
+                  } : { color: "hsl(18,60%,52%)" }}>
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                   <span className="hidden sm:inline">{label}</span>
                   {value === "alerts" && triggeredAlerts > 0 && (
