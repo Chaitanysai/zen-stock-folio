@@ -401,3 +401,89 @@
   ::-webkit-scrollbar-thumb { background: hsl(18 60% 60% / 0.35); border-radius: 99px; }
   ::-webkit-scrollbar-thumb:hover { background: hsl(18 95% 52% / 0.55); }
 }
+
+/* ── Mobile viewport fix ── */
+@layer base {
+  html {
+    /* Prevent horizontal overflow on mobile */
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    overflow-x: hidden;
+    /* Smooth momentum scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer components {
+  /* ── Safe area for notched phones ── */
+  .safe-top    { padding-top: env(safe-area-inset-top, 0px); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+  /* ── Touch targets — minimum 44px per Apple HIG ── */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* ── Horizontal scroll container (mobile stat chips) ── */
+  .scroll-x-mobile {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .scroll-x-mobile::-webkit-scrollbar { display: none; }
+
+  /* ── Mobile-safe table wrapper ── */
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 1rem;
+  }
+
+  /* ── Mobile card compact mode ── */
+  @media (max-width: 640px) {
+    .stat-card {
+      padding: 0.875rem;
+    }
+
+    /* Tighten container padding */
+    .container {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+
+    /* Slightly smaller font in tabs content on mobile */
+    .text-lg { font-size: 1rem; }
+
+    /* Make sure charts don't overflow */
+    .recharts-wrapper {
+      max-width: 100% !important;
+    }
+  }
+
+  /* ── Bottom nav safe area ── */
+  .bottom-nav-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+
+  /* ── Prevent tap highlight on mobile buttons ── */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ── Active state for mobile touch ── */
+  button:active {
+    opacity: 0.75;
+    transform: scale(0.97);
+    transition: opacity 0.1s, transform 0.1s;
+  }
+
+  /* ── Focus visible outline (accessibility) ── */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
