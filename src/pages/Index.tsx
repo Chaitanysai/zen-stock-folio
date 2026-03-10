@@ -69,27 +69,42 @@ const BOTTOM_NAV = [
 
 // ── Stats panel ────────────────────────────────────────────────────────────────
 const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
-  const totalInvested     = stocks.reduce((s, x) => s + calcInvestedValue(x), 0);
-  const totalCurrentValue = stocks.reduce((s, x) => s + calcFinalValue(x), 0);
-  const totalPL           = stocks.reduce((s, x) => s + calcProfitLoss(x), 0);
-  const profitPct         = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
-  const analytics         = getTradeAnalytics(stocks);
-  const isProfit          = totalPL >= 0;
+  const activeStocks  = stocks.filter(s => s.status === "Active");
+  const closedStocks  = stocks.filter(s => s.status !== "Active");
+
+  // Active-only metrics (capital currently deployed)
+  const activeInvested     = activeStocks.reduce((s, x) => s + calcInvestedValue(x), 0);
+  const activeCurrentValue = activeStocks.reduce((s, x) => s + calcFinalValue(x), 0);
+  const activePL           = activeStocks.reduce((s, x) => s + calcProfitLoss(x), 0);
+  const activePLPct        = activeInvested > 0 ? (activePL / activeInvested) * 100 : 0;
+  const isProfit           = activePL >= 0;
+
+  // Closed-only P&L (realised)
+  const closedPL      = closedStocks.reduce((s, x) => s + calcProfitLoss(x), 0);
+
+  // Overall analytics (win rate etc. uses all trades)
+  const analytics     = getTradeAnalytics(stocks);
+
+  const fmt = (n: number) => `₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
   const values = [
-    `₹${totalInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
-    `₹${totalCurrentValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
-    `${isProfit ? "+" : ""}₹${totalPL.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
-    `${analytics.winRate.toFixed(1)}%`,
-    `${stocks.filter(s => s.status === "Active").length}`,
-    `${stocks.filter(s => s.status !== "Active").length}`,
+    fmt(activeInvested),                                                           // Active invested
+    fmt(activeCurrentValue),                                                       // Active current value
+    `${isProfit ? "+" : "-"}${fmt(activePL)}`,                                    // Active P&L
+    `${analytics.winRate.toFixed(1)}%`,                                            // Win rate
+    `${activeStocks.length}`,                                                      // Open positions
+    `${closedStocks.length}`,                                                      // Closed trades
     analytics.riskRewardRatio > 0 ? `1:${analytics.riskRewardRatio.toFixed(1)}` : "N/A",
   ];
 
   const subs = [
-    null, null,
-    `${isProfit ? "+" : ""}${profitPct.toFixed(1)}%`,
-    null, null, null, null,
+    `Excl. ₹${Math.abs(closedPL).toLocaleString("en-IN", { maximumFractionDigits: 0 })} realised`,
+    `Active positions only`,
+    `${isProfit ? "+" : ""}${activePLPct.toFixed(1)}% on active`,
+    null,
+    `₹${activeInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })} deployed`,
+    `${closedPL >= 0 ? "+" : "-"}₹${Math.abs(closedPL).toLocaleString("en-IN", { maximumFractionDigits: 0 })} realised P&L`,
+    null,
   ];
 
   return (
@@ -433,22 +448,29 @@ const Index = () => {
 
         {/* Desktop horizontal tab bar */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="hidden sm:block overflow-x-auto pb-1">
-            <TabsList className="inline-flex w-auto min-w-full h-11 p-1 gap-0.5 rounded-2xl"
+          <div className="hidden sm:block overflow-x-auto pb-2">
+            <TabsList className="inline-flex w-auto min-w-full h-12 p-1.5 gap-1 rounded-2xl"
               style={{
                 backdropFilter: "blur(20px) saturate(180%)",
-                background: "hsl(0 0% 100% / 0.55)",
-                border: "1px solid hsl(18 50% 45% / 0.25)",
-                boxShadow: "0 2px 16px hsl(18 95% 52% / 0.08), inset 0 1px 0 hsl(0 0% 100% / 0.70)"
+                background: "hsl(0 0% 100% / 0.70)",
+                border: "1px solid hsl(18 50% 45% / 0.15)",
+                boxShadow: "0 2px 20px hsl(18 95% 52% / 0.06)"
               }}>
               {NAV_TABS.map(({ value, label, icon: Icon }) => (
                 <TabsTrigger key={value} value={value}
-                  className="relative text-xs gap-1.5 rounded-xl px-3 font-medium transition-all duration-200 whitespace-nowrap"
-                  style={activeTab === value ? { background: SUNSET_GRAD, color: "white", boxShadow: "0 4px 16px hsl(18,95%,52%,0.35)" } : { color: "hsl(18,60%,48%)" }}>
+                  className="relative flex items-center gap-1.5 rounded-xl px-3.5 h-full font-medium transition-all duration-200 whitespace-nowrap text-xs border-0 outline-none"
+                  style={activeTab === value ? {
+                    background: SUNSET_GRAD,
+                    color: "white",
+                    boxShadow: "0 4px 14px hsl(18,95%,52%,0.35)",
+                  } : {
+                    color: "hsl(18,50%,52%)",
+                    background: "transparent",
+                  }}>
                   <Icon className="h-3.5 w-3.5 shrink-0" />
                   <span>{label}</span>
                   {value === "alerts" && triggeredAlerts > 0 && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-loss text-[9px] font-bold flex items-center justify-center text-white">{triggeredAlerts}</span>
+                    <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-loss text-[9px] font-bold flex items-center justify-center text-white">{triggeredAlerts}</span>
                   )}
                 </TabsTrigger>
               ))}
