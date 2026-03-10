@@ -342,7 +342,7 @@ const Index = () => {
 
   return (
     /* pb-20 on mobile to clear bottom nav */
-    <div className="min-h-screen mesh-bg pb-20 sm:pb-0">
+    <div className="min-h-screen mesh-bg pb-20 sm:pb-0 relative overflow-x-hidden">
 
       <SidebarTray open={sidebarOpen} onClose={() => setSidebarOpen(false)}
         activeTab={activeTab} setActiveTab={setActiveTab}
