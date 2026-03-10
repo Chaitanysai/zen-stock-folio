@@ -40,9 +40,9 @@ export default async function handler(req: any, res: any) {
     // Free models on OpenRouter — tries in order
     const models = [
       "meta-llama/llama-3.3-70b-instruct:free",
+      "meta-llama/llama-3.1-8b-instruct:free",
       "mistralai/mistral-7b-instruct:free",
-      "google/gemma-3-27b-it:free",
-      "deepseek/deepseek-r1:free",
+      "google/gemma-2-9b-it:free",
     ];
 
     let text: string | null = null;
