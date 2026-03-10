@@ -1,5 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
 function setCors(res: any) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -8,28 +6,24 @@ function setCors(res: any) {
 
 function buildLegacyPrompt(body: any): string | null {
   const { type, portfolioSummary, tradeData } = body ?? {};
-  if (type === "portfolio" && portfolioSummary) {
+  if (type === "portfolio" && portfolioSummary)
     return `You are a professional Indian stock market analyst. Analyze this portfolio and provide insights with markdown headers.\n\nPortfolio Data:\n${portfolioSummary}`;
-  }
-  if (type === "risk" && portfolioSummary) {
-    return `You are a portfolio risk analyst for Indian equity markets. Identify risks in this portfolio.\n\nPortfolio Data:\n${portfolioSummary}`;
-  }
-  if (type === "trade" && tradeData) {
+  if (type === "risk" && portfolioSummary)
+    return `You are a portfolio risk analyst for Indian equity markets. Identify risks.\n\nPortfolio Data:\n${portfolioSummary}`;
+  if (type === "trade" && tradeData)
     return `You are a stock trade analyst for Indian markets. Analyze this position.\n\nPosition Details:\n${tradeData}`;
-  }
   return null;
 }
 
 export default async function handler(req: any, res: any) {
   setCors(res);
-
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    console.error("GOOGLE_API_KEY is missing from environment variables");
-    return res.status(500).json({ error: "GOOGLE_API_KEY is not configured on the server." });
+    console.error("OPENROUTER_API_KEY is missing");
+    return res.status(500).json({ error: "OPENROUTER_API_KEY is not configured." });
   }
 
   try {
@@ -39,49 +33,71 @@ export default async function handler(req: any, res: any) {
         ? body.prompt
         : buildLegacyPrompt(body);
 
-    if (!prompt) {
-      return res.status(400).json({ error: "A valid prompt is required" });
-    }
+    if (!prompt) return res.status(400).json({ error: "A valid prompt is required" });
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    console.log("Calling OpenRouter API...");
 
-    // Try models in order — newest stable first
-    const modelsToTry = [
-      "gemini-2.0-flash",
-      "gemini-2.0-flash-lite",
-      "gemini-1.5-flash-8b",
-      "gemini-1.5-pro",
+    // Free models on OpenRouter — tries in order
+    const models = [
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "mistralai/mistral-7b-instruct:free",
+      "google/gemma-3-27b-it:free",
+      "deepseek/deepseek-r1:free",
     ];
 
     let text: string | null = null;
     let lastError: any = null;
 
-    for (const modelName of modelsToTry) {
+    for (const model of models) {
       try {
-        console.log(`Trying model: ${modelName}`);
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(prompt);
-        text = result.response.text();
-        console.log(`Success with model: ${modelName}`);
-        break;
+        console.log(`Trying model: ${model}`);
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://zen-stock-folio.vercel.app",
+            "X-Title": "Smart Stock Tracker",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 1024,
+            messages: [
+              {
+                role: "system",
+                content: "You are a professional Indian stock market analyst. Always use ₹ for currency. Format responses with markdown headers and bullet points.",
+              },
+              { role: "user", content: prompt },
+            ],
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error?.message || `HTTP ${response.status}`);
+        }
+
+        const content = data?.choices?.[0]?.message?.content;
+        if (content) {
+          text = content;
+          console.log(`Success with model: ${model}`);
+          break;
+        }
       } catch (err: any) {
-        console.error(`Model ${modelName} failed:`, err?.message || err);
+        console.error(`Model ${model} failed:`, err?.message || err);
         lastError = err;
       }
     }
 
     if (!text) {
-      const msg = lastError?.message || "All AI models failed";
-      console.error("All models failed. Last error:", msg);
-      return res.status(500).json({ error: `AI failed: ${msg}` });
+      return res.status(500).json({ error: lastError?.message || "All AI models failed" });
     }
 
     return res.status(200).json({ response: text, insights: text });
 
   } catch (error: any) {
-    console.error("Gemini API top-level error:", error?.message || error);
-    return res.status(500).json({ 
-      error: error?.message || "Failed to generate AI response" 
-    });
+    console.error("AI handler error:", error?.message || error);
+    return res.status(500).json({ error: error?.message || "Failed to generate AI response" });
   }
 }
