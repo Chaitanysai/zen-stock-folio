@@ -15,6 +15,23 @@ function buildLegacyPrompt(body: any): string | null {
   return null;
 }
 
+async function getFreeModels(apiKey: string): Promise<string[]> {
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/models", {
+      headers: { "Authorization": `Bearer ${apiKey}` }
+    });
+    const data = await res.json();
+    const free = (data?.data || [])
+      .filter((m: any) => m.id?.endsWith(":free"))
+      .map((m: any) => m.id);
+    console.log(`Found ${free.length} free models:`, free.slice(0, 5));
+    return free;
+  } catch (e) {
+    console.error("Failed to list models:", e);
+    return [];
+  }
+}
+
 export default async function handler(req: any, res: any) {
   setCors(res);
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -22,7 +39,6 @@ export default async function handler(req: any, res: any) {
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    console.error("OPENROUTER_API_KEY is missing");
     return res.status(500).json({ error: "OPENROUTER_API_KEY is not configured." });
   }
 
@@ -35,22 +51,25 @@ export default async function handler(req: any, res: any) {
 
     if (!prompt) return res.status(400).json({ error: "A valid prompt is required" });
 
-    console.log("Calling OpenRouter API...");
-
-    // Free models on OpenRouter — tries in order
-    const models = [
+    // Dynamically fetch available free models, fallback to known ones
+    const discovered = await getFreeModels(apiKey);
+    const fallbacks = [
       "meta-llama/llama-3.3-70b-instruct:free",
       "meta-llama/llama-3.1-8b-instruct:free",
-      "mistralai/mistral-7b-instruct:free",
-      "google/gemma-2-9b-it:free",
+      "qwen/qwen-2.5-7b-instruct:free",
+      "mistralai/mistral-small-3.1-24b-instruct:free",
     ];
+    // Prefer discovered, keep fallbacks as backup
+    const models = discovered.length > 0
+      ? [...new Set([...fallbacks, ...discovered])].slice(0, 6)
+      : fallbacks;
 
     let text: string | null = null;
     let lastError: any = null;
 
     for (const model of models) {
       try {
-        console.log(`Trying model: ${model}`);
+        console.log(`Trying: ${model}`);
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -65,7 +84,7 @@ export default async function handler(req: any, res: any) {
             messages: [
               {
                 role: "system",
-                content: "You are a professional Indian stock market analyst. Always use ₹ for currency. Format responses with markdown headers and bullet points.",
+                content: "You are a professional Indian stock market analyst. Use ₹ for currency. Format with markdown.",
               },
               { role: "user", content: prompt },
             ],
@@ -75,29 +94,34 @@ export default async function handler(req: any, res: any) {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.error?.message || `HTTP ${response.status}`);
+          const errMsg = data?.error?.message || `HTTP ${response.status}`;
+          console.error(`${model} failed: ${errMsg}`);
+          lastError = new Error(errMsg);
+          continue;
         }
 
         const content = data?.choices?.[0]?.message?.content;
         if (content) {
           text = content;
-          console.log(`Success with model: ${model}`);
+          console.log(`✅ Success: ${model}`);
           break;
         }
       } catch (err: any) {
-        console.error(`Model ${model} failed:`, err?.message || err);
+        console.error(`${model} threw:`, err?.message);
         lastError = err;
       }
     }
 
     if (!text) {
-      return res.status(500).json({ error: lastError?.message || "All AI models failed" });
+      return res.status(500).json({
+        error: `No available AI models found. Last error: ${lastError?.message || "unknown"}`
+      });
     }
 
     return res.status(200).json({ response: text, insights: text });
 
   } catch (error: any) {
-    console.error("AI handler error:", error?.message || error);
+    console.error("AI handler error:", error?.message);
     return res.status(500).json({ error: error?.message || "Failed to generate AI response" });
   }
 }
