@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw, History, BookOpen, Bell, Brain, PieChart, Save } from "lucide-react";
-import { portfolioData as initialData, PortfolioStock, tradeStrategies as initialTrades, TradeStrategy, watchlistData as initialWatchlist, WatchlistStock, PriceAlert, TradeJournalEntry } from "@/data/sampleData";
+import {
+  BarChart3, Crosshair, Eye, LayoutDashboard, Shield,
+  RefreshCw, History, BookOpen, Bell, Brain, PieChart, Save
+} from "lucide-react";
+import {
+  portfolioData as initialData, PortfolioStock,
+  tradeStrategies as initialTrades, TradeStrategy,
+  watchlistData as initialWatchlist, WatchlistStock,
+  PriceAlert, TradeJournalEntry
+} from "@/data/sampleData";
 import DashboardStats from "@/components/DashboardStats";
 import PortfolioTable from "@/components/PortfolioTable";
 import TradeStrategyTable from "@/components/TradeStrategyTable";
@@ -23,34 +31,47 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
 
+const tabs = [
+  { value: "dashboard", label: "Dashboard",  icon: LayoutDashboard },
+  { value: "portfolio", label: "Portfolio",   icon: BarChart3 },
+  { value: "trades",    label: "Trades",      icon: Crosshair },
+  { value: "history",   label: "History",     icon: History },
+  { value: "watchlist", label: "Watchlist",   icon: Eye },
+  { value: "analytics", label: "Analytics",   icon: PieChart },
+  { value: "journal",   label: "Journal",     icon: BookOpen },
+  { value: "alerts",    label: "Alerts",      icon: Bell },
+  { value: "risk",      label: "Risk",        icon: Shield },
+  { value: "ai",        label: "AI Insights", icon: Brain },
+];
+
 const Index = () => {
   const { user } = useAuth();
   const { load, save } = usePortfolioSync(user?.id);
   const { toast } = useToast();
 
   const local = loadFromLocal();
-  const [stocks, setStocks] = useState<PortfolioStock[]>(() => local?.stocks ?? initialData);
-  const [trades, setTrades] = useState<TradeStrategy[]>(() => local?.trades ?? initialTrades);
+  const [stocks,    setStocks]    = useState<PortfolioStock[]>(() => local?.stocks    ?? initialData);
+  const [trades,    setTrades]    = useState<TradeStrategy[]>(() => local?.trades    ?? initialTrades);
   const [watchlist, setWatchlist] = useState<WatchlistStock[]>(() => local?.watchlist ?? initialWatchlist);
-  const [alerts, setAlerts] = useState<PriceAlert[]>(() => local?.alerts ?? []);
+  const [alerts,    setAlerts]    = useState<PriceAlert[]>(() => local?.alerts    ?? []);
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [syncing, setSyncing] = useState(false);
+  const [syncing,   setSyncing]   = useState(false);
+  const [mounted,   setMounted]   = useState(false);
 
   const loadedUserRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (loadedUserRef.current === user?.id) return;
     loadedUserRef.current = user?.id;
-
     load().then(snapshot => {
       if (!snapshot) return;
       setStocks(snapshot.stocks);
       setTrades(snapshot.trades);
       setWatchlist(snapshot.watchlist);
       setAlerts(snapshot.alerts);
-      if (user) {
-        toast({ title: "Portfolio synced ☁️", description: "Loaded your latest data from the cloud." });
-      }
+      if (user) toast({ title: "Portfolio synced ☁️", description: "Latest data loaded from cloud." });
     });
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -58,15 +79,12 @@ const Index = () => {
     setSyncing(true);
     const err = await save({ stocks, trades, watchlist, alerts });
     setSyncing(false);
-
     if (err) {
       toast({ title: "Save failed", description: err, variant: "destructive" });
     } else {
       toast({
         title: user ? "Saved to cloud ☁️" : "Saved locally",
-        description: user
-          ? "Your portfolio is synced across all devices."
-          : "Sign in to sync across all your devices.",
+        description: user ? "Synced across all your devices." : "Sign in to sync across devices.",
       });
     }
   };
@@ -88,13 +106,11 @@ const Index = () => {
     }));
     setTrades(prev => prev.map(t => {
       const live = prices[t.ticker];
-      if (!live) return t;
-      return { ...t, livePrice: live.price };
+      return live ? { ...t, livePrice: live.price } : t;
     }));
     setWatchlist(prev => prev.map(w => {
       const live = prices[w.stockName];
-      if (!live) return w;
-      return { ...w, cmp: live.price };
+      return live ? { ...w, cmp: live.price } : w;
     }));
   }, [prices]);
 
@@ -107,12 +123,10 @@ const Index = () => {
       const triggered =
         (a.direction === "above" && live.price >= a.targetPrice) ||
         (a.direction === "below" && live.price <= a.targetPrice);
-      if (triggered) {
-        toast({
-          title: `🔔 Alert: ${a.ticker}`,
-          description: `${a.type === "target_hit" ? "Target hit" : a.type === "sl_hit" ? "Stop loss hit" : "Entry zone reached"} at ₹${live.price.toFixed(2)}`,
-        });
-      }
+      if (triggered) toast({
+        title: `🔔 Alert: ${a.ticker}`,
+        description: `${a.type === "target_hit" ? "Target hit" : a.type === "sl_hit" ? "Stop loss hit" : "Entry zone"} at ₹${live.price.toFixed(2)}`,
+      });
       return triggered ? { ...a, triggered: true } : a;
     }));
   }, [prices]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,39 +135,20 @@ const Index = () => {
     if (error) toast({ title: "Price fetch issue", description: error, variant: "destructive" });
   }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleAddStock = (stock: PortfolioStock) => setStocks(prev => [...prev, stock]);
-  const handleImportStocks = (imported: PortfolioStock[]) => setStocks(prev => [...prev, ...imported]);
-  const handleEditStock = (originalTicker: string, updated: PortfolioStock) => {
-    setStocks(prev => prev.map(s => (s.ticker === originalTicker ? updated : s)));
-    toast({ title: "Transaction updated", description: `${updated.ticker} has been updated` });
-  };
-  const handleDeleteStock = (ticker: string) => {
-    setStocks(prev => prev.filter(s => s.ticker !== ticker));
-    toast({ title: "Transaction deleted", description: `${ticker} removed from portfolio` });
-  };
-  const handleEditTrade = (originalTicker: string, updated: TradeStrategy) => {
-    setTrades(prev => prev.map(t => (t.ticker === originalTicker ? updated : t)));
-    toast({ title: "Trade updated", description: `${updated.ticker} has been updated` });
-  };
-  const handleDeleteTrade = (ticker: string) => {
-    setTrades(prev => prev.filter(t => t.ticker !== ticker));
-    toast({ title: "Trade deleted", description: `${ticker} removed from trades` });
-  };
-  const handleEditWatchlist = (originalName: string, updated: WatchlistStock) => {
-    setWatchlist(prev => prev.map(w => (w.stockName === originalName ? updated : w)));
-    toast({ title: "Watchlist updated", description: `${updated.stockName} has been updated` });
-  };
-  const handleDeleteWatchlist = (stockName: string) => {
-    setWatchlist(prev => prev.filter(w => w.stockName !== stockName));
-    toast({ title: "Watchlist entry deleted", description: `${stockName} removed from watchlist` });
-  };
-  const handleUpdateNotes = (ticker: string, notes: TradeJournalEntry) => {
-    setStocks(prev => prev.map(s => s.ticker === ticker ? { ...s, notes } : s));
-    toast({ title: "Journal updated", description: `Notes saved for ${ticker}` });
-  };
-  const handleAddAlert = (alert: PriceAlert) => setAlerts(prev => [...prev, alert]);
-  const handleDeleteAlert = (id: string) => setAlerts(prev => prev.filter(a => a.id !== id));
-  const handleDismissAlert = (id: string) => setAlerts(prev => prev.filter(a => a.id !== id));
+  const handleAddStock      = (stock: PortfolioStock)                        => setStocks(prev => [...prev, stock]);
+  const handleImportStocks  = (imported: PortfolioStock[])                   => setStocks(prev => [...prev, ...imported]);
+  const handleEditStock     = (orig: string, updated: PortfolioStock)        => { setStocks(prev => prev.map(s => s.ticker === orig ? updated : s)); toast({ title: "Transaction updated" }); };
+  const handleDeleteStock   = (ticker: string)                               => { setStocks(prev => prev.filter(s => s.ticker !== ticker)); toast({ title: "Transaction deleted" }); };
+  const handleEditTrade     = (orig: string, updated: TradeStrategy)         => { setTrades(prev => prev.map(t => t.ticker === orig ? updated : t)); toast({ title: "Trade updated" }); };
+  const handleDeleteTrade   = (ticker: string)                               => { setTrades(prev => prev.filter(t => t.ticker !== ticker)); toast({ title: "Trade deleted" }); };
+  const handleEditWatchlist = (orig: string, updated: WatchlistStock)        => { setWatchlist(prev => prev.map(w => w.stockName === orig ? updated : w)); toast({ title: "Watchlist updated" }); };
+  const handleDeleteWatchlist = (name: string)                               => { setWatchlist(prev => prev.filter(w => w.stockName !== name)); toast({ title: "Removed from watchlist" }); };
+  const handleUpdateNotes   = (ticker: string, notes: TradeJournalEntry)     => { setStocks(prev => prev.map(s => s.ticker === ticker ? { ...s, notes } : s)); toast({ title: "Journal updated" }); };
+  const handleAddAlert      = (alert: PriceAlert)                            => setAlerts(prev => [...prev, alert]);
+  const handleDeleteAlert   = (id: string)                                   => setAlerts(prev => prev.filter(a => a.id !== id));
+  const handleDismissAlert  = (id: string)                                   => setAlerts(prev => prev.filter(a => a.id !== id));
+
+  const triggeredAlerts = alerts.filter(a => a.triggered).length;
 
   const formatTime = (iso: string | null) => {
     if (!iso) return "";
@@ -161,85 +156,172 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-50">
-        <div className="absolute inset-x-0 top-0 h-[1px] gradient-primary opacity-60" />
-        <div className="container flex items-center justify-between h-14 px-4">
+    <div className={`min-h-screen mesh-bg transition-colors duration-500 ${mounted ? "opacity-100" : "opacity-0"}`}
+         style={{ transition: "opacity 0.4s ease" }}>
+
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-50 noise-overlay" style={{
+        background: "hsl(var(--card) / 0.7)",
+        backdropFilter: "blur(24px) saturate(180%)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%)",
+        borderBottom: "1px solid hsl(var(--border) / 0.6)",
+        boxShadow: "0 1px 0 hsl(var(--primary) / 0.06), 0 4px 24px hsl(0 0% 0% / 0.04)"
+      }}>
+        {/* Top gradient line */}
+        <div className="absolute inset-x-0 top-0 h-[2px] gradient-primary opacity-80" />
+
+        <div className="container flex items-center justify-between h-16 px-4 md:px-6">
+          {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center shadow-lg">
-              <BarChart3 className="h-4 w-4 text-primary-foreground" />
+            <div className="relative h-9 w-9 rounded-xl gradient-primary flex items-center justify-center shadow-lg"
+                 style={{ boxShadow: "0 4px 16px hsl(var(--primary) / 0.4)" }}>
+              <BarChart3 className="h-4.5 w-4.5 text-white" style={{ width: 18, height: 18 }} />
+              <div className="absolute inset-0 rounded-xl"
+                   style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%)" }} />
             </div>
             <div>
-              <h1 className="text-sm font-bold tracking-tight gradient-text">Smart Stock Tracker</h1>
-              <p className="text-[10px] text-muted-foreground">Portfolio & Trade Dashboard · ₹ INR</p>
+              <h1 className="text-[15px] font-bold tracking-tight gradient-text leading-none"
+                  style={{ fontFamily: "'Syne', sans-serif" }}>
+                Smart Stock Tracker
+              </h1>
+              <p className="text-[10px] text-muted-foreground mt-0.5 tracking-wide">
+                Portfolio & Trade Dashboard · ₹ INR
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Actions */}
+          <div className="flex items-center gap-2">
             <ExportPortfolio stocks={stocks} />
-            <Button variant="secondary" size="sm" onClick={handleSavePortfolio} disabled={syncing} className="gap-1.5 text-xs">
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSavePortfolio}
+              disabled={syncing}
+              className="gap-1.5 text-xs h-8 rounded-xl border-border/60 hover:border-primary/40 transition-all"
+              style={{ backdropFilter: "blur(8px)" }}
+            >
               <Save className="h-3.5 w-3.5" />
               {syncing ? "Saving…" : user ? "Save & Sync" : "Save"}
             </Button>
-            <Button variant="ghost" size="sm" onClick={refresh} disabled={loading} className="gap-1.5 text-xs text-muted-foreground hover:text-primary">
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refresh}
+              disabled={loading}
+              className="gap-1.5 text-xs h-8 rounded-xl text-muted-foreground hover:text-primary transition-all"
+            >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-              {loading ? "Fetching..." : "Refresh"}
+              <span className="hidden sm:inline">{loading ? "Fetching…" : "Refresh"}</span>
             </Button>
+
             <AuthButton />
             <ThemeToggle />
-            <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
-              <span className="text-xs text-muted-foreground">
-                {lastUpdated ? `Updated ${formatTime(lastUpdated)}` : "Live Prices"}
+
+            {/* Live indicator */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                 style={{ background: "hsl(var(--muted) / 0.6)", fontSize: 11 }}>
+              <div className={`h-1.5 w-1.5 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
+              <span className="text-muted-foreground font-medium">
+                {lastUpdated ? `${formatTime(lastUpdated)}` : "Live"}
               </span>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container px-4 py-4 space-y-4">
-        <DashboardStats stocks={stocks} />
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="overflow-x-auto">
-            <TabsList className="bg-card/50 backdrop-blur-sm border border-border h-11 inline-flex w-auto min-w-full rounded-xl p-1 gap-0.5">
-              <TabsTrigger value="dashboard" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"><LayoutDashboard className="h-3.5 w-3.5" /> Dashboard</TabsTrigger>
-              <TabsTrigger value="portfolio" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"><BarChart3 className="h-3.5 w-3.5" /> Portfolio</TabsTrigger>
-              <TabsTrigger value="trades" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"><Crosshair className="h-3.5 w-3.5" /> Trades</TabsTrigger>
-              <TabsTrigger value="history" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"><History className="h-3.5 w-3.5" /> History</TabsTrigger>
-              <TabsTrigger value="watchlist" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"><Eye className="h-3.5 w-3.5" /> Watchlist</TabsTrigger>
-              <TabsTrigger value="analytics" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"><PieChart className="h-3.5 w-3.5" /> Analytics</TabsTrigger>
-              <TabsTrigger value="journal" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"><BookOpen className="h-3.5 w-3.5" /> Journal</TabsTrigger>
-              <TabsTrigger value="alerts" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all relative">
-                <Bell className="h-3.5 w-3.5" /> Alerts
-                {alerts.filter(a => a.triggered).length > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-loss text-[10px] font-bold flex items-center justify-center text-primary-foreground">
-                    {alerts.filter(a => a.triggered).length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="risk" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"><Shield className="h-3.5 w-3.5" /> Risk</TabsTrigger>
-              <TabsTrigger value="ai" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all"><Brain className="h-3.5 w-3.5" /> AI Insights</TabsTrigger>
+      {/* ── Main ── */}
+      <main className="container px-4 md:px-6 py-6 space-y-6">
+
+        {/* Stats row */}
+        <div className="animate-fade-up stagger">
+          <DashboardStats stocks={stocks} />
+        </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full animate-fade-up" style={{ animationDelay: "80ms" }}>
+
+          {/* Tab bar */}
+          <div className="overflow-x-auto pb-1 -mx-1 px-1">
+            <TabsList
+              className="inline-flex w-auto min-w-full h-12 p-1 gap-0.5 rounded-2xl"
+              style={{
+                background: "hsl(var(--card) / 0.7)",
+                backdropFilter: "blur(16px)",
+                border: "1px solid hsl(var(--border) / 0.6)",
+                boxShadow: "0 2px 12px hsl(0 0% 0% / 0.06), inset 0 1px 0 hsl(0 0% 100% / 0.06)"
+              }}
+            >
+              {tabs.map(({ value, label, icon: Icon }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  className="relative text-xs gap-1.5 rounded-xl px-3 h-9 transition-all duration-200 data-[state=active]:text-white data-[state=active]:shadow-lg font-medium"
+                  style={activeTab === value ? {
+                    background: "linear-gradient(135deg, hsl(var(--gradient-start)), hsl(var(--gradient-mid)), hsl(var(--gradient-end)))",
+                    boxShadow: "0 4px 16px hsl(var(--primary) / 0.35)"
+                  } : {}}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="hidden sm:inline">{label}</span>
+                  {value === "alerts" && triggeredAlerts > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-loss text-[9px] font-bold flex items-center justify-center text-white shadow-sm">
+                      {triggeredAlerts}
+                    </span>
+                  )}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </div>
-          <TabsContent value="dashboard" className="mt-4 space-y-4">
-            <PortfolioCharts stocks={stocks} />
-            <TradeAnalytics stocks={stocks} />
-            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} />
-          </TabsContent>
-          <TabsContent value="portfolio" className="mt-4 space-y-4">
-            <PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} />
-          </TabsContent>
-          <TabsContent value="trades" className="mt-4"><TradeStrategyTable trades={trades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} /></TabsContent>
-          <TabsContent value="history" className="mt-4"><TradeHistory stocks={stocks} /></TabsContent>
-          <TabsContent value="watchlist" className="mt-4"><WatchlistTable watchlist={watchlist} onEdit={handleEditWatchlist} onDelete={handleDeleteWatchlist} /></TabsContent>
-          <TabsContent value="analytics" className="mt-4 space-y-4">
-            <TradeAnalytics stocks={stocks} />
-            <SectorDiversification stocks={stocks} />
-            <PortfolioCharts stocks={stocks} />
-          </TabsContent>
-          <TabsContent value="journal" className="mt-4"><TradeJournal stocks={stocks} onUpdateNotes={handleUpdateNotes} /></TabsContent>
-          <TabsContent value="alerts" className="mt-4"><PriceAlerts alerts={alerts} onAddAlert={handleAddAlert} onDeleteAlert={handleDeleteAlert} onDismissAlert={handleDismissAlert} /></TabsContent>
-          <TabsContent value="risk" className="mt-4"><RiskAnalysis stocks={stocks} trades={trades} onEditTrade={handleEditTrade} /></TabsContent>
-          <TabsContent value="ai" className="mt-4"><AIInsights stocks={stocks} trades={trades} /></TabsContent>
+
+          {/* Content */}
+          <div className="mt-5">
+            <TabsContent value="dashboard" className="space-y-5 animate-fade-up">
+              <PortfolioCharts stocks={stocks} />
+              <TradeAnalytics stocks={stocks} />
+              <PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} />
+            </TabsContent>
+
+            <TabsContent value="portfolio" className="space-y-5 animate-fade-up">
+              <PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} />
+            </TabsContent>
+
+            <TabsContent value="trades" className="animate-fade-up">
+              <TradeStrategyTable trades={trades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} />
+            </TabsContent>
+
+            <TabsContent value="history" className="animate-fade-up">
+              <TradeHistory stocks={stocks} />
+            </TabsContent>
+
+            <TabsContent value="watchlist" className="animate-fade-up">
+              <WatchlistTable watchlist={watchlist} onEdit={handleEditWatchlist} onDelete={handleDeleteWatchlist} />
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-5 animate-fade-up">
+              <TradeAnalytics stocks={stocks} />
+              <SectorDiversification stocks={stocks} />
+              <PortfolioCharts stocks={stocks} />
+            </TabsContent>
+
+            <TabsContent value="journal" className="animate-fade-up">
+              <TradeJournal stocks={stocks} onUpdateNotes={handleUpdateNotes} />
+            </TabsContent>
+
+            <TabsContent value="alerts" className="animate-fade-up">
+              <PriceAlerts alerts={alerts} onAddAlert={handleAddAlert} onDeleteAlert={handleDeleteAlert} onDismissAlert={handleDismissAlert} />
+            </TabsContent>
+
+            <TabsContent value="risk" className="animate-fade-up">
+              <RiskAnalysis stocks={stocks} trades={trades} onEditTrade={handleEditTrade} />
+            </TabsContent>
+
+            <TabsContent value="ai" className="animate-fade-up">
+              <AIInsights stocks={stocks} trades={trades} />
+            </TabsContent>
+          </div>
         </Tabs>
       </main>
     </div>
