@@ -6,70 +6,103 @@ type StockPrice = {
   change: number;
 };
 
-async function fetchPrice(ticker: string): Promise<StockPrice | null> {
-  // Use 1m interval with 1d range — this gives live intraday price during market hours
-  // Fall back to 5m if 1m is unavailable
-  const suffixes = [`${ticker}.NS`, `${ticker}.BO`];
-
-  for (const symbol of suffixes) {
-    for (const interval of ["1m", "5m", "1d"]) {
-      try {
-        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=1d&interval=${interval}&includePrePost=false`;
-        const response = await fetch(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Accept": "application/json",
-            "Accept-Language": "en-US,en;q=0.9",
-          },
-        });
-
-        if (!response.ok) continue;
-
-        const data = await response.json();
-        const result = data?.chart?.result?.[0];
-        const meta   = result?.meta;
-
-        if (!meta) continue;
-
-        // During market hours: regularMarketPrice is the live tick
-        // After hours: use the most recent close from quotes array
-        let livePrice = meta.regularMarketPrice ?? 0;
-
-        // Double-check with last quote close if available (more accurate intraday)
-        const closes = result?.indicators?.quote?.[0]?.close;
-        if (Array.isArray(closes) && closes.length > 0) {
-          // Get the last non-null close
-          for (let i = closes.length - 1; i >= 0; i--) {
-            if (closes[i] != null && closes[i] > 0) {
-              // Only use if it's more recent than regularMarketPrice
-              livePrice = closes[i];
-              break;
-            }
-          }
-        }
-
-        if (livePrice <= 0) continue;
-
-        const prevClose = meta.chartPreviousClose ?? meta.previousClose ?? livePrice;
-
-        return {
-          price:         livePrice,
-          weekHigh52:    meta.fiftyTwoWeekHigh  ?? 0,
-          weekLow52:     meta.fiftyTwoWeekLow   ?? 0,
-          changePercent: prevClose > 0 ? ((livePrice - prevClose) / prevClose) * 100 : 0,
-          change:        prevClose > 0 ? livePrice - prevClose : 0,
-        };
-      } catch (err) {
-        console.error(`Failed ${symbol} interval=${interval}:`, err);
+// Upstox instrument key format: NSE_EQ|INE123A01234
+// We need to convert ticker → instrument key via Upstox search API
+async function getInstrumentKey(ticker: string, token: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.upstox.com/v2/instruments/search?query=${encodeURIComponent(ticker)}&instrument_type=EQUITY`,
+      {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json",
+        },
       }
-    }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const items = data?.data ?? [];
+    // Prefer NSE over BSE
+    const nse = items.find((i: any) => i.exchange === "NSE" && i.trading_symbol === ticker);
+    const bse = items.find((i: any) => i.exchange === "BSE" && i.trading_symbol === ticker);
+    const match = nse || bse;
+    return match ? `${match.exchange}_EQ|${match.isin}` : null;
+  } catch (e: any) {
+    console.warn(`Instrument lookup failed for ${ticker}:`, e?.message);
+    return null;
+  }
+}
+
+async function fetchPricesUpstox(
+  tickers: string[],
+  token: string
+): Promise<Record<string, StockPrice>> {
+  // Build instrument keys for all tickers in parallel
+  const keyEntries = await Promise.all(
+    tickers.map(async (ticker) => {
+      const key = await getInstrumentKey(ticker, token);
+      return { ticker, key };
+    })
+  );
+
+  const valid = keyEntries.filter((e) => e.key !== null);
+  if (valid.length === 0) {
+    console.warn("No valid instrument keys found");
+    return {};
   }
 
-  return null;
+  // Upstox market quote — batch up to 500 instruments
+  const instrumentKeys = valid.map((e) => e.key).join(",");
+  try {
+    const res = await fetch(
+      `https://api.upstox.com/v2/market-quote/quotes?instrument_key=${encodeURIComponent(instrumentKeys)}`,
+      {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json",
+        },
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`Upstox quotes API error ${res.status}:`, err);
+      return {};
+    }
+
+    const data = await res.json();
+    const quotes = data?.data ?? {};
+    const prices: Record<string, StockPrice> = {};
+
+    for (const { ticker, key } of valid) {
+      // Upstox returns data keyed by instrument_key
+      const q = quotes[key!];
+      if (!q) continue;
+
+      const ltp        = q.last_price ?? 0;
+      const prevClose  = q.ohlc?.close ?? q.last_price ?? ltp;
+      const change     = ltp - prevClose;
+      const changePct  = prevClose > 0 ? (change / prevClose) * 100 : 0;
+
+      prices[ticker] = {
+        price:         ltp,
+        weekHigh52:    q.week_52_high ?? 0,
+        weekLow52:     q.week_52_low  ?? 0,
+        changePercent: changePct,
+        change:        change,
+      };
+
+      console.log(`✅ ${ticker}: ₹${ltp} (${changePct.toFixed(2)}%)`);
+    }
+
+    return prices;
+  } catch (e: any) {
+    console.error("Upstox quotes fetch error:", e?.message);
+    return {};
+  }
 }
 
 export default async function handler(req: any, res: any) {
-  // No caching — always return fresh prices
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   res.setHeader("Pragma", "no-cache");
 
@@ -77,37 +110,28 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const token = process.env.UPSTOX_ACCESS_TOKEN;
+  if (!token) {
+    console.error("UPSTOX_ACCESS_TOKEN not configured");
+    return res.status(500).json({ error: "UPSTOX_ACCESS_TOKEN is not configured" });
+  }
+
   try {
     const { tickers } = req.body ?? {};
-
     if (!Array.isArray(tickers) || tickers.length === 0) {
       return res.status(400).json({ error: "tickers array required" });
     }
 
-    // Deduplicate
     const unique = [...new Set(tickers as string[])];
+    console.log(`Fetching Upstox prices for: ${unique.join(", ")}`);
 
-    const results = await Promise.allSettled(
-      unique.map((ticker: string) =>
-        fetchPrice(ticker).then((data) => ({ ticker, data }))
-      )
-    );
+    const prices = await fetchPricesUpstox(unique, token);
 
-    const prices: Record<string, StockPrice> = {};
-    for (const result of results) {
-      if (result.status === "fulfilled" && result.value.data) {
-        prices[result.value.ticker] = result.value.data;
-      }
-    }
+    console.log(`Got ${Object.keys(prices).length}/${unique.length} prices at ${new Date().toISOString()}`);
+    return res.status(200).json({ prices, fetchedAt: new Date().toISOString() });
 
-    console.log(`Fetched ${Object.keys(prices).length}/${unique.length} prices at ${new Date().toISOString()}`);
-
-    return res.status(200).json({
-      prices,
-      fetchedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("Prices API error:", error);
-    return res.status(500).json({ error: "Failed to fetch stock prices" });
+  } catch (error: any) {
+    console.error("Prices API error:", error?.message);
+    return res.status(500).json({ error: "Failed to fetch prices" });
   }
 }
