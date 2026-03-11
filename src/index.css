@@ -71,7 +71,7 @@
     --secondary: 220 38% 18%;
     --secondary-foreground: 215 24% 82%;
     --muted: 220 34% 17%;
-    --muted-foreground: 215 18% 58%;
+    --muted-foreground: 215 22% 72%;
     --accent: 213 52% 22%;
     --accent-foreground: 210 82% 74%;
     --destructive: 2 72% 58%;
@@ -109,6 +109,8 @@
     --sidebar-accent-foreground: 210 82% 74%;
     --sidebar-border: 218 32% 19%;
     --sidebar-ring: 213 75% 62%;
+    --dropdown-bg: hsl(220 44% 15% / 0.98);
+    --dropdown-border: hsl(215 42% 28% / 0.60);
   }
 }
 
@@ -235,6 +237,7 @@
       0 2px 8px  hsl(0 0% 0% / 0.30),
       inset 0 1px 0 hsl(215 60% 65% / 0.12),
       inset 0 -1px 0 hsl(220 50% 15% / 0.20);
+    color: hsl(215, 25%, 92%);
   }
 
   .glass-card:hover {
@@ -331,6 +334,7 @@
       0 1px 4px  hsl(0 0% 0% / 0.28),
       inset 0 1px 0 hsl(215 55% 60% / 0.14),
       inset 0 -1px 0 hsl(222 50% 10% / 0.20);
+    color: hsl(215, 25%, 92%);
   }
 
   /* Per-card glossy top border + glow orb */
@@ -524,6 +528,27 @@
     box-shadow:
       0 -4px 24px hsl(213 75% 40% / 0.18),
       inset 0 1px 0 hsl(215 50% 40% / 0.08);
+  }
+
+  /* ── Dropdown panel ── */
+  .dropdown-panel {
+    background: var(--dropdown-bg);
+    border: 1px solid var(--dropdown-border);
+    box-shadow: 0 16px 48px hsl(215 65% 46% / 0.16), 0 4px 12px hsl(0 0% 0% / 0.08);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .dark .dropdown-panel {
+    box-shadow: 0 16px 48px hsl(213 75% 30% / 0.35), 0 4px 16px hsl(0 0% 0% / 0.40);
+  }
+
+  .dropdown-section-border {
+    border-color: hsl(218 30% 90%);
+  }
+
+  .dark .dropdown-section-border {
+    border-color: hsl(218 35% 22%);
   }
 
   /* ── Typography ── */

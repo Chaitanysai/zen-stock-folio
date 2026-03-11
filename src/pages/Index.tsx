@@ -45,8 +45,8 @@ const CARD_COLORS_LIGHT = [
   "hsl(216,60%,44%)", "hsl(214,65%,50%)", "hsl(211,75%,54%)", "hsl(207,85%,58%)"
 ];
 const CARD_COLORS_DARK = [
-  "hsl(220,70%,68%)", "hsl(218,70%,71%)", "hsl(216,72%,74%)",
-  "hsl(214,74%,76%)", "hsl(212,76%,78%)", "hsl(209,80%,80%)", "hsl(205,85%,82%)"
+  "hsl(220,82%,74%)", "hsl(216,84%,76%)", "hsl(212,86%,78%)",
+  "hsl(208,86%,78%)", "hsl(202,88%,78%)", "hsl(196,88%,76%)", "hsl(188,88%,76%)"
 ];
 
 const CARDS = [
@@ -127,9 +127,10 @@ const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
                 <div className={`h-7 w-7 rounded-lg flex items-center justify-center mb-3 ${c.iconBg}`}>
                   <Icon className="h-3.5 w-3.5" style={{ color }} />
                 </div>
-                <p className="text-[9.5px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5 leading-none">{c.label}</p>
-                <p className="text-lg font-bold ticker leading-none" style={{ color }}>{values[i]}</p>
-                {subs[i] && <p className="text-[10px] ticker mt-1 font-medium opacity-70" style={{ color }}>{subs[i]}</p>}
+                <p className="text-[9.5px] font-semibold uppercase tracking-widest mb-1.5 leading-none"
+                   style={{ color: isDark ? "hsl(215,20%,62%)" : "hsl(218,18%,48%)", letterSpacing: "0.08em" }}>{c.label}</p>
+                <p className="text-lg font-bold ticker leading-none" style={{ color: isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i] }}>{values[i]}</p>
+                {subs[i] && <p className="text-[10px] ticker mt-1 font-medium" style={{ color: isDark ? "hsl(215,20%,62%)" : CARD_COLORS_LIGHT[i], opacity: 0.85 }}>{subs[i]}</p>}
               </div>
             </div>
           );
@@ -148,9 +149,10 @@ const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
                   <div className={`h-7 w-7 rounded-lg flex items-center justify-center mb-2 ${c.iconBg}`}>
                     <Icon className="h-3.5 w-3.5" style={{ color }} />
                   </div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1 leading-none">{c.label}</p>
-                  <p className="text-base font-bold ticker leading-none" style={{ color }}>{values[i]}</p>
-                  {subs[i] && <p className="text-[10px] ticker mt-0.5 opacity-70" style={{ color }}>{subs[i]}</p>}
+                  <p className="text-[9px] font-bold uppercase tracking-widest mb-1 leading-none"
+                     style={{ color: isDark ? "hsl(215,20%,60%)" : "hsl(218,18%,48%)" }}>{c.label}</p>
+                  <p className="text-base font-bold ticker leading-none" style={{ color: isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i] }}>{values[i]}</p>
+                  {subs[i] && <p className="text-[10px] ticker mt-0.5" style={{ color: isDark ? "hsl(215,20%,60%)" : CARD_COLORS_LIGHT[i], opacity: 0.85 }}>{subs[i]}</p>}
                 </div>
               </div>
             );
@@ -169,8 +171,9 @@ const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
                       <Icon className="h-3 w-3" style={{ color }} />
                     </div>
                     <div>
-                      <p className="text-[8.5px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-0.5">{c.label}</p>
-                      <p className="text-[13px] font-bold ticker leading-none" style={{ color }}>{values[i]}</p>
+                      <p className="text-[8.5px] font-bold uppercase tracking-wider leading-none mb-0.5"
+                         style={{ color: isDark ? "hsl(215,20%,60%)" : "hsl(218,18%,48%)" }}>{c.label}</p>
+                      <p className="text-[13px] font-bold ticker leading-none" style={{ color: isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i] }}>{values[i]}</p>
                     </div>
                   </div>
                 </div>
@@ -279,8 +282,47 @@ const UserDropdown = ({
   refresh: () => void; loading: boolean; lastUpdated: string | null;
 }) => {
   const { signOut } = useAuth();
+  const isDark = theme === "dark";
   const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "?";
   const email = user?.email ?? "Not signed in";
+
+  // ── Theme-aware tokens ──
+  const T = {
+    // Dropdown panel
+    panelBg:      isDark ? "hsl(222,45%,12%)"          : "hsl(0,0%,100%)",
+    panelBorder:  isDark ? "hsl(215,40%,26%)"           : "hsl(218,35%,86%)",
+    panelShadow:  isDark
+      ? "0 20px 60px hsl(213,75%,20%,0.55), 0 4px 16px hsl(0,0%,0%,0.45)"
+      : "0 16px 48px hsl(215,65%,46%,0.14), 0 4px 12px hsl(0,0%,0%,0.07)",
+    // Dividers
+    divider:      isDark ? "hsl(215,38%,22%)"            : "hsl(218,30%,91%)",
+    // Text
+    textPrimary:  isDark ? "hsl(215,25%,92%)"            : "hsl(222,60%,14%)",
+    textSecondary:isDark ? "hsl(215,20%,62%)"            : "hsl(218,20%,50%)",
+    textAccent:   isDark ? "hsl(213,80%,70%)"            : "hsl(215,65%,44%)",
+    textSection:  isDark ? "hsl(215,22%,52%)"            : "hsl(218,18%,54%)",
+    // Nav item
+    navDefault:   isDark ? "hsl(215,22%,78%)"            : "hsl(222,40%,32%)",
+    navActiveBg:  isDark ? "hsl(215,65%,46%,0.18)"       : "hsl(215,65%,46%,0.10)",
+    navActiveText:isDark ? "hsl(213,85%,72%)"            : "hsl(215,65%,40%)",
+    navActiveIcon:isDark ? "hsl(213,85%,72%)"            : "hsl(215,65%,46%)",
+    navIcon:      isDark ? "hsl(215,25%,55%)"            : "hsl(218,28%,54%)",
+    navHoverBg:   isDark ? "hsl(215,40%,20%)"            : "hsl(215,50%,95%)",
+    // Action items
+    actionText:   isDark ? "hsl(215,22%,82%)"            : "hsl(222,45%,22%)",
+    actionIcon:   isDark ? "hsl(213,72%,62%)"            : "hsl(215,65%,46%)",
+    actionHoverBg:isDark ? "hsl(215,40%,20%)"            : "hsl(215,50%,95%)",
+    // Refresh button
+    refreshBg:    isDark ? "hsl(215,50%,46%,0.16)"       : "hsl(215,55%,46%,0.09)",
+    refreshText:  isDark ? "hsl(213,80%,70%)"            : "hsl(215,60%,44%)",
+    // Trigger
+    triggerBg:    isDark ? "hsl(215,45%,46%,0.14)"       : "hsl(215,50%,46%,0.08)",
+    triggerBorder:isDark ? "hsl(215,45%,46%,0.30)"       : "hsl(215,50%,46%,0.18)",
+    triggerText:  isDark ? "hsl(215,22%,82%)"            : "hsl(222,60%,22%)",
+    // Sign out
+    signOutText:  isDark ? "hsl(2,72%,65%)"              : "hsl(2,70%,42%)",
+    signOutHoverBg:isDark ? "hsl(2,60%,20%)"             : "hsl(2,80%,96%)",
+  };
 
   const navItems = [
     { value: "dashboard",  label: "Dashboard",   icon: LayoutDashboard },
@@ -302,44 +344,46 @@ const UserDropdown = ({
     <div className="relative group">
       {/* Trigger */}
       <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer select-none transition-all duration-200"
-           style={{ background: "hsl(215 50% 46% / 0.08)", border: "1px solid hsl(215 50% 46% / 0.18)" }}>
-        <div className="h-7 w-7 rounded-lg flex items-center justify-center text-[11px] font-bold text-white"
+           style={{ background: T.triggerBg, border: `1px solid ${T.triggerBorder}` }}>
+        <div className="h-7 w-7 rounded-lg flex items-center justify-center text-[11px] font-bold text-white shrink-0"
              style={{ background: BLUE_MID }}>
           {initials}
         </div>
         <span className="hidden sm:block text-[12px] font-medium max-w-[110px] truncate"
-              style={{ color: "hsl(222,60%,22%)" }}>
+              style={{ color: T.triggerText }}>
           {email.split("@")[0]}
         </span>
         <ChevronDown className="h-3 w-3 transition-transform duration-300 group-hover:rotate-180"
-                     style={{ color: "hsl(215,55%,48%)" }} />
+                     style={{ color: T.actionIcon }} />
       </div>
 
-      {/* Dropdown panel — shown on hover via CSS group */}
+      {/* Dropdown panel */}
       <div className="absolute right-0 top-full pt-2 z-[200] pointer-events-none opacity-0 translate-y-1
                       group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0
                       transition-all duration-200 ease-out"
-           style={{ minWidth: 260 }}>
-        <div className="rounded-xl overflow-hidden"
+           style={{ minWidth: 268 }}>
+        <div className="rounded-2xl overflow-hidden"
              style={{
-               background: "hsl(0 0% 100% / 0.97)",
-               border: "1px solid hsl(218 35% 85% / 0.70)",
-               boxShadow: "0 16px 48px hsl(215 65% 46% / 0.16), 0 4px 12px hsl(0 0% 0% / 0.08)",
-               backdropFilter: "blur(20px)"
+               background: T.panelBg,
+               border: `1px solid ${T.panelBorder}`,
+               boxShadow: T.panelShadow,
+               backdropFilter: "blur(28px) saturate(180%)",
              }}>
 
-          {/* User info header */}
-          <div className="px-4 py-3.5" style={{ borderBottom: "1px solid hsl(218 30% 90%)" }}>
+          {/* ── User info header ── */}
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${T.divider}` }}>
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-xl flex items-center justify-center text-[13px] font-bold text-white shrink-0"
                    style={{ background: BLUE_GRAD }}>
                 {initials}
               </div>
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold leading-none truncate" style={{ color: "hsl(222,60%,14%)" }}>
+                <p className="text-[13px] font-semibold leading-none truncate"
+                   style={{ color: T.textPrimary }}>
                   {email.split("@")[0]}
                 </p>
-                <p className="text-[11px] mt-0.5 truncate" style={{ color: "hsl(218,20%,52%)" }}>{email}</p>
+                <p className="text-[11px] mt-0.5 truncate"
+                   style={{ color: T.textSecondary }}>{email}</p>
               </div>
             </div>
 
@@ -347,37 +391,38 @@ const UserDropdown = ({
             <div className="mt-3 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <div className={`h-1.5 w-1.5 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
-                <span className="text-[11px] font-medium" style={{ color: "hsl(215,55%,46%)" }}>
+                <span className="text-[11px] font-medium" style={{ color: T.textAccent }}>
                   {loading ? "Fetching prices…" : lastUpdated ? `Updated ${formatTime(lastUpdated)}` : "Live"}
                 </span>
               </div>
               <button onClick={refresh} disabled={loading}
-                className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-md transition-all"
-                style={{ color: "hsl(215,60%,46%)", background: "hsl(215 55% 46% / 0.08)" }}>
+                className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
+                style={{ color: T.refreshText, background: T.refreshBg }}>
                 <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
                 Refresh
               </button>
             </div>
           </div>
 
-          {/* Navigation section */}
-          <div className="py-1.5 px-2">
-            <p className="text-[9px] font-bold uppercase tracking-widest px-2 py-1.5"
-               style={{ color: "hsl(218,20%,56%)" }}>Navigation</p>
+          {/* ── Navigation ── */}
+          <div className="py-2 px-2.5">
+            <p className="text-[9px] font-bold uppercase tracking-widest px-1.5 pb-1.5 pt-0.5"
+               style={{ color: T.textSection }}>Navigation</p>
             <div className="grid grid-cols-2 gap-0.5">
               {navItems.map(({ value, label, icon: Icon }) => {
                 const isActive = activeTab === value;
                 return (
                   <button key={value}
                     onClick={() => setActiveTab(value)}
-                    className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-[12px] font-medium transition-all duration-150 text-left"
-                    style={isActive ? {
-                      background: "hsl(215 65% 46% / 0.10)",
-                      color: "hsl(215,65%,38%)",
-                    } : {
-                      color: "hsl(222,40%,30%)",
-                    }}>
-                    <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: isActive ? "hsl(215,65%,44%)" : "hsl(218,30%,52%)" }} />
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-[12.5px] font-medium transition-all duration-150 text-left"
+                    style={{
+                      background: isActive ? T.navActiveBg : "transparent",
+                      color: isActive ? T.navActiveText : T.navDefault,
+                    }}
+                    onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = T.navHoverBg; }}
+                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
+                    <Icon className="h-3.5 w-3.5 shrink-0"
+                          style={{ color: isActive ? T.navActiveIcon : T.navIcon }} />
                     <span className="truncate">{label}</span>
                     {value === "alerts" && triggeredAlerts > 0 && (
                       <span className="ml-auto h-4 w-4 rounded-full bg-loss text-[8px] font-bold flex items-center justify-center text-white">{triggeredAlerts}</span>
@@ -388,40 +433,49 @@ const UserDropdown = ({
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="py-1.5 px-2" style={{ borderTop: "1px solid hsl(218 30% 90%)" }}>
-            <p className="text-[9px] font-bold uppercase tracking-widest px-2 py-1.5"
-               style={{ color: "hsl(218,20%,56%)" }}>Actions</p>
+          {/* ── Actions ── */}
+          <div className="py-2 px-2.5" style={{ borderTop: `1px solid ${T.divider}` }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest px-1.5 pb-1.5 pt-0.5"
+               style={{ color: T.textSection }}>Actions</p>
 
+            {/* Save & Sync */}
             <button onClick={onSave} disabled={syncing}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12px] font-medium transition-all"
-              style={{ color: "hsl(215,60%,36%)" }}>
-              <Save className="h-3.5 w-3.5" style={{ color: "hsl(215,60%,48%)" }} />
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12.5px] font-medium transition-all"
+              style={{ color: T.actionText }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = T.actionHoverBg}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
+              <Save className="h-3.5 w-3.5 shrink-0" style={{ color: T.actionIcon }} />
               {syncing ? "Saving…" : user ? "Save & Sync" : "Save Locally"}
             </button>
 
-            <div className="px-1">
+            {/* Export */}
+            <div className="px-0">
               <ExportPortfolio stocks={stocks} />
             </div>
 
+            {/* Theme toggle */}
             <button
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-[12px] font-medium transition-all"
-              style={{ color: "hsl(215,60%,36%)" }}>
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12.5px] font-medium transition-all"
+              style={{ color: T.actionText }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = T.actionHoverBg}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
               {theme === "dark"
-                ? <Sun className="h-3.5 w-3.5" style={{ color: "hsl(215,60%,48%)" }} />
-                : <Moon className="h-3.5 w-3.5" style={{ color: "hsl(215,60%,48%)" }} />}
+                ? <Sun  className="h-3.5 w-3.5 shrink-0" style={{ color: T.actionIcon }} />
+                : <Moon className="h-3.5 w-3.5 shrink-0" style={{ color: T.actionIcon }} />}
               {theme === "dark" ? "Light Mode" : "Dark Mode"}
             </button>
           </div>
 
-          {/* Sign out */}
+          {/* ── Sign out ── */}
           {user && (
-            <div className="px-2 pb-2" style={{ borderTop: "1px solid hsl(218 30% 90%)" }}>
+            <div className="px-2.5 pb-2.5" style={{ borderTop: `1px solid ${T.divider}` }}>
               <button onClick={() => signOut()}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-[12px] font-medium transition-all mt-1"
-                style={{ color: "hsl(2,70%,42%)" }}>
-                <LogOut className="h-3.5 w-3.5" />
+                className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-[12.5px] font-semibold transition-all mt-1.5"
+                style={{ color: T.signOutText }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = T.signOutHoverBg}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
+                <LogOut className="h-3.5 w-3.5 shrink-0" style={{ color: T.signOutText }} />
                 Sign Out
               </button>
             </div>
