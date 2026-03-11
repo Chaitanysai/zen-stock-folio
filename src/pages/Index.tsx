@@ -27,7 +27,7 @@ import SectorDiversification from "@/components/SectorDiversification";
 import PriceAlerts from "@/components/PriceAlerts";
 import AIInsights from "@/components/AIInsights";
 import ExportPortfolio from "@/components/ExportPortfolio";
-import { AuthButton } from "@/components/AuthModal";
+import AuthModal from "@/components/AuthModal";
 import { useToast } from "@/hooks/use-toast";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { usePortfolioSync, loadFromLocal } from "@/hooks/usePortfolioSync";
@@ -238,6 +238,21 @@ const MobileSidebar = ({ open, onClose, activeTab, setActiveTab, triggeredAlerts
   </>
 );
 
+// ── Sign in button (shown in dropdown when not logged in) ──────────────────
+const SignInButton = () => {
+  const [authOpen, setAuthOpen] = useState(false);
+  return (
+    <>
+      <button onClick={() => setAuthOpen(true)}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-semibold transition-all"
+        style={{ background: BLUE_MID, color: "white" }}>
+        Sign In / Create Account
+      </button>
+      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+    </>
+  );
+};
+
 // ── Hover user dropdown ───────────────────────────────────────────────────────
 const UserDropdown = ({
   user, activeTab, setActiveTab, triggeredAlerts,
@@ -404,7 +419,7 @@ const UserDropdown = ({
           )}
           {!user && (
             <div className="px-3 pb-3 pt-1">
-              <AuthButton />
+              <SignInButton />
             </div>
           )}
         </div>
