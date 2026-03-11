@@ -34,7 +34,7 @@ import { usePortfolioSync, loadFromLocal } from "@/hooks/usePortfolioSync";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
-import { supabase } from "@/integrations/supabase/client";
+
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const BLUE_GRAD = "linear-gradient(135deg, hsl(222,65%,14%), hsl(215,65%,42%), hsl(212,80%,56%))";
@@ -264,14 +264,9 @@ const UserDropdown = ({
   theme: string | undefined; setTheme: (t: string) => void;
   refresh: () => void; loading: boolean; lastUpdated: string | null;
 }) => {
-  const initials = user?.email
-    ? user.email.slice(0, 2).toUpperCase()
-    : "?";
+  const { signOut } = useAuth();
+  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "?";
   const email = user?.email ?? "Not signed in";
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
 
   const navItems = [
     { value: "dashboard",  label: "Dashboard",   icon: LayoutDashboard },
@@ -409,7 +404,7 @@ const UserDropdown = ({
           {/* Sign out */}
           {user && (
             <div className="px-2 pb-2" style={{ borderTop: "1px solid hsl(218 30% 90%)" }}>
-              <button onClick={handleSignOut}
+              <button onClick={() => signOut()}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-[12px] font-medium transition-all mt-1"
                 style={{ color: "hsl(2,70%,42%)" }}>
                 <LogOut className="h-3.5 w-3.5" />
