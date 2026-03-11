@@ -40,14 +40,23 @@ import { useTheme } from "next-themes";
 const BLUE_GRAD = "linear-gradient(135deg, hsl(222,65%,14%), hsl(215,65%,42%), hsl(212,80%,56%))";
 const BLUE_MID  = "linear-gradient(135deg, hsl(217,55%,28%), hsl(215,65%,46%))";
 
+const CARD_COLORS_LIGHT = [
+  "hsl(222,60%,26%)", "hsl(220,58%,32%)", "hsl(218,58%,38%)",
+  "hsl(216,60%,44%)", "hsl(214,65%,50%)", "hsl(211,75%,54%)", "hsl(207,85%,58%)"
+];
+const CARD_COLORS_DARK = [
+  "hsl(220,70%,68%)", "hsl(218,70%,71%)", "hsl(216,72%,74%)",
+  "hsl(214,74%,76%)", "hsl(212,76%,78%)", "hsl(209,80%,80%)", "hsl(205,85%,82%)"
+];
+
 const CARDS = [
-  { cls: "stat-card-1", iconBg: "card-icon-bg-1", color: "hsl(222,60%,26%)",  icon: IndianRupee, label: "Total Invested"  },
-  { cls: "stat-card-2", iconBg: "card-icon-bg-2", color: "hsl(220,58%,32%)",  icon: Briefcase,   label: "Current Value"  },
-  { cls: "stat-card-3", iconBg: "card-icon-bg-3", color: "hsl(218,58%,38%)",  icon: TrendingUp,  label: "Total P&L"      },
-  { cls: "stat-card-4", iconBg: "card-icon-bg-4", color: "hsl(216,60%,44%)",  icon: Target,      label: "Win Rate"       },
-  { cls: "stat-card-5", iconBg: "card-icon-bg-5", color: "hsl(214,65%,50%)",  icon: Activity,    label: "Open Positions" },
-  { cls: "stat-card-6", iconBg: "card-icon-bg-6", color: "hsl(211,75%,54%)",  icon: BarChart3,   label: "Closed Trades"  },
-  { cls: "stat-card-7", iconBg: "card-icon-bg-7", color: "hsl(207,85%,58%)",  icon: Percent,     label: "Risk/Reward"    },
+  { cls: "stat-card-1", iconBg: "card-icon-bg-1", icon: IndianRupee, label: "Total Invested"  },
+  { cls: "stat-card-2", iconBg: "card-icon-bg-2", icon: Briefcase,   label: "Current Value"  },
+  { cls: "stat-card-3", iconBg: "card-icon-bg-3", icon: TrendingUp,  label: "Total P&L"      },
+  { cls: "stat-card-4", iconBg: "card-icon-bg-4", icon: Target,      label: "Win Rate"       },
+  { cls: "stat-card-5", iconBg: "card-icon-bg-5", icon: Activity,    label: "Open Positions" },
+  { cls: "stat-card-6", iconBg: "card-icon-bg-6", icon: BarChart3,   label: "Closed Trades"  },
+  { cls: "stat-card-7", iconBg: "card-icon-bg-7", icon: Percent,     label: "Risk/Reward"    },
 ];
 
 const NAV_TABS = [
@@ -73,6 +82,8 @@ const BOTTOM_NAV = [
 
 // ── Stats panel ───────────────────────────────────────────────────────────────
 const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const activeStocks  = stocks.filter(s => s.status === "Active");
   const closedStocks  = stocks.filter(s => s.status !== "Active");
   const activeInvested     = activeStocks.reduce((s, x) => s + calcInvestedValue(x), 0);
@@ -109,15 +120,16 @@ const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
       <div className="hidden sm:grid grid-cols-4 lg:grid-cols-7 gap-3 stagger">
         {CARDS.map((c, i) => {
           const Icon = c.icon;
+          const color = isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i];
           return (
-            <div key={c.label} className={`stat-card ${c.cls} animate-fade-up`}>
+            <div key={c.label} className={`stat-card ${c.cls} animate-fade-up shimmer-hover`}>
               <div className="relative z-10">
                 <div className={`h-7 w-7 rounded-lg flex items-center justify-center mb-3 ${c.iconBg}`}>
-                  <Icon className="h-3.5 w-3.5" style={{ color: c.color }} />
+                  <Icon className="h-3.5 w-3.5" style={{ color }} />
                 </div>
                 <p className="text-[9.5px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5 leading-none">{c.label}</p>
-                <p className="text-lg font-bold ticker leading-none" style={{ color: c.color }}>{values[i]}</p>
-                {subs[i] && <p className="text-[10px] ticker mt-1 font-medium opacity-70" style={{ color: c.color }}>{subs[i]}</p>}
+                <p className="text-lg font-bold ticker leading-none" style={{ color }}>{values[i]}</p>
+                {subs[i] && <p className="text-[10px] ticker mt-1 font-medium opacity-70" style={{ color }}>{subs[i]}</p>}
               </div>
             </div>
           );
@@ -129,15 +141,16 @@ const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
         <div className="grid grid-cols-2 gap-2.5">
           {[0, 2].map(i => {
             const c = CARDS[i]; const Icon = c.icon;
+            const color = isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i];
             return (
               <div key={c.label} className={`stat-card ${c.cls}`} style={{ padding: "0.875rem" }}>
                 <div className="relative z-10">
                   <div className={`h-7 w-7 rounded-lg flex items-center justify-center mb-2 ${c.iconBg}`}>
-                    <Icon className="h-3.5 w-3.5" style={{ color: c.color }} />
+                    <Icon className="h-3.5 w-3.5" style={{ color }} />
                   </div>
                   <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1 leading-none">{c.label}</p>
-                  <p className="text-base font-bold ticker leading-none" style={{ color: c.color }}>{values[i]}</p>
-                  {subs[i] && <p className="text-[10px] ticker mt-0.5 opacity-70" style={{ color: c.color }}>{subs[i]}</p>}
+                  <p className="text-base font-bold ticker leading-none" style={{ color }}>{values[i]}</p>
+                  {subs[i] && <p className="text-[10px] ticker mt-0.5 opacity-70" style={{ color }}>{subs[i]}</p>}
                 </div>
               </div>
             );
@@ -147,16 +160,17 @@ const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
           <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
             {[1, 3, 4, 5, 6].map(i => {
               const c = CARDS[i]; const Icon = c.icon;
+              const color = isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i];
               return (
                 <div key={c.label} className={`stat-card ${c.cls} shrink-0`}
                      style={{ padding: "0.625rem 0.875rem", minWidth: 122 }}>
                   <div className="relative z-10 flex items-center gap-2">
                     <div className={`h-6 w-6 rounded-md flex items-center justify-center shrink-0 ${c.iconBg}`}>
-                      <Icon className="h-3 w-3" style={{ color: c.color }} />
+                      <Icon className="h-3 w-3" style={{ color }} />
                     </div>
                     <div>
                       <p className="text-[8.5px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-0.5">{c.label}</p>
-                      <p className="text-[13px] font-bold ticker leading-none" style={{ color: c.color }}>{values[i]}</p>
+                      <p className="text-[13px] font-bold ticker leading-none" style={{ color }}>{values[i]}</p>
                     </div>
                   </div>
                 </div>
@@ -513,13 +527,7 @@ const Index = () => {
         onSave={handleSavePortfolio} syncing={syncing} user={user} />
 
       {/* ── Header ── */}
-      <header className="sticky top-0 z-50 relative" style={{
-        backdropFilter: "blur(24px) saturate(180%) brightness(1.02)",
-        WebkitBackdropFilter: "blur(24px) saturate(180%) brightness(1.02)",
-        background: "hsl(0 0% 100% / 0.72)",
-        borderBottom: "1px solid hsl(218 35% 82% / 0.55)",
-        boxShadow: "0 1px 16px hsl(215 65% 46% / 0.07)"
-      }}>
+      <header className="sticky top-0 z-50 relative header-glass">
         <div className="absolute inset-x-0 top-0 h-[2.5px]"
              style={{ background: "linear-gradient(90deg, hsl(222,65%,16%), hsl(217,55%,30%), hsl(215,65%,44%), hsl(212,80%,56%), hsl(207,88%,64%))" }} />
 
@@ -579,20 +587,11 @@ const Index = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="hidden sm:block overflow-x-auto pb-1">
-            <TabsList className="inline-flex w-auto min-w-full h-11 p-1.5 gap-0.5 rounded-xl"
-              style={{
-                backdropFilter: "blur(16px) saturate(160%)",
-                background: "hsl(0 0% 100% / 0.75)",
-                border: "1px solid hsl(218 35% 84% / 0.55)",
-                boxShadow: "0 2px 14px hsl(215 65% 46% / 0.06)"
-              }}>
+            <TabsList className="inline-flex w-auto min-w-full h-11 p-1.5 gap-0.5 rounded-xl tab-bar-glass">
               {NAV_TABS.map(({ value, label, icon: Icon }) => (
                 <TabsTrigger key={value} value={value}
-                  className="relative flex items-center gap-1.5 rounded-lg px-3 h-full font-medium transition-all duration-200 whitespace-nowrap text-[11.5px] border-0 outline-none"
-                  style={activeTab === value ? {
-                    background: BLUE_GRAD, color: "white",
-                    boxShadow: "0 3px 12px hsl(215,65%,46%,0.30)",
-                  } : {
+                  className={`relative flex items-center gap-1.5 rounded-lg px-3 h-full font-medium transition-all duration-200 whitespace-nowrap text-[11.5px] border-0 outline-none shimmer-hover ${activeTab === value ? "tab-active-pill text-white" : ""}`}
+                  style={activeTab === value ? {} : {
                     color: "hsl(218,45%,50%)", background: "transparent",
                   }}>
                   <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -619,15 +618,8 @@ const Index = () => {
       </main>
 
       {/* ── Mobile bottom nav ── */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50"
-           style={{
-             backdropFilter: "blur(24px) saturate(180%)",
-             WebkitBackdropFilter: "blur(24px) saturate(180%)",
-             background: "hsl(0 0% 100% / 0.90)",
-             borderTop: "1px solid hsl(218 35% 84% / 0.60)",
-             boxShadow: "0 -2px 18px hsl(215 65% 46% / 0.08)",
-             paddingBottom: "env(safe-area-inset-bottom, 0px)"
-           }}>
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50 bottom-nav-glass"
+           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
         <div className="flex items-center justify-around px-2 h-16">
           {BOTTOM_NAV.map(({ value, label, icon: Icon }) => {
             const isActive = activeTab === value;
