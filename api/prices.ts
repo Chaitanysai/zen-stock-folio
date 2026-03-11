@@ -25,12 +25,20 @@ export default async function handler(req: any, res: any) {
     }
 
     const unique = [...new Set(tickers as string[])];
+<<<<<<< HEAD
 
     // Do NOT encode the | character — Upstox requires it raw
     const instrumentKeys = unique.map((t) => `NSE_EQ|${t}`).join(",");
     const url = `https://api.upstox.com/v2/market-quote/quotes?instrument_key=${instrumentKeys}`;
 
     console.log("URL:", url);
+=======
+    const instrumentKeys = unique.map((t) => `NSE_EQ|${t}`).join(",");
+    const url = `https://api.upstox.com/v2/market-quote/quotes?instrument_key=${encodeURIComponent(instrumentKeys)}`;
+
+    console.log("URL:", url);
+    console.log("Token:", token.substring(0, 20) + "...");
+>>>>>>> eee1573921164777e249eb14417fe6b1ca17090b
 
     const upstoxRes = await fetch(url, {
       headers: {
