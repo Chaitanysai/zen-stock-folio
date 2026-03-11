@@ -16,7 +16,7 @@ interface UseLivePricesResult {
   refresh: () => void;
 }
 
-export function useLivePrices(tickers: string[], intervalMs = 5 * 60 * 1000): UseLivePricesResult {
+export function useLivePrices(tickers: string[], intervalMs = 60 * 1000): UseLivePricesResult {
   const [prices, setPrices] = useState<Record<string, StockPrice>>({});
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);

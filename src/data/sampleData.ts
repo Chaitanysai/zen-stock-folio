@@ -157,13 +157,31 @@ export function getWatchlistStatus(stock: WatchlistStock): { label: string; emoj
 }
 
 export function calcHoldingDays(entryDate: string, exitDate?: string): number {
-  const parseDate = (d: string) => {
-    const parts = d.split("-");
-    return new Date(`${parts[1]} ${parts[0]}, ${parts[2]}`);
+  const parseDate = (d: string): Date => {
+    if (!d) return new Date();
+    // Format 1: YYYY-MM-DD (from HTML date input)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [y, m, day] = d.split("-").map(Number);
+      return new Date(y, m - 1, day);
+    }
+    // Format 2: DD-MMM-YYYY (e.g. 16-Feb-2026)
+    if (/^\d{1,2}-[A-Za-z]{3}-\d{4}$/.test(d)) {
+      const parts = d.split("-");
+      return new Date(`${parts[1]} ${parts[0]}, ${parts[2]}`);
+    }
+    // Format 3: DD/MM/YYYY
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(d)) {
+      const [day, m, y] = d.split("/").map(Number);
+      return new Date(y, m - 1, day);
+    }
+    // Fallback: let JS try
+    const parsed = new Date(d);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
   };
   const entry = parseDate(entryDate);
-  const exit = exitDate ? parseDate(exitDate) : new Date();
-  return Math.max(1, Math.round((exit.getTime() - entry.getTime()) / (1000 * 60 * 60 * 24)));
+  const exit  = exitDate ? parseDate(exitDate) : new Date();
+  if (isNaN(entry.getTime()) || isNaN(exit.getTime())) return 0;
+  return Math.max(0, Math.round((exit.getTime() - entry.getTime()) / (1000 * 60 * 60 * 24)));
 }
 
 export function getTradeAnalytics(stocks: PortfolioStock[]) {
