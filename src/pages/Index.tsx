@@ -4,8 +4,7 @@ import {
   BarChart3, Crosshair, Eye, LayoutDashboard, Shield,
   RefreshCw, History, BookOpen, Bell, Brain, PieChart,
   Save, Menu, X, IndianRupee, Briefcase, TrendingUp,
-  TrendingDown, Target, Activity, Percent, Sun, Moon,
-  Waves, ChevronRight
+  Target, Activity, Percent, Sun, Moon, Waves, ChevronRight
 } from "lucide-react";
 import {
   portfolioData as initialData, PortfolioStock,
@@ -34,15 +33,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 
-// ── Palette ────────────────────────────────────────────────────────────────────
+// ── Blue palette card config ──────────────────────────────────────────────────
 const CARDS = [
-  { cls: "stat-card-1", iconBg: "card-icon-bg-1", color: "hsl(230,50%,32%)",  icon: IndianRupee, label: "Total Invested"  },
-  { cls: "stat-card-2", iconBg: "card-icon-bg-2", color: "hsl(0,72%,35%)",    icon: Briefcase,   label: "Current Value"  },
-  { cls: "stat-card-3", iconBg: "card-icon-bg-3", color: "hsl(0,85%,42%)",    icon: TrendingUp,  label: "Total P&L"      },
-  { cls: "stat-card-4", iconBg: "card-icon-bg-4", color: "hsl(8,90%,48%)",    icon: Target,      label: "Win Rate"       },
-  { cls: "stat-card-5", iconBg: "card-icon-bg-5", color: "hsl(18,95%,52%)",   icon: Activity,    label: "Open Positions" },
-  { cls: "stat-card-6", iconBg: "card-icon-bg-6", color: "hsl(28,98%,50%)",   icon: BarChart3,   label: "Closed Trades"  },
-  { cls: "stat-card-7", iconBg: "card-icon-bg-7", color: "hsl(38,100%,46%)",  icon: Percent,     label: "Risk/Reward"    },
+  { cls: "stat-card-1", iconBg: "card-icon-bg-1", color: "hsl(222,60%,26%)",  icon: IndianRupee, label: "Total Invested"  },
+  { cls: "stat-card-2", iconBg: "card-icon-bg-2", color: "hsl(220,58%,32%)",  icon: Briefcase,   label: "Current Value"  },
+  { cls: "stat-card-3", iconBg: "card-icon-bg-3", color: "hsl(218,58%,38%)",  icon: TrendingUp,  label: "Total P&L"      },
+  { cls: "stat-card-4", iconBg: "card-icon-bg-4", color: "hsl(216,60%,44%)",  icon: Target,      label: "Win Rate"       },
+  { cls: "stat-card-5", iconBg: "card-icon-bg-5", color: "hsl(214,65%,50%)",  icon: Activity,    label: "Open Positions" },
+  { cls: "stat-card-6", iconBg: "card-icon-bg-6", color: "hsl(211,75%,54%)",  icon: BarChart3,   label: "Closed Trades"  },
+  { cls: "stat-card-7", iconBg: "card-icon-bg-7", color: "hsl(207,85%,58%)",  icon: Percent,     label: "Risk/Reward"    },
 ];
 
 const NAV_TABS = [
@@ -58,7 +57,6 @@ const NAV_TABS = [
   { value: "ai",        label: "AI Insights", icon: Brain },
 ];
 
-// Bottom nav shows first 5 most used; rest accessible via sidebar
 const BOTTOM_NAV = [
   { value: "dashboard", label: "Home",      icon: LayoutDashboard },
   { value: "portfolio", label: "Portfolio", icon: BarChart3 },
@@ -67,33 +65,32 @@ const BOTTOM_NAV = [
   { value: "alerts",    label: "Alerts",    icon: Bell },
 ];
 
-// ── Stats panel ────────────────────────────────────────────────────────────────
+// Blue gradient used across UI
+const BLUE_GRAD = "linear-gradient(135deg, hsl(222,65%,14%), hsl(215,65%,42%), hsl(212,80%,56%))";
+const BLUE_MID  = "linear-gradient(135deg, hsl(217,55%,28%), hsl(215,65%,46%))";
+
+// ── Stats panel ───────────────────────────────────────────────────────────────
 const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
   const activeStocks  = stocks.filter(s => s.status === "Active");
   const closedStocks  = stocks.filter(s => s.status !== "Active");
 
-  // Active-only metrics (capital currently deployed)
   const activeInvested     = activeStocks.reduce((s, x) => s + calcInvestedValue(x), 0);
   const activeCurrentValue = activeStocks.reduce((s, x) => s + calcFinalValue(x), 0);
   const activePL           = activeStocks.reduce((s, x) => s + calcProfitLoss(x), 0);
   const activePLPct        = activeInvested > 0 ? (activePL / activeInvested) * 100 : 0;
   const isProfit           = activePL >= 0;
-
-  // Closed-only P&L (realised)
-  const closedPL      = closedStocks.reduce((s, x) => s + calcProfitLoss(x), 0);
-
-  // Overall analytics (win rate etc. uses all trades)
-  const analytics     = getTradeAnalytics(stocks);
+  const closedPL           = closedStocks.reduce((s, x) => s + calcProfitLoss(x), 0);
+  const analytics          = getTradeAnalytics(stocks);
 
   const fmt = (n: number) => `₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
   const values = [
-    fmt(activeInvested),                                                           // Active invested
-    fmt(activeCurrentValue),                                                       // Active current value
-    `${isProfit ? "+" : "-"}${fmt(activePL)}`,                                    // Active P&L
-    `${analytics.winRate.toFixed(1)}%`,                                            // Win rate
-    `${activeStocks.length}`,                                                      // Open positions
-    `${closedStocks.length}`,                                                      // Closed trades
+    fmt(activeInvested),
+    fmt(activeCurrentValue),
+    `${isProfit ? "+" : "-"}${fmt(activePL)}`,
+    `${analytics.winRate.toFixed(1)}%`,
+    `${activeStocks.length}`,
+    `${closedStocks.length}`,
     analytics.riskRewardRatio > 0 ? `1:${analytics.riskRewardRatio.toFixed(1)}` : "N/A",
   ];
 
@@ -108,7 +105,6 @@ const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
   ];
 
   return (
-    /* Mobile: horizontal scroll row — Desktop: 7-col grid */
     <div className="relative">
       {/* Desktop grid */}
       <div className="hidden sm:grid grid-cols-4 lg:grid-cols-7 gap-3 stagger">
@@ -117,56 +113,52 @@ const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
           return (
             <div key={c.label} className={`stat-card ${c.cls} animate-fade-up`}>
               <div className="relative z-10">
-                <div className={`h-8 w-8 rounded-xl flex items-center justify-center mb-3 ${c.iconBg}`}>
-                  <Icon className="h-4 w-4" style={{ color: c.color }} />
+                <div className={`h-7 w-7 rounded-lg flex items-center justify-center mb-3 ${c.iconBg}`}>
+                  <Icon className="h-3.5 w-3.5" style={{ color: c.color }} />
                 </div>
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">{c.label}</p>
-                <p className="text-xl font-bold ticker leading-none" style={{ color: c.color }}>{values[i]}</p>
-                {subs[i] && <p className="text-xs ticker mt-1 font-medium" style={{ color: c.color, opacity: 0.7 }}>{subs[i]}</p>}
+                <p className="text-[9.5px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5 leading-none">{c.label}</p>
+                <p className="text-lg font-bold ticker leading-none" style={{ color: c.color }}>{values[i]}</p>
+                {subs[i] && <p className="text-[10px] ticker mt-1 font-medium opacity-70" style={{ color: c.color }}>{subs[i]}</p>}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Mobile: 2×2 prominent cards + horizontal scroll strip */}
-      <div className="sm:hidden space-y-3">
-        {/* Top 2 hero cards side by side */}
-        <div className="grid grid-cols-2 gap-3">
+      {/* Mobile: 2 hero cards + horizontal scroll strip */}
+      <div className="sm:hidden space-y-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           {[0, 2].map(i => {
-            const c = CARDS[i];
-            const Icon = c.icon;
+            const c = CARDS[i]; const Icon = c.icon;
             return (
-              <div key={c.label} className={`stat-card ${c.cls}`} style={{ padding: "1rem" }}>
+              <div key={c.label} className={`stat-card ${c.cls}`} style={{ padding: "0.875rem" }}>
                 <div className="relative z-10">
-                  <div className={`h-8 w-8 rounded-xl flex items-center justify-center mb-2 ${c.iconBg}`}>
-                    <Icon className="h-4 w-4" style={{ color: c.color }} />
+                  <div className={`h-7 w-7 rounded-lg flex items-center justify-center mb-2 ${c.iconBg}`}>
+                    <Icon className="h-3.5 w-3.5" style={{ color: c.color }} />
                   </div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{c.label}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1 leading-none">{c.label}</p>
                   <p className="text-base font-bold ticker leading-none" style={{ color: c.color }}>{values[i]}</p>
-                  {subs[i] && <p className="text-[11px] ticker mt-0.5" style={{ color: c.color, opacity: 0.7 }}>{subs[i]}</p>}
+                  {subs[i] && <p className="text-[10px] ticker mt-0.5 opacity-70" style={{ color: c.color }}>{subs[i]}</p>}
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* Remaining 5 as compact horizontal scroll chips */}
         <div className="overflow-x-auto -mx-4 px-4">
-          <div className="flex gap-2.5 pb-1" style={{ width: "max-content" }}>
+          <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
             {[1, 3, 4, 5, 6].map(i => {
-              const c = CARDS[i];
-              const Icon = c.icon;
+              const c = CARDS[i]; const Icon = c.icon;
               return (
                 <div key={c.label} className={`stat-card ${c.cls} shrink-0`}
-                     style={{ padding: "0.75rem 1rem", minWidth: 130 }}>
-                  <div className="relative z-10 flex items-center gap-2.5">
-                    <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${c.iconBg}`}>
-                      <Icon className="h-3.5 w-3.5" style={{ color: c.color }} />
+                     style={{ padding: "0.625rem 0.875rem", minWidth: 122 }}>
+                  <div className="relative z-10 flex items-center gap-2">
+                    <div className={`h-6 w-6 rounded-md flex items-center justify-center shrink-0 ${c.iconBg}`}>
+                      <Icon className="h-3 w-3" style={{ color: c.color }} />
                     </div>
                     <div>
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-1">{c.label}</p>
-                      <p className="text-sm font-bold ticker leading-none" style={{ color: c.color }}>{values[i]}</p>
+                      <p className="text-[8.5px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-0.5">{c.label}</p>
+                      <p className="text-[13px] font-bold ticker leading-none" style={{ color: c.color }}>{values[i]}</p>
                     </div>
                   </div>
                 </div>
@@ -179,7 +171,7 @@ const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
   );
 };
 
-// ── Sidebar tray ───────────────────────────────────────────────────────────────
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 const SidebarTray = ({ open, onClose, activeTab, setActiveTab, triggeredAlerts, stocks, onSave, syncing, user }: {
   open: boolean; onClose: () => void;
   activeTab: string; setActiveTab: (v: string) => void;
@@ -189,74 +181,76 @@ const SidebarTray = ({ open, onClose, activeTab, setActiveTab, triggeredAlerts, 
   <>
     <div className={`sidebar-overlay ${open ? "open" : ""}`} onClick={onClose} />
     <aside className={`sidebar-tray ${open ? "open" : ""}`}>
-      <div className="absolute inset-x-0 top-0 h-[3px]"
-           style={{ background: "linear-gradient(90deg, hsl(230,50%,22%), hsl(8,90%,46%), hsl(28,98%,54%), hsl(46,100%,56%))" }} />
+      {/* Top accent strip */}
+      <div className="absolute inset-x-0 top-0 h-[2.5px]"
+           style={{ background: "linear-gradient(90deg, hsl(222,65%,20%), hsl(215,65%,42%), hsl(212,80%,56%), hsl(207,88%,64%))" }} />
 
-      {/* Sidebar header */}
+      {/* Header */}
       <div className="flex items-center justify-between px-5 pt-6 pb-4"
-           style={{ borderBottom: "1px solid hsl(18 50% 40% / 0.15)" }}>
+           style={{ borderBottom: "1px solid hsl(215 45% 28% / 0.20)" }}>
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl flex items-center justify-center"
-               style={{ background: "linear-gradient(135deg, hsl(230,50%,20%), hsl(8,90%,46%))", boxShadow: "0 4px 16px hsl(18,95%,52%,0.4)" }}>
-            <Waves style={{ color: "white", width: 17, height: 17 }} />
+          <div className="h-8 w-8 rounded-lg flex items-center justify-center"
+               style={{ background: BLUE_GRAD, boxShadow: "0 4px 16px hsl(215,65%,46%,0.40)" }}>
+            <Waves style={{ color: "white", width: 15, height: 15 }} />
           </div>
           <div>
-            <p className="text-sm font-bold leading-none text-white">Smart Stock</p>
-            <p className="text-[10px] mt-0.5" style={{ color: "hsl(18,60%,65%)" }}>Portfolio Tracker</p>
+            <p className="text-[13px] font-semibold leading-none text-white tracking-tight">Smart Stock</p>
+            <p className="text-[10px] mt-0.5 tracking-wide" style={{ color: "hsl(215,55%,58%)" }}>Portfolio Tracker</p>
           </div>
         </div>
         <button onClick={onClose}
-          className="h-7 w-7 rounded-lg flex items-center justify-center"
-          style={{ background: "hsl(18 50% 40% / 0.15)", color: "hsl(18,60%,65%)" }}>
-          <X className="h-4 w-4" />
+          className="h-7 w-7 rounded-md flex items-center justify-center transition-all"
+          style={{ background: "hsl(215 45% 22% / 0.60)", color: "hsl(215,55%,58%)" }}>
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-        <p className="text-[10px] font-bold uppercase tracking-widest px-3 mb-2" style={{ color: "hsl(18,40%,45%)" }}>Navigation</p>
+      <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
+        <p className="text-[9px] font-bold uppercase tracking-widest px-3 mb-2 mt-1"
+           style={{ color: "hsl(215,40%,42%)" }}>Navigation</p>
         {NAV_TABS.map(({ value, label, icon: Icon }) => {
           const isActive = activeTab === value;
           return (
             <button key={value}
               onClick={() => { setActiveTab(value); onClose(); }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-left relative"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 text-left"
               style={isActive ? {
-                background: "linear-gradient(135deg, hsl(230,50%,25%), hsl(8,90%,46%), hsl(28,98%,54%))",
+                background: BLUE_MID,
                 color: "white",
-                boxShadow: "0 4px 16px hsl(18,95%,52%,0.3)"
-              } : { color: "hsl(18,50%,68%)" }}>
+                boxShadow: "0 3px 12px hsl(215,65%,46%,0.32)"
+              } : { color: "hsl(215,50%,62%)" }}>
               <Icon className="h-4 w-4 shrink-0" />
               <span className="flex-1">{label}</span>
               {value === "alerts" && triggeredAlerts > 0 && (
-                <span className="h-5 w-5 rounded-full bg-loss text-[10px] font-bold flex items-center justify-center text-white">{triggeredAlerts}</span>
+                <span className="h-4 w-4 rounded-full bg-loss text-[9px] font-bold flex items-center justify-center text-white">{triggeredAlerts}</span>
               )}
-              {!isActive && <ChevronRight className="h-3.5 w-3.5 opacity-30" />}
+              {!isActive && <ChevronRight className="h-3 w-3 opacity-25" />}
             </button>
           );
         })}
       </nav>
 
-      {/* Sidebar footer actions */}
-      <div className="px-4 py-4 space-y-2" style={{ borderTop: "1px solid hsl(18 50% 40% / 0.12)" }}>
+      {/* Footer */}
+      <div className="px-4 py-4 space-y-2" style={{ borderTop: "1px solid hsl(215 45% 22% / 0.18)" }}>
         <button onClick={onSave} disabled={syncing}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
-          style={{ background: "linear-gradient(135deg, hsl(8,90%,46%), hsl(28,98%,54%))", color: "white", opacity: syncing ? 0.7 : 1 }}>
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-semibold transition-all"
+          style={{ background: BLUE_MID, color: "white", opacity: syncing ? 0.7 : 1 }}>
           <Save className="h-4 w-4" />
           {syncing ? "Saving…" : user ? "Save & Sync" : "Save Locally"}
         </button>
         <div className="flex gap-2">
-          <div className="flex-1">
-            <ExportPortfolio stocks={stocks} />
-          </div>
+          <div className="flex-1"><ExportPortfolio stocks={stocks} /></div>
         </div>
-        <p className="text-[10px] text-center mt-1" style={{ color: "hsl(18,35%,45%)" }}>Portfolio & Trade Dashboard · ₹ INR</p>
+        <p className="text-[9.5px] text-center mt-1" style={{ color: "hsl(215,35%,40%)" }}>
+          Portfolio & Trade Dashboard · ₹ INR
+        </p>
       </div>
     </aside>
   </>
 );
 
-// ── Main ───────────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 const Index = () => {
   const { user }            = useAuth();
   const { load, save }      = usePortfolioSync(user?.id);
@@ -337,11 +331,14 @@ const Index = () => {
   const triggeredAlerts = alerts.filter(a => a.triggered).length;
   const formatTime = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
 
-  const SUNSET_GRAD = "linear-gradient(135deg, hsl(230,50%,20%), hsl(8,90%,46%), hsl(38,100%,52%))";
-  const BORDER_CLRS = { borderColor: "hsl(18,60%,50%,0.35)", color: "hsl(18,80%,40%)" };
+  // Shared style tokens
+  const CTRL_BTN = {
+    background: "hsl(215 50% 46% / 0.08)",
+    border: "1px solid hsl(215 50% 46% / 0.20)",
+    color: "hsl(215,60%,42%)"
+  };
 
   return (
-    /* pb-20 on mobile to clear bottom nav */
     <div className="min-h-screen mesh-bg pb-20 sm:pb-0 relative overflow-x-hidden">
 
       <SidebarTray open={sidebarOpen} onClose={() => setSidebarOpen(false)}
@@ -351,53 +348,59 @@ const Index = () => {
 
       {/* ── Header ── */}
       <header className="sticky top-0 z-50 relative" style={{
-        backdropFilter: "blur(28px) saturate(200%) brightness(1.04)",
-        WebkitBackdropFilter: "blur(28px) saturate(200%) brightness(1.04)",
-        background: "hsl(0 0% 100% / 0.62)",
-        borderBottom: "1px solid hsl(18 50% 45% / 0.20)",
-        boxShadow: "0 2px 20px hsl(18 95% 52% / 0.08)"
+        backdropFilter: "blur(24px) saturate(180%) brightness(1.02)",
+        WebkitBackdropFilter: "blur(24px) saturate(180%) brightness(1.02)",
+        background: "hsl(0 0% 100% / 0.72)",
+        borderBottom: "1px solid hsl(218 35% 82% / 0.55)",
+        boxShadow: "0 1px 16px hsl(215 65% 46% / 0.07)"
       }}>
-        <div className="absolute inset-x-0 top-0 h-[3px]"
-             style={{ background: "linear-gradient(90deg, hsl(230,50%,18%), hsl(0,85%,36%), hsl(18,95%,52%), hsl(38,100%,52%), hsl(46,100%,56%))" }} />
+        {/* Top navy-to-sky accent strip */}
+        <div className="absolute inset-x-0 top-0 h-[2.5px]"
+             style={{ background: "linear-gradient(90deg, hsl(222,65%,16%), hsl(217,55%,30%), hsl(215,65%,44%), hsl(212,80%,56%), hsl(207,88%,64%))" }} />
 
         <div className="flex items-center justify-between h-14 sm:h-16 px-4">
 
           {/* Left */}
           <div className="flex items-center gap-2.5">
             <button onClick={() => setSidebarOpen(true)}
-              className="h-9 w-9 rounded-xl flex items-center justify-center transition-all shrink-0"
-              style={{ background: "hsl(18 50% 45% / 0.10)", border: "1px solid hsl(18 50% 45% / 0.22)", color: "hsl(18,60%,40%)" }}>
+              className="h-8 w-8 rounded-lg flex items-center justify-center transition-all shrink-0"
+              style={CTRL_BTN}>
               <Menu className="h-4 w-4" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl flex items-center justify-center relative overflow-hidden shrink-0"
-                   style={{ background: "linear-gradient(135deg, hsl(230,50%,20%), hsl(0,85%,36%))", boxShadow: "0 4px 16px hsl(18,95%,52%,0.40)" }}>
-                <Waves className="h-4 w-4 text-white" style={{ width: 16, height: 16 }} />
-                <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 60%)" }} />
+              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center relative overflow-hidden shrink-0"
+                   style={{ background: BLUE_GRAD, boxShadow: "0 3px 14px hsl(215,65%,46%,0.38)" }}>
+                <Waves className="h-4 w-4 text-white" style={{ width: 15, height: 15 }} />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 55%)" }} />
               </div>
               <div className="min-w-0">
-                <h1 className="text-[13px] sm:text-[15px] font-bold leading-none truncate" style={{ color: "hsl(230,55%,12%)" }}>
+                <h1 className="text-[13px] sm:text-[15px] font-semibold leading-none truncate tracking-tight"
+                    style={{ color: "hsl(222,65%,14%)" }}>
                   Smart Stock Tracker
                 </h1>
-                <p className="text-[9px] sm:text-[10px] mt-0.5 tracking-wide hidden xs:block" style={{ color: "hsl(18,60%,50%)" }}>
+                <p className="text-[9px] sm:text-[10px] mt-0.5 tracking-wide font-medium hidden xs:block"
+                   style={{ color: "hsl(215,55%,48%)" }}>
                   Portfolio · ₹ INR
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Right — desktop shows all, mobile shows only essentials */}
+          {/* Right */}
           <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Desktop only */}
             <div className="hidden sm:flex items-center gap-2">
               <ExportPortfolio stocks={stocks} />
               <Button variant="outline" size="sm" onClick={handleSavePortfolio} disabled={syncing}
-                className="gap-1.5 text-xs h-8 rounded-xl font-semibold" style={BORDER_CLRS}>
+                className="gap-1.5 text-xs h-8 rounded-lg font-medium" style={{
+                  borderColor: "hsl(215,50%,60%,0.30)",
+                  color: "hsl(215,60%,38%)"
+                }}>
                 <Save className="h-3.5 w-3.5" />
                 {syncing ? "Saving…" : user ? "Save & Sync" : "Save"}
               </Button>
               <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}
-                className="gap-1.5 text-xs h-8 rounded-xl" style={{ color: "hsl(18,60%,50%)" }}>
+                className="gap-1.5 text-xs h-8 rounded-lg"
+                style={{ color: "hsl(215,60%,46%)" }}>
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                 <span>{loading ? "Fetching…" : "Refresh"}</span>
               </Button>
@@ -405,66 +408,66 @@ const Index = () => {
 
             <AuthButton />
 
-            {/* Mobile refresh icon only */}
+            {/* Mobile refresh */}
             <button onClick={refresh} disabled={loading}
-              className="sm:hidden h-8 w-8 rounded-xl flex items-center justify-center transition-all"
-              style={{ background: "hsl(18 50% 45% / 0.10)", border: "1px solid hsl(18 50% 45% / 0.22)", color: "hsl(18,60%,40%)" }}>
+              className="sm:hidden h-8 w-8 rounded-lg flex items-center justify-center transition-all"
+              style={CTRL_BTN}>
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             </button>
 
             {/* Theme toggle */}
             <button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="h-8 w-8 rounded-xl flex items-center justify-center transition-all"
-              style={{ background: "hsl(18 50% 45% / 0.10)", border: "1px solid hsl(18 50% 45% / 0.22)", color: "hsl(18,60%,40%)" }}>
+              className="h-8 w-8 rounded-lg flex items-center justify-center transition-all"
+              style={CTRL_BTN}>
               {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
             </button>
 
-            {/* Live badge — desktop only */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl"
-                 style={{ background: "hsl(18 50% 40% / 0.08)", border: "1px solid hsl(18 50% 40% / 0.18)", fontSize: 11 }}>
+            {/* Live badge desktop */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg"
+                 style={{ background: "hsl(215 50% 46% / 0.07)", border: "1px solid hsl(215 50% 46% / 0.16)", fontSize: 11 }}>
               <div className={`h-1.5 w-1.5 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
-              <span className="font-medium" style={{ color: "hsl(18,60%,46%)" }}>
+              <span className="font-medium" style={{ color: "hsl(215,58%,44%)" }}>
                 {lastUpdated ? formatTime(lastUpdated) : "Live"}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Mobile live status bar */}
+        {/* Mobile live status */}
         <div className="sm:hidden flex items-center justify-between px-4 pb-2 -mt-0.5">
           <div className="flex items-center gap-1.5" style={{ fontSize: 10 }}>
             <div className={`h-1.5 w-1.5 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
-            <span style={{ color: "hsl(18,60%,46%)" }}>
+            <span className="font-medium" style={{ color: "hsl(215,55%,46%)" }}>
               {loading ? "Fetching prices…" : lastUpdated ? `Updated ${formatTime(lastUpdated)}` : "Live prices"}
             </span>
           </div>
         </div>
       </header>
 
-      {/* ── Main ── */}
+      {/* ── Main content ── */}
       <main className="px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-screen-xl mx-auto">
 
         <StatsPanel stocks={stocks} />
 
-        {/* Desktop horizontal tab bar */}
+        {/* Desktop tab bar */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="hidden sm:block overflow-x-auto pb-2">
-            <TabsList className="inline-flex w-auto min-w-full h-12 p-1.5 gap-1 rounded-2xl"
+          <div className="hidden sm:block overflow-x-auto pb-1">
+            <TabsList className="inline-flex w-auto min-w-full h-11 p-1.5 gap-0.5 rounded-xl"
               style={{
-                backdropFilter: "blur(20px) saturate(180%)",
-                background: "hsl(0 0% 100% / 0.70)",
-                border: "1px solid hsl(18 50% 45% / 0.15)",
-                boxShadow: "0 2px 20px hsl(18 95% 52% / 0.06)"
+                backdropFilter: "blur(16px) saturate(160%)",
+                background: "hsl(0 0% 100% / 0.75)",
+                border: "1px solid hsl(218 35% 84% / 0.55)",
+                boxShadow: "0 2px 14px hsl(215 65% 46% / 0.06)"
               }}>
               {NAV_TABS.map(({ value, label, icon: Icon }) => (
                 <TabsTrigger key={value} value={value}
-                  className="relative flex items-center gap-1.5 rounded-xl px-3.5 h-full font-medium transition-all duration-200 whitespace-nowrap text-xs border-0 outline-none"
+                  className="relative flex items-center gap-1.5 rounded-lg px-3 h-full font-medium transition-all duration-200 whitespace-nowrap text-[11.5px] border-0 outline-none"
                   style={activeTab === value ? {
-                    background: SUNSET_GRAD,
+                    background: BLUE_GRAD,
                     color: "white",
-                    boxShadow: "0 4px 14px hsl(18,95%,52%,0.35)",
+                    boxShadow: "0 3px 12px hsl(215,65%,46%,0.30)",
                   } : {
-                    color: "hsl(18,50%,52%)",
+                    color: "hsl(218,45%,50%)",
                     background: "transparent",
                   }}>
                   <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -491,14 +494,14 @@ const Index = () => {
         </Tabs>
       </main>
 
-      {/* ── Mobile bottom nav bar ── */}
+      {/* ── Mobile bottom nav ── */}
       <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50"
            style={{
-             backdropFilter: "blur(24px) saturate(200%)",
-             WebkitBackdropFilter: "blur(24px) saturate(200%)",
-             background: "hsl(0 0% 100% / 0.88)",
-             borderTop: "1px solid hsl(18 50% 45% / 0.22)",
-             boxShadow: "0 -4px 24px hsl(18 95% 52% / 0.10)",
+             backdropFilter: "blur(24px) saturate(180%)",
+             WebkitBackdropFilter: "blur(24px) saturate(180%)",
+             background: "hsl(0 0% 100% / 0.90)",
+             borderTop: "1px solid hsl(218 35% 84% / 0.60)",
+             boxShadow: "0 -2px 18px hsl(215 65% 46% / 0.08)",
              paddingBottom: "env(safe-area-inset-bottom, 0px)"
            }}>
         <div className="flex items-center justify-around px-2 h-16">
@@ -507,14 +510,14 @@ const Index = () => {
             return (
               <button key={value} onClick={() => setActiveTab(value)}
                 className="flex flex-col items-center gap-1 flex-1 py-2 transition-all duration-200 relative"
-                style={{ color: isActive ? "hsl(18,95%,48%)" : "hsl(20,15%,55%)" }}>
+                style={{ color: isActive ? "hsl(215,65%,44%)" : "hsl(218,20%,52%)" }}>
                 {isActive && (
-                  <div className="absolute inset-x-2 top-0 h-[2px] rounded-full"
-                       style={{ background: SUNSET_GRAD }} />
+                  <div className="absolute inset-x-3 top-0 h-[2px] rounded-full"
+                       style={{ background: BLUE_GRAD }} />
                 )}
-                <div className={`h-8 w-8 rounded-xl flex items-center justify-center transition-all ${isActive ? "scale-110" : ""}`}
-                     style={isActive ? { background: "hsl(18 95% 52% / 0.12)" } : {}}>
-                  <Icon className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} />
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${isActive ? "scale-110" : ""}`}
+                     style={isActive ? { background: "hsl(215 65% 46% / 0.10)" } : {}}>
+                  <Icon style={{ width: 17, height: 17 }} />
                 </div>
                 <span className="text-[10px] font-semibold leading-none">{label}</span>
                 {value === "alerts" && triggeredAlerts > 0 && (
@@ -525,12 +528,11 @@ const Index = () => {
               </button>
             );
           })}
-          {/* More button opens sidebar */}
           <button onClick={() => setSidebarOpen(true)}
             className="flex flex-col items-center gap-1 flex-1 py-2"
-            style={{ color: "hsl(20,15%,55%)" }}>
-            <div className="h-8 w-8 rounded-xl flex items-center justify-center">
-              <Menu style={{ width: 18, height: 18 }} />
+            style={{ color: "hsl(218,20%,52%)" }}>
+            <div className="h-8 w-8 rounded-lg flex items-center justify-center">
+              <Menu style={{ width: 17, height: 17 }} />
             </div>
             <span className="text-[10px] font-semibold leading-none">More</span>
           </button>
