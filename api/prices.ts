@@ -8,7 +8,6 @@ type StockPrice = {
 
 export default async function handler(req: any, res: any) {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-  res.setHeader("Pragma", "no-cache");
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -27,68 +26,73 @@ export default async function handler(req: any, res: any) {
 
     const unique = [...new Set(tickers as string[])];
 
-    // Upstox instrument key format for NSE equity: NSE_EQ|TICKER
-    // e.g. ASTERDM → NSE_EQ|ASTERDM
-    const instrumentKeys = unique
-      .map((t) => `NSE_EQ|${t}`)
-      .join(",");
+    const instrumentKeys = unique.map((t) => `NSE_EQ|${t}`).join(",");
+    const url = `https://api.upstox.com/v2/market-quote/quotes?instrument_key=${encodeURIComponent(instrumentKeys)}`;
 
-    console.log(`Fetching: ${instrumentKeys}`);
+    console.log("URL:", url);
+    console.log("Token prefix:", token.substring(0, 20) + "...");
 
-    const res2 = await fetch(
-      `https://api.upstox.com/v2/market-quote/quotes?instrument_key=${encodeURIComponent(instrumentKeys)}`,
-      {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/json",
-        },
-      }
-    );
+    const upstoxRes = await fetch(url, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
+      },
+    });
 
-    const body = await res2.json();
+    const body = await upstoxRes.json();
 
-    if (!res2.ok) {
-      console.error("Upstox API error:", res2.status, JSON.stringify(body));
-      return res.status(500).json({
-        error: `Upstox API error: ${res2.status}`,
-        detail: body,
-      });
+    console.log("Upstox status:", upstoxRes.status);
+    console.log("Upstox full response:", JSON.stringify(body).substring(0, 500));
+
+    if (!upstoxRes.ok) {
+      return res.status(500).json({ error: `Upstox ${upstoxRes.status}`, detail: body });
     }
 
     const quotes = body?.data ?? {};
+    const allKeys = Object.keys(quotes);
+    console.log("Response keys:", allKeys);
+
     const prices: Record<string, StockPrice> = {};
 
     for (const ticker of unique) {
-      // Upstox keys the response as "NSE_EQ:TICKER" (colon, not pipe)
       const q = quotes[`NSE_EQ:${ticker}`]
              ?? quotes[`NSE_EQ|${ticker}`]
-             ?? quotes[ticker];
+             ?? quotes[`nse_eq:${ticker.toLowerCase()}`]
+             ?? Object.values(quotes).find((v: any) =>
+                  v?.symbol === ticker || v?.trading_symbol === ticker
+                );
 
       if (!q) {
-        console.warn(`No data for ${ticker}. Available keys:`, Object.keys(quotes).slice(0, 5));
+        console.warn(`No data for ${ticker}. All keys: ${JSON.stringify(allKeys)}`);
         continue;
       }
 
-      const ltp       = q.last_price ?? 0;
-      const prevClose = q.ohlc?.close ?? ltp;
+      const ltp       = (q as any).last_price ?? 0;
+      const prevClose = (q as any).ohlc?.close ?? ltp;
       const change    = ltp - prevClose;
       const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
 
       prices[ticker] = {
         price:         ltp,
-        weekHigh52:    q.week_52_high ?? q.upper_circuit_limit ?? 0,
-        weekLow52:     q.week_52_low  ?? q.lower_circuit_limit ?? 0,
+        weekHigh52:    (q as any).week_52_high ?? 0,
+        weekLow52:     (q as any).week_52_low  ?? 0,
         changePercent: changePct,
-        change:        change,
+        change,
       };
-
-      console.log(`✅ ${ticker}: ₹${ltp} (${changePct.toFixed(2)}%)`);
+      console.log(`✅ ${ticker}: ₹${ltp}`);
     }
 
     return res.status(200).json({ prices, fetchedAt: new Date().toISOString() });
 
   } catch (error: any) {
-    console.error("Prices handler error:", error?.message);
-    return res.status(500).json({ error: error?.message || "Failed to fetch prices" });
+    console.error("Error:", error?.message);
+    return res.status(500).json({ error: error?.message });
   }
 }
+```
+
+---
+
+Paste into `api/prices.ts` on GitHub → **Commit** → wait for Vercel to deploy → hit **Refresh** in your app → share the full log. The key line to look for is:
+```
+Upstox full response: {"status":"...","data":{...}}
