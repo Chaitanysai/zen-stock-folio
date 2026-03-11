@@ -8,17 +8,14 @@ type StockPrice = {
 
 export default async function handler(req: any, res: any) {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
-  res.setHeader("Pragma", "no-cache");
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const accessToken = process.env.DHAN_ACCESS_TOKEN;
-  const clientId    = process.env.DHAN_CLIENT_ID;
-
-  if (!accessToken || !clientId) {
-    return res.status(500).json({ error: "DHAN_ACCESS_TOKEN or DHAN_CLIENT_ID not configured" });
+  const token = process.env.UPSTOX_ACCESS_TOKEN;
+  if (!token) {
+    return res.status(500).json({ error: "UPSTOX_ACCESS_TOKEN is not configured" });
   }
 
   try {
@@ -28,57 +25,57 @@ export default async function handler(req: any, res: any) {
     }
 
     const unique = [...new Set(tickers as string[])];
-    console.log("Fetching Dhan prices for:", unique.join(", "));
+    const instrumentKeys = unique.map((t) => `NSE_EQ|${t}`).join(",");
 
-    // Dhan Market Quote API — batch request
-    // POST /v2/marketfeed/quote
-    const dhanRes = await fetch("https://api.dhan.co/v2/marketfeed/quote", {
-      method: "POST",
+    // IMPORTANT: Do not encodeURIComponent — pass pipe character raw
+    const url = `https://api.upstox.com/v2/market-quote/quotes?instrument_key=${instrumentKeys}`;
+    console.log("URL:", url);
+
+    const upstoxRes = await fetch(url, {
       headers: {
-        "access-token": accessToken,
-        "client-id":    clientId,
-        "Content-Type": "application/json",
-        "Accept":       "application/json",
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
       },
-      body: JSON.stringify({
-        NSE_EQ: unique, // Pass tickers as NSE equity symbols
-      }),
     });
 
-    const body = await dhanRes.json();
-    console.log("Dhan status:", dhanRes.status);
-    console.log("Dhan response:", JSON.stringify(body).substring(0, 800));
+    const body = await upstoxRes.json();
+    console.log("Status:", upstoxRes.status);
+    console.log("Response:", JSON.stringify(body).substring(0, 800));
 
-    if (!dhanRes.ok) {
-      return res.status(500).json({ error: `Dhan API ${dhanRes.status}`, detail: body });
+    if (!upstoxRes.ok) {
+      return res.status(500).json({ error: `Upstox ${upstoxRes.status}`, detail: body });
     }
 
-    const quotes = body?.data?.NSE_EQ ?? body?.NSE_EQ ?? body?.data ?? {};
-    console.log("Quote keys:", JSON.stringify(Object.keys(quotes)));
+    const quotes = body?.data ?? {};
+    console.log("Keys:", JSON.stringify(Object.keys(quotes)));
 
     const prices: Record<string, StockPrice> = {};
 
     for (const ticker of unique) {
-      const q = quotes[ticker];
+      const q = quotes[`NSE_EQ:${ticker}`]
+             ?? quotes[`NSE_EQ|${ticker}`]
+             ?? (Object.values(quotes) as any[]).find((v: any) =>
+                  v?.symbol === ticker || v?.trading_symbol === ticker
+                );
 
       if (!q) {
         console.warn(`No data for ${ticker}`);
         continue;
       }
 
-      const ltp       = q.last_price ?? q.ltp ?? q.lastTradedPrice ?? 0;
-      const prevClose = q.prev_close ?? q.previousClose ?? q.close ?? ltp;
+      const ltp       = q.last_price ?? 0;
+      const prevClose = q.ohlc?.close ?? ltp;
       const change    = ltp - prevClose;
       const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
 
       prices[ticker] = {
         price:         ltp,
-        weekHigh52:    q.fifty_two_week_high ?? q.week52High ?? 0,
-        weekLow52:     q.fifty_two_week_low  ?? q.week52Low  ?? 0,
+        weekHigh52:    q.week_52_high ?? 0,
+        weekLow52:     q.week_52_low  ?? 0,
         changePercent: changePct,
         change,
       };
-      console.log(`✅ ${ticker}: ₹${ltp} (${changePct.toFixed(2)}%)`);
+      console.log(`OK ${ticker}: ${ltp}`);
     }
 
     return res.status(200).json({ prices, fetchedAt: new Date().toISOString() });
