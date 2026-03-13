@@ -273,13 +273,14 @@ const SignInButton = () => {
 // ── Hover user dropdown ───────────────────────────────────────────────────────
 const UserDropdown = ({
   user, activeTab, setActiveTab, triggeredAlerts,
-  stocks, onSave, syncing, theme, setTheme, refresh, loading, lastUpdated
+  stocks, onSave, syncing, theme, setTheme, refresh, loading, lastUpdated, source, marketOpen
 }: {
   user: any; activeTab: string; setActiveTab: (v: string) => void;
   triggeredAlerts: number; stocks: PortfolioStock[];
   onSave: () => void; syncing: boolean;
   theme: string | undefined; setTheme: (t: string) => void;
   refresh: () => void; loading: boolean; lastUpdated: string | null;
+  source?: string | null; marketOpen?: boolean;
 }) => {
   const { signOut } = useAuth();
   const isDark = theme === "dark";
@@ -389,11 +390,23 @@ const UserDropdown = ({
 
             {/* Live status */}
             <div className="mt-3 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <div className={`h-1.5 w-1.5 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
-                <span className="text-[11px] font-medium" style={{ color: T.textAccent }}>
-                  {loading ? "Fetching prices…" : lastUpdated ? `Updated ${formatTime(lastUpdated)}` : "Live"}
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${loading ? "bg-warning animate-pulse" : marketOpen ? "bg-profit animate-pulse-glow" : "bg-warning"}`} />
+                <span className="text-[11px] font-medium truncate" style={{ color: T.textAccent }}>
+                  {loading
+                    ? "Fetching…"
+                    : source === "upstox-live"  ? `Live · ${formatTime(lastUpdated)}`
+                    : source === "nse-delayed"   ? `NSE delayed · ${formatTime(lastUpdated)}`
+                    : source === "yahoo-eod"     ? `EOD · ${formatTime(lastUpdated)}`
+                    : lastUpdated               ? `Updated ${formatTime(lastUpdated)}`
+                    : "–"}
                 </span>
+                {!marketOpen && !loading && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+                        style={{ background: isDark ? "hsl(36,80%,20%)" : "hsl(36,90%,94%)", color: "hsl(36,90%,48%)" }}>
+                    CLOSED
+                  </span>
+                )}
               </div>
               <button onClick={refresh} disabled={loading}
                 className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
