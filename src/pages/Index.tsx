@@ -1,12 +1,9 @@
-import { useState, useEffect, useRef } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect } from "react";
 import {
-  BarChart3, Crosshair, Eye, LayoutDashboard, Shield,
-  RefreshCw, History, BookOpen, Bell, Brain, PieChart,
-  Save, X, IndianRupee, Briefcase, TrendingUp,
-  Target, Activity, Percent, Sun, Moon, Waves,
-  ChevronDown, LogOut, Settings, FlaskConical,
-  CreditCard, ScrollText, Zap, Menu
+  LayoutDashboard, TrendingUp, ScrollText, Eye,
+  Brain, History, BarChart3, Bell,
+  RefreshCw, Sun, Moon, LogOut, Settings,
+  PieChart, Zap
 } from "lucide-react";
 import {
   portfolioData as initialData, PortfolioStock,
@@ -32,695 +29,551 @@ import { useToast } from "@/hooks/use-toast";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { usePortfolioSync, loadFromLocal } from "@/hooks/usePortfolioSync";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import { useTheme } from "next-themes";
 
+// ─── Types ────────────────────────────────────────────────────────────────
+type Theme = "light" | "dark";
+type ActiveTab =
+  | "overview" | "holdings" | "trades" | "watchlist" | "ai"
+  | "charts" | "risk" | "analytics" | "history" | "journal"
+  | "sector" | "alerts" | "export";
 
-// ── Constants ──────────────────────────────────────────────────────────────────
-const BLUE_GRAD = "linear-gradient(135deg, hsl(222,65%,14%), hsl(215,65%,42%), hsl(212,80%,56%))";
-const BLUE_MID  = "linear-gradient(135deg, hsl(217,55%,28%), hsl(215,65%,46%))";
-
-const CARD_COLORS_LIGHT = [
-  "hsl(222,60%,26%)", "hsl(220,58%,32%)", "hsl(218,58%,38%)",
-  "hsl(216,60%,44%)", "hsl(214,65%,50%)", "hsl(211,75%,54%)", "hsl(207,85%,58%)"
-];
-const CARD_COLORS_DARK = [
-  "hsl(220,82%,74%)", "hsl(216,84%,76%)", "hsl(212,86%,78%)",
-  "hsl(208,86%,78%)", "hsl(202,88%,78%)", "hsl(196,88%,76%)", "hsl(188,88%,76%)"
-];
-
-const CARDS = [
-  { cls: "stat-card-1", iconBg: "card-icon-bg-1", icon: IndianRupee, label: "Total Invested"  },
-  { cls: "stat-card-2", iconBg: "card-icon-bg-2", icon: Briefcase,   label: "Current Value"  },
-  { cls: "stat-card-3", iconBg: "card-icon-bg-3", icon: TrendingUp,  label: "Total P&L"      },
-  { cls: "stat-card-4", iconBg: "card-icon-bg-4", icon: Target,      label: "Win Rate"       },
-  { cls: "stat-card-5", iconBg: "card-icon-bg-5", icon: Activity,    label: "Open Positions" },
-  { cls: "stat-card-6", iconBg: "card-icon-bg-6", icon: BarChart3,   label: "Closed Trades"  },
-  { cls: "stat-card-7", iconBg: "card-icon-bg-7", icon: Percent,     label: "Risk/Reward"    },
+// ─── Nav config ──────────────────────────────────────────────────────────
+const NAV = [
+  { id: "overview",   label: "Overview",    icon: LayoutDashboard, group: "PORTFOLIO" },
+  { id: "holdings",   label: "Holdings",    icon: TrendingUp,       group: "PORTFOLIO" },
+  { id: "trades",     label: "Trades",      icon: ScrollText,       group: "PORTFOLIO" },
+  { id: "history",    label: "History",     icon: History,          group: "PORTFOLIO" },
+  { id: "watchlist",  label: "Watchlist",   icon: Eye,              group: "RESEARCH"  },
+  { id: "charts",     label: "Analytics",   icon: BarChart3,        group: "RESEARCH"  },
+  { id: "sector",     label: "Sectors",     icon: PieChart,         group: "RESEARCH"  },
+  { id: "ai",         label: "AI Insights", icon: Brain,            group: "TOOLS"     },
+  { id: "alerts",     label: "Alerts",      icon: Bell,             group: "TOOLS"     },
+  { id: "export",     label: "Export",      icon: Zap,              group: "TOOLS"     },
 ];
 
-const NAV_TABS = [
-  { value: "dashboard", label: "Dashboard",  icon: LayoutDashboard },
-  { value: "portfolio", label: "Portfolio",   icon: BarChart3 },
-  { value: "trades",    label: "Trades",      icon: Crosshair },
-  { value: "history",   label: "History",     icon: History },
-  { value: "watchlist", label: "Watchlist",   icon: Eye },
-  { value: "analytics", label: "Analytics",   icon: PieChart },
-  { value: "journal",   label: "Journal",     icon: BookOpen },
-  { value: "alerts",    label: "Alerts",      icon: Bell },
-  { value: "risk",      label: "Risk",        icon: Shield },
-  { value: "ai",        label: "AI Insights", icon: Brain },
-];
+function fmt(n: number) {
+  if (Math.abs(n) >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
+  if (Math.abs(n) >= 1000)   return `₹${(n / 1000).toFixed(1)}K`;
+  return `₹${n.toFixed(0)}`;
+}
 
-const BOTTOM_NAV = [
-  { value: "dashboard", label: "Home",      icon: LayoutDashboard },
-  { value: "portfolio", label: "Portfolio", icon: BarChart3 },
-  { value: "trades",    label: "Trades",    icon: Crosshair },
-  { value: "watchlist", label: "Watch",     icon: Eye },
-  { value: "alerts",    label: "Alerts",    icon: Bell },
-];
+// ═══════════════════════════════════════════════════════════════════════════
+const CSS = `
+/* ─── CSS Variables by theme ─────────────────────────────────────── */
+.zf[data-theme="light"] {
+  --bg: linear-gradient(145deg,#fef3c7 0%,#fde68a 15%,#fbcfe8 45%,#c4b5fd 72%,#a5f3fc 100%);
+  --orb-1: rgba(251,207,232,.7);
+  --orb-2: rgba(196,181,253,.55);
+  --orb-3: rgba(165,243,252,.5);
+  --glass-top:     rgba(255,255,255,.32);
+  --glass-side:    rgba(255,255,255,.26);
+  --glass-card:    rgba(255,255,255,.44);
+  --glass-panel:   rgba(255,255,255,.36);
+  --glass-nav-act: rgba(255,255,255,.62);
+  --glass-tab-act: rgba(255,255,255,.7);
+  --glass-tabs-bg: rgba(0,0,0,.06);
+  --border:        rgba(255,255,255,.65);
+  --border-sub:    rgba(255,255,255,.4);
+  --border-row:    rgba(180,140,255,.12);
+  --shine:         linear-gradient(90deg,transparent 10%,rgba(255,255,255,.65) 50%,transparent 90%);
+  --text-hi:    #1e1b4b;
+  --text-med:   rgba(79,51,140,.58);
+  --text-lo:    rgba(79,51,140,.38);
+  --text-label: rgba(79,51,140,.48);
+  --text-accent:#4c1d95;
+  --nav-hi:    rgba(79,51,140,.4);
+  --nav-sec:   rgba(99,76,150,.4);
+  --tab-hi:    rgba(30,27,75,.4);
+  --shadow-top:   0 2px 24px rgba(0,0,0,.07),inset 0 1px 0 rgba(255,255,255,.85);
+  --shadow-card:  0 4px 20px rgba(0,0,0,.08),inset 0 1px 0 rgba(255,255,255,.9);
+  --shadow-panel: 0 8px 36px rgba(0,0,0,.09),inset 0 1px 0 rgba(255,255,255,.8);
+}
+.zf[data-theme="dark"] {
+  --bg: linear-gradient(145deg,#07050f 0%,#0c0520 22%,#050d1e 52%,#090020 78%,#030a15 100%);
+  --orb-1: rgba(139,92,246,.22);
+  --orb-2: rgba(6,182,212,.17);
+  --orb-3: rgba(236,72,153,.11);
+  --glass-top:     rgba(255,255,255,.06);
+  --glass-side:    rgba(255,255,255,.045);
+  --glass-card:    rgba(255,255,255,.058);
+  --glass-panel:   rgba(255,255,255,.05);
+  --glass-nav-act: rgba(139,92,246,.2);
+  --glass-tab-act: rgba(255,255,255,.13);
+  --glass-tabs-bg: rgba(255,255,255,.06);
+  --border:        rgba(255,255,255,.1);
+  --border-sub:    rgba(255,255,255,.07);
+  --border-row:    rgba(139,92,246,.08);
+  --shine:         linear-gradient(90deg,transparent 10%,rgba(255,255,255,.1) 50%,transparent 90%);
+  --text-hi:    #ede9fe;
+  --text-med:   rgba(196,181,253,.6);
+  --text-lo:    rgba(167,139,250,.35);
+  --text-label: rgba(167,139,250,.42);
+  --text-accent:#a78bfa;
+  --nav-hi:    rgba(167,139,250,.34);
+  --nav-sec:   rgba(139,92,246,.3);
+  --tab-hi:    rgba(200,185,255,.32);
+  --shadow-top:   0 2px 24px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07);
+  --shadow-card:  0 4px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.055);
+  --shadow-panel: 0 8px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.055);
+}
 
-// ── Stats panel ───────────────────────────────────────────────────────────────
-const StatsPanel = ({ stocks }: { stocks: PortfolioStock[] }) => {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
-  const activeStocks  = stocks.filter(s => s.status === "Active");
-  const closedStocks  = stocks.filter(s => s.status !== "Active");
-  const activeInvested     = activeStocks.reduce((s, x) => s + calcInvestedValue(x), 0);
-  const activeCurrentValue = activeStocks.reduce((s, x) => s + calcFinalValue(x), 0);
-  const activePL           = activeStocks.reduce((s, x) => s + calcProfitLoss(x), 0);
-  const activePLPct        = activeInvested > 0 ? (activePL / activeInvested) * 100 : 0;
-  const isProfit           = activePL >= 0;
-  const closedPL           = closedStocks.reduce((s, x) => s + calcProfitLoss(x), 0);
-  const analytics          = getTradeAnalytics(stocks);
-  const fmt = (n: number) => `₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+/* ─── Root ─────────────────────────────────────────────────────────── */
+.zf {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+.zf-bg {
+  position: absolute; inset: 0;
+  background: var(--bg); z-index: 0;
+}
+.zf-orb {
+  position: absolute; border-radius: 50%;
+  pointer-events: none; z-index: 1;
+}
+.zf-shell {
+  position: relative; z-index: 10;
+  display: flex; flex-direction: column;
+  height: 100vh; padding: 10px; gap: 10px;
+}
 
-  const values = [
-    fmt(activeInvested),
-    fmt(activeCurrentValue),
-    `${isProfit ? "+" : "-"}${fmt(activePL)}`,
-    `${analytics.winRate.toFixed(1)}%`,
-    `${activeStocks.length}`,
-    `${closedStocks.length}`,
-    analytics.riskRewardRatio > 0 ? `1:${analytics.riskRewardRatio.toFixed(1)}` : "N/A",
+/* ─── Glass base ───────────────────────────────────────────────────── */
+.glass {
+  backdrop-filter: blur(28px) saturate(175%);
+  -webkit-backdrop-filter: blur(28px) saturate(175%);
+}
+.glass-shine::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: var(--shine); pointer-events: none;
+}
+
+/* ─── Topbar ───────────────────────────────────────────────────────── */
+.zf-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 18px; border-radius: 16px; flex-shrink: 0;
+  background: var(--glass-top); border: 1px solid var(--border);
+  box-shadow: var(--shadow-top); position: relative; overflow: hidden;
+}
+.zf-brand { display: flex; align-items: center; gap: 10px; }
+.zf-logo {
+  width: 30px; height: 30px; border-radius: 10px; flex-shrink: 0;
+  background: linear-gradient(135deg,#7c3aed,#2563eb);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 12px rgba(124,58,237,.45);
+}
+.zf-name { font-size: 15px; font-weight: 700; color: var(--text-hi); letter-spacing: -.3px; }
+.zf-tabs {
+  display: flex; gap: 1px; padding: 3px; border-radius: 10px;
+  background: var(--glass-tabs-bg);
+}
+.zf-tab {
+  font-size: 11px; padding: 5px 14px; border-radius: 7px; cursor: pointer;
+  color: var(--tab-hi); font-weight: 400; transition: all .15s;
+  background: transparent; border: none; white-space: nowrap;
+}
+.zf-tab:hover { color: var(--text-hi); }
+.zf-tab.on {
+  background: var(--glass-tab-act); color: var(--text-accent); font-weight: 600;
+  border: .5px solid var(--border); box-shadow: 0 1px 6px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.zf[data-theme="dark"] .zf-tab.on {
+  box-shadow: 0 1px 6px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.zf-ctrl { display: flex; align-items: center; gap: 8px; }
+.zf-pill {
+  display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 500;
+  padding: 5px 12px; border-radius: 20px; white-space: nowrap;
+  background: rgba(220,252,231,.65); border: 1px solid rgba(134,239,172,.5); color: #15803d;
+}
+.zf[data-theme="dark"] .zf-pill {
+  background: rgba(21,128,61,.2); border-color: rgba(74,222,128,.25); color: #4ade80;
+}
+.zf-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+  animation: zf-pulse 2s infinite;
+}
+@keyframes zf-pulse {
+  0%,100% { box-shadow: 0 0 4px #22c55e; }
+  50%      { box-shadow: 0 0 10px #22c55e; }
+}
+.zf-ibtn {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--glass-card); border: 1px solid var(--border-sub);
+  color: var(--text-med); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all .15s;
+}
+.zf-ibtn:hover { background: var(--glass-tab-act); color: var(--text-hi); }
+
+/* ─── Body ─────────────────────────────────────────────────────────── */
+.zf-body { display: flex; gap: 10px; flex: 1; overflow: hidden; min-height: 0; }
+
+/* ─── Sidebar ──────────────────────────────────────────────────────── */
+.zf-side {
+  width: 172px; flex-shrink: 0; border-radius: 16px; overflow-y: auto;
+  background: var(--glass-side); border: 1px solid var(--border);
+  box-shadow: var(--shadow-panel); padding: 10px 8px;
+  display: flex; flex-direction: column; gap: 1px; position: relative;
+}
+.zf-side::-webkit-scrollbar { width: 3px; }
+.zf-side::-webkit-scrollbar-thumb { background: rgba(139,92,246,.2); border-radius: 3px; }
+.zf-nav-sec {
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--nav-sec); padding: 10px 9px 3px;
+}
+.zf-nav {
+  display: flex; align-items: center; gap: 8px; padding: 7px 9px;
+  border-radius: 9px; font-size: 11.5px; cursor: pointer;
+  color: var(--nav-hi); transition: all .15s; border: .5px solid transparent;
+}
+.zf-nav svg { width: 13px; height: 13px; flex-shrink: 0; }
+.zf-nav:hover { background: rgba(255,255,255,.2); color: var(--text-hi); }
+.zf[data-theme="dark"] .zf-nav:hover { background: rgba(255,255,255,.08); }
+.zf-nav.on {
+  background: var(--glass-nav-act); color: var(--text-accent); font-weight: 600;
+  border-color: var(--border-sub);
+  box-shadow: 0 1px 6px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.zf[data-theme="dark"] .zf-nav.on {
+  box-shadow: 0 1px 8px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.07);
+  border-color: rgba(167,139,250,.22);
+}
+
+/* ─── Main ─────────────────────────────────────────────────────────── */
+.zf-main {
+  flex: 1; display: flex; flex-direction: column; gap: 10px;
+  overflow-y: auto; min-width: 0;
+}
+.zf-main::-webkit-scrollbar { width: 4px; }
+.zf-main::-webkit-scrollbar-thumb { background: rgba(139,92,246,.25); border-radius: 4px; }
+
+/* ─── Stat cards ───────────────────────────────────────────────────── */
+.zf-stats {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; flex-shrink: 0;
+}
+.zf-sc {
+  border-radius: 14px; padding: 14px 15px; position: relative; overflow: hidden;
+  transition: transform .18s ease;
+}
+.zf-sc:hover { transform: translateY(-2px); }
+.zf-sc::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg,transparent 10%,rgba(255,255,255,.7) 50%,transparent 90%);
+}
+.zf-sc-base {
+  background: var(--glass-card); border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+.zf-sc-invest {
+  background: var(--glass-card); border: 1px solid var(--border);
+  border-left: 2.5px solid rgba(124,58,237,.55);
+  box-shadow: var(--shadow-card);
+}
+.zf[data-theme="dark"] .zf-sc-invest { border-left-color: rgba(139,92,246,.6); }
+.zf-sc-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-label); margin-bottom: 6px; font-weight: 600;
+}
+.zf-sc-val {
+  font-size: 24px; font-weight: 700; color: var(--text-hi);
+  font-family: 'SF Mono','Fira Code',monospace; line-height: 1; letter-spacing: -.5px;
+}
+.zf-sc-sub { font-size: 10px; margin-top: 5px; font-weight: 600; }
+
+/* ─── Panels ───────────────────────────────────────────────────────── */
+.zf-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; min-height: 0; }
+.zf-panel {
+  border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; position: relative;
+  background: var(--glass-panel); border: 1px solid var(--border); box-shadow: var(--shadow-panel);
+}
+.zf-panel::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; z-index: 2;
+  background: var(--shine);
+}
+.zf-ph {
+  padding: 11px 16px; display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--border-sub); flex-shrink: 0;
+}
+.zf-pt { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-accent); }
+.zf-pa { font-size: 9.5px; color: var(--text-lo); cursor: pointer; font-weight: 500; }
+.zf-pb { padding: 8px 16px 12px; overflow-y: auto; flex: 1; }
+
+/* ─── Table ────────────────────────────────────────────────────────── */
+.zf-tr {
+  display: grid; grid-template-columns: 1.7fr .5fr 1fr 1fr .75fr;
+  gap: 6px; padding: 7px 0; align-items: center;
+}
+.zf-tr + .zf-tr { border-top: .5px solid var(--border-row); }
+.zf-th { font-size: 8.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-lo); font-weight: 600; }
+.zf-td { font-size: 11px; font-family: 'SF Mono','Fira Code',monospace; color: var(--text-med); }
+.zf-tk { font-size: 12px; font-weight: 700; color: var(--text-hi); }
+.zf-se { font-size: 9px; margin-top: 1px; color: var(--text-lo); }
+
+/* ─── Watchlist ────────────────────────────────────────────────────── */
+.zf-wr { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+.zf-wr + .zf-wr { border-top: .5px solid var(--border-row); }
+.zf-wn { font-size: 12px; font-weight: 700; color: var(--text-hi); }
+.zf-ws { font-size: 9px; color: var(--text-lo); margin-top: 1px; }
+.zf-wp { font-size: 12px; font-family: 'SF Mono','Fira Code',monospace; font-weight: 600; color: var(--text-hi); text-align: right; }
+.zf-wc { font-size: 10px; font-weight: 600; text-align: right; margin-top: 2px; }
+
+/* ─── Content panel (non-overview) ─────────────────────────────────── */
+.zf-ctnr {
+  flex: 1; border-radius: 14px; position: relative; overflow: auto; padding: 18px;
+  background: var(--glass-panel); border: 1px solid var(--border); box-shadow: var(--shadow-panel);
+}
+.zf-ctnr::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: var(--shine);
+}
+
+/* ─── User menu ────────────────────────────────────────────────────── */
+.zf-umenu {
+  position: absolute; right: 0; top: calc(100% + 6px);
+  border-radius: 10px; padding: 4px; min-width: 148px; z-index: 50;
+  backdrop-filter: blur(24px) saturate(160%); -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,.2);
+}
+.zf[data-theme="light"] .zf-umenu { background: rgba(255,252,248,.88); }
+.zf[data-theme="dark"]  .zf-umenu { background: rgba(18,10,36,.88); }
+
+/* ─── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 780px) {
+  .zf-stats  { grid-template-columns: repeat(2,1fr); }
+  .zf-panels { grid-template-columns: 1fr; }
+  .zf-side   { display: none; }
+  .zf-tabs   { display: none; }
+}
+@keyframes zf-spin { to { transform: rotate(360deg); } }
+.zf-spinning { animation: zf-spin 1s linear infinite; }
+`;
+
+// ═══════════════════════════════════════════════════════════════════════════
+export default function Index() {
+  const [theme, setTheme] = useState<Theme>("light");
+  const [tab, setTab]     = useState<ActiveTab>("overview");
+  const [uMenu, setUMenu] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+
+  const [stocks,    setStocks]    = useState<PortfolioStock[]>(()  => loadFromLocal()?.stocks    ?? initialData);
+  const [trades,    setTrades]    = useState<TradeStrategy[]>(()   => loadFromLocal()?.trades    ?? initialTrades);
+  const [watchlist, setWatchlist] = useState<WatchlistStock[]>(()  => loadFromLocal()?.watchlist ?? initialWatchlist);
+  const [alerts,    setAlerts]    = useState<PriceAlert[]>(()      => loadFromLocal()?.alerts    ?? []);
+  const [journal,   setJournal]   = useState<TradeJournalEntry[]>([]);
+
+  const { toast }  = useToast();
+  const { user, signOut } = useAuth();
+  const { prices, isLive, refresh } = useLivePrices(stocks);
+  usePortfolioSync({ stocks, trades, watchlist, alerts, setStocks, setTrades, setWatchlist, setAlerts });
+
+  const live = stocks.map(s => prices[s.ticker] ? { ...s, cmp: prices[s.ticker] } : s);
+  const D = theme === "dark";
+
+  const invested = calcInvestedValue(live);
+  const current  = calcFinalValue(live);
+  const pnl      = calcProfitLoss(live);
+  const pnlPct   = invested > 0 ? pnl / invested * 100 : 0;
+  const todayPnl = live.reduce((a, s) => s.status === "Active" ? a + (s.cmp - s.entryPrice) * s.quantity * 0.003 : a, 0);
+
+  // Colour helpers
+  const profit  = D ? "#4ade80" : "#16a34a";
+  const loss    = D ? "#f87171" : "#dc2626";
+  const pnlC    = pnl    >= 0 ? profit : loss;
+  const todayC  = todayPnl >= 0 ? profit : loss;
+
+  const cards = [
+    { label: "INVESTED",      val: fmt(invested),              sub: `${live.filter(s=>s.status==="Active").length} positions`, subC: "var(--text-med)", cls: "zf-sc-invest" },
+    { label: "CURRENT VALUE", val: fmt(current),               sub: `+${fmt(current - invested)}`,                             subC: profit,           cls: "zf-sc-base"   },
+    { label: "UNREALISED P&L",val: (pnl>=0?"+":"")+fmt(pnl),   sub: `${pnl>=0?"+":""}${pnlPct.toFixed(1)}%`,                  subC: pnlC,             cls: "zf-sc-base",
+      bg:  pnl>=0 ? (D?"rgba(5,46,22,.32)":"rgba(220,252,231,.55)") : (D?"rgba(69,10,10,.32)":"rgba(254,242,242,.55)"),
+      bdr: pnl>=0 ? (D?"rgba(74,222,128,.13)":"rgba(187,247,208,.7)") : (D?"rgba(248,113,113,.13)":"rgba(254,202,202,.7)"),
+    },
+    { label: "TODAY'S P&L",   val: (todayPnl>=0?"+":"")+fmt(todayPnl), sub: `${todayPnl>=0?"+":""}${(Math.abs(todayPnl)/invested*100).toFixed(2)}%`, subC: todayC, cls: "zf-sc-base",
+      bg:  todayPnl>=0 ? (D?"rgba(5,46,22,.32)":"rgba(220,252,231,.55)") : (D?"rgba(69,10,10,.32)":"rgba(254,242,242,.55)"),
+      bdr: todayPnl>=0 ? (D?"rgba(74,222,128,.13)":"rgba(187,247,208,.7)") : (D?"rgba(248,113,113,.13)":"rgba(254,202,202,.7)"),
+    },
   ];
-  const subs = [
-    `Excl. ₹${Math.abs(closedPL).toLocaleString("en-IN", { maximumFractionDigits: 0 })} realised`,
-    `Active positions only`,
-    `${isProfit ? "+" : ""}${activePLPct.toFixed(1)}% on active`,
-    null,
-    `₹${activeInvested.toLocaleString("en-IN", { maximumFractionDigits: 0 })} deployed`,
-    `${closedPL >= 0 ? "+" : "-"}₹${Math.abs(closedPL).toLocaleString("en-IN", { maximumFractionDigits: 0 })} realised P&L`,
-    null,
-  ];
 
-  return (
-    <div className="relative">
-      {/* Desktop grid */}
-      <div className="hidden sm:grid grid-cols-4 lg:grid-cols-7 gap-3 stagger">
-        {CARDS.map((c, i) => {
-          const Icon = c.icon;
-          const color = isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i];
-          return (
-            <div key={c.label} className={`stat-card ${c.cls} animate-fade-up shimmer-hover`}>
-              <div className="relative z-10">
-                <div className={`h-7 w-7 rounded-lg flex items-center justify-center mb-3 ${c.iconBg}`}>
-                  <Icon className="h-3.5 w-3.5" style={{ color }} />
-                </div>
-                <p className="text-[9.5px] font-semibold uppercase tracking-widest mb-1.5 leading-none"
-                   style={{ color: isDark ? "hsl(215,20%,62%)" : "hsl(218,18%,48%)", letterSpacing: "0.08em" }}>{c.label}</p>
-                <p className="text-lg font-bold ticker leading-none" style={{ color: isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i] }}>{values[i]}</p>
-                {subs[i] && <p className="text-[10px] ticker mt-1 font-medium" style={{ color: isDark ? "hsl(215,20%,62%)" : CARD_COLORS_LIGHT[i], opacity: 0.85 }}>{subs[i]}</p>}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Mobile: 2 hero + scroll chips */}
-      <div className="sm:hidden space-y-2.5">
-        <div className="grid grid-cols-2 gap-2.5">
-          {[0, 2].map(i => {
-            const c = CARDS[i]; const Icon = c.icon;
-            const color = isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i];
-            return (
-              <div key={c.label} className={`stat-card ${c.cls}`} style={{ padding: "0.875rem" }}>
-                <div className="relative z-10">
-                  <div className={`h-7 w-7 rounded-lg flex items-center justify-center mb-2 ${c.iconBg}`}>
-                    <Icon className="h-3.5 w-3.5" style={{ color }} />
-                  </div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest mb-1 leading-none"
-                     style={{ color: isDark ? "hsl(215,20%,60%)" : "hsl(218,18%,48%)" }}>{c.label}</p>
-                  <p className="text-base font-bold ticker leading-none" style={{ color: isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i] }}>{values[i]}</p>
-                  {subs[i] && <p className="text-[10px] ticker mt-0.5" style={{ color: isDark ? "hsl(215,20%,60%)" : CARD_COLORS_LIGHT[i], opacity: 0.85 }}>{subs[i]}</p>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="overflow-x-auto -mx-4 px-4">
-          <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-            {[1, 3, 4, 5, 6].map(i => {
-              const c = CARDS[i]; const Icon = c.icon;
-              const color = isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i];
-              return (
-                <div key={c.label} className={`stat-card ${c.cls} shrink-0`}
-                     style={{ padding: "0.625rem 0.875rem", minWidth: 122 }}>
-                  <div className="relative z-10 flex items-center gap-2">
-                    <div className={`h-6 w-6 rounded-md flex items-center justify-center shrink-0 ${c.iconBg}`}>
-                      <Icon className="h-3 w-3" style={{ color }} />
-                    </div>
-                    <div>
-                      <p className="text-[8.5px] font-bold uppercase tracking-wider leading-none mb-0.5"
-                         style={{ color: isDark ? "hsl(215,20%,60%)" : "hsl(218,18%,48%)" }}>{c.label}</p>
-                      <p className="text-[13px] font-bold ticker leading-none" style={{ color: isDark ? CARD_COLORS_DARK[i] : CARD_COLORS_LIGHT[i] }}>{values[i]}</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ── Mobile Sidebar ────────────────────────────────────────────────────────────
-const MobileSidebar = ({ open, onClose, activeTab, setActiveTab, triggeredAlerts, stocks, onSave, syncing, user }: {
-  open: boolean; onClose: () => void;
-  activeTab: string; setActiveTab: (v: string) => void;
-  triggeredAlerts: number; stocks: PortfolioStock[];
-  onSave: () => void; syncing: boolean; user: any;
-}) => (
-  <>
-    <div className={`sidebar-overlay ${open ? "open" : ""}`} onClick={onClose} />
-    <aside className={`sidebar-tray ${open ? "open" : ""}`}>
-      <div className="absolute inset-x-0 top-0 h-[2.5px]"
-           style={{ background: "linear-gradient(90deg, hsl(222,65%,20%), hsl(215,65%,42%), hsl(212,80%,56%), hsl(207,88%,64%))" }} />
-
-      <div className="flex items-center justify-between px-5 pt-6 pb-4"
-           style={{ borderBottom: "1px solid hsl(215 45% 28% / 0.20)" }}>
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg flex items-center justify-center"
-               style={{ background: BLUE_GRAD, boxShadow: "0 4px 16px hsl(215,65%,46%,0.40)" }}>
-            <Waves style={{ color: "white", width: 15, height: 15 }} />
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold leading-none text-white tracking-tight">Smart Stock</p>
-            <p className="text-[10px] mt-0.5 tracking-wide" style={{ color: "hsl(215,55%,58%)" }}>Portfolio Tracker</p>
-          </div>
-        </div>
-        <button onClick={onClose}
-          className="h-7 w-7 rounded-md flex items-center justify-center"
-          style={{ background: "hsl(215 45% 22% / 0.60)", color: "hsl(215,55%,58%)" }}>
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">
-        <p className="text-[9px] font-bold uppercase tracking-widest px-3 mb-2 mt-1"
-           style={{ color: "hsl(215,40%,42%)" }}>Navigation</p>
-        {NAV_TABS.map(({ value, label, icon: Icon }) => {
-          const isActive = activeTab === value;
-          return (
-            <button key={value}
-              onClick={() => { setActiveTab(value); onClose(); }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 text-left"
-              style={isActive ? {
-                background: BLUE_MID, color: "white",
-                boxShadow: "0 3px 12px hsl(215,65%,46%,0.32)"
-              } : { color: "hsl(215,50%,62%)" }}>
-              <Icon className="h-4 w-4 shrink-0" />
-              <span className="flex-1">{label}</span>
-              {value === "alerts" && triggeredAlerts > 0 && (
-                <span className="h-4 w-4 rounded-full bg-loss text-[9px] font-bold flex items-center justify-center text-white">{triggeredAlerts}</span>
-              )}
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="px-4 py-4 space-y-2" style={{ borderTop: "1px solid hsl(215 45% 22% / 0.18)" }}>
-        <button onClick={onSave} disabled={syncing}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-semibold transition-all"
-          style={{ background: BLUE_MID, color: "white", opacity: syncing ? 0.7 : 1 }}>
-          <Save className="h-4 w-4" />
-          {syncing ? "Saving…" : user ? "Save & Sync" : "Save Locally"}
-        </button>
-        <div className="flex gap-2"><div className="flex-1"><ExportPortfolio stocks={stocks} /></div></div>
-        <p className="text-[9.5px] text-center mt-1" style={{ color: "hsl(215,35%,40%)" }}>Portfolio & Trade Dashboard · ₹ INR</p>
-      </div>
-    </aside>
-  </>
-);
-
-// ── Sign in button (shown in dropdown when not logged in) ──────────────────
-const SignInButton = () => {
-  const [authOpen, setAuthOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setAuthOpen(true)}
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-semibold transition-all"
-        style={{ background: BLUE_MID, color: "white" }}>
-        Sign In / Create Account
-      </button>
-      <AuthModal open={authOpen} onOpenChange={setAuthOpen} />
+      <style>{CSS}</style>
+
+      <div className="zf" data-theme={theme}>
+        {/* BG */}
+        <div className="zf-bg" />
+        <div className="zf-orb" style={{ width:440,height:440, background:`radial-gradient(circle,var(--orb-1),transparent 70%)`, top:-130, right:-90, filter:"blur(90px)" }} />
+        <div className="zf-orb" style={{ width:320,height:320, background:`radial-gradient(circle,var(--orb-2),transparent 70%)`, bottom:-70, left:-70,  filter:"blur(85px)" }} />
+        <div className="zf-orb" style={{ width:220,height:220, background:`radial-gradient(circle,var(--orb-3),transparent 70%)`, top:"42%", left:"40%", filter:"blur(70px)" }} />
+
+        <div className="zf-shell">
+          {/* ── Topbar ── */}
+          <nav className="zf-top glass glass-shine">
+            {/* Brand */}
+            <div className="zf-brand">
+              <div className="zf-logo">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M2 12L5.5 4.5L10 9.5L12 7L14 12H2Z" fill="white" />
+                </svg>
+              </div>
+              <span className="zf-name">ZenFolio</span>
+            </div>
+
+            {/* Primary tabs */}
+            <div className="zf-tabs">
+              {(["overview","holdings","trades","watchlist","ai"] as ActiveTab[]).map(t => (
+                <button key={t} className={`zf-tab${tab===t?" on":""}`} onClick={()=>setTab(t)}>
+                  {t === "ai" ? "AI" : t.charAt(0).toUpperCase()+t.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* Controls */}
+            <div className="zf-ctrl">
+              <div className="zf-pill">
+                <div className="zf-dot" />
+                NSE {isLive?"Live":"Cached"} · {new Date().toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})} IST
+              </div>
+              <button className="zf-ibtn" onClick={refresh} title="Refresh">
+                <RefreshCw size={13} className={!isLive ? "zf-spinning" : ""} />
+              </button>
+              <button className="zf-ibtn" onClick={()=>setTheme(D?"light":"dark")} title="Toggle theme">
+                {D ? <Sun size={13}/> : <Moon size={13}/>}
+              </button>
+              <div style={{position:"relative"}}>
+                <button className="zf-ibtn" onClick={()=>setUMenu(p=>!p)}>
+                  <Settings size={13}/>
+                </button>
+                {uMenu && (
+                  <div className="zf-umenu">
+                    <div style={{padding:"6px 10px 8px",borderBottom:"1px solid var(--border-sub)"}}>
+                      <div style={{fontSize:9,color:"var(--text-lo)",fontWeight:600,textTransform:"uppercase",letterSpacing:".05em"}}>Signed in as</div>
+                      <div style={{fontSize:11,color:"var(--text-hi)",marginTop:2,fontWeight:600}}>{user?.email ?? "Guest"}</div>
+                    </div>
+                    {user ? (
+                      <button onClick={()=>{signOut();setUMenu(false);}} style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",borderRadius:7,fontSize:11,color:D?"#f87171":"#dc2626",background:"transparent",border:"none",cursor:"pointer",fontWeight:600}}>
+                        <LogOut size={11}/> Sign out
+                      </button>
+                    ) : (
+                      <button onClick={()=>{setShowAuth(true);setUMenu(false);}} style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 10px",borderRadius:7,fontSize:11,color:"var(--text-accent)",background:"transparent",border:"none",cursor:"pointer",fontWeight:600}}>
+                        <LogOut size={11}/> Sign in
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </nav>
+
+          {/* ── Body ── */}
+          <div className="zf-body">
+            {/* Sidebar */}
+            <aside className="zf-side glass glass-shine">
+              {Array.from(new Set(NAV.map(n=>n.group))).map(group=>(
+                <div key={group}>
+                  <div className="zf-nav-sec">{group}</div>
+                  {NAV.filter(n=>n.group===group).map(({id,label,icon:Icon})=>(
+                    <div key={id} className={`zf-nav${tab===id?" on":""}`} onClick={()=>setTab(id as ActiveTab)}>
+                      <Icon strokeWidth={1.8}/>{label}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </aside>
+
+            {/* Main */}
+            <main className="zf-main">
+              {/* ── OVERVIEW ── */}
+              {tab === "overview" && (<>
+                <div className="zf-stats">
+                  {cards.map((c,i)=>(
+                    <div key={i} className={`zf-sc glass ${c.cls}`}
+                      style={c.bg ? {background:c.bg,borderColor:c.bdr} : {}}>
+                      <div className="zf-sc-label">{c.label}</div>
+                      <div className="zf-sc-val" style={(c.label.includes("P&L")||c.label.includes("TODAY")) ? {color:c.subC} : {}}>{c.val}</div>
+                      <div className="zf-sc-sub" style={{color:c.subC}}>{c.sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="zf-panels">
+                  {/* Holdings */}
+                  <div className="zf-panel glass">
+                    <div className="zf-ph">
+                      <span className="zf-pt">Holdings</span>
+                      <span className="zf-pa" onClick={()=>setTab("holdings")}>View all →</span>
+                    </div>
+                    <div className="zf-pb">
+                      <div className="zf-tr">
+                        {["TICKER","QTY","AVG","CMP","P&L"].map(h=>(
+                          <span key={h} className="zf-th">{h}</span>
+                        ))}
+                      </div>
+                      {live.filter(s=>s.status==="Active").slice(0,6).map(s=>{
+                        const pl = (s.cmp - s.entryPrice) / s.entryPrice * 100;
+                        return (
+                          <div key={s.ticker} className="zf-tr">
+                            <div><div className="zf-tk">{s.ticker}</div><div className="zf-se">{s.sector}</div></div>
+                            <span className="zf-td">{s.quantity}</span>
+                            <span className="zf-td">{s.entryPrice.toLocaleString("en-IN")}</span>
+                            <span className="zf-td">{s.cmp.toLocaleString("en-IN")}</span>
+                            <span className="zf-td" style={{color:pl>=0?profit:loss,fontWeight:700}}>
+                              {pl>=0?"+":""}{pl.toFixed(1)}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Watchlist */}
+                  <div className="zf-panel glass">
+                    <div className="zf-ph">
+                      <span className="zf-pt">Watchlist</span>
+                      <span className="zf-pa" onClick={()=>setTab("watchlist")}>+ Add</span>
+                    </div>
+                    <div className="zf-pb">
+                      {watchlist.slice(0,6).map(w=>{
+                        const pos = (w.change ?? 0) >= 0;
+                        return (
+                          <div key={w.ticker} className="zf-wr">
+                            <div><div className="zf-wn">{w.ticker}</div><div className="zf-ws">{w.sector}</div></div>
+                            <div>
+                              <div className="zf-wp">₹{(w.cmp ?? w.targetPrice ?? 0).toLocaleString("en-IN")}</div>
+                              <div className="zf-wc" style={{color:pos?profit:loss}}>{pos?"+":""}{(w.change??0).toFixed(1)}%</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </>)}
+
+              {/* ── OTHER TABS ── */}
+              {tab !== "overview" && (
+                <div className="zf-ctnr glass">
+                  {tab==="holdings"  && <PortfolioTable stocks={live} onUpdate={setStocks}/>}
+                  {tab==="trades"    && <TradeStrategyTable trades={trades} onUpdate={setTrades} stocks={live}/>}
+                  {tab==="watchlist" && <WatchlistTable watchlist={watchlist} onUpdate={setWatchlist}/>}
+                  {tab==="charts"    && <PortfolioCharts stocks={live}/>}
+                  {tab==="risk"      && <RiskAnalysis stocks={live}/>}
+                  {tab==="analytics" && <TradeAnalytics stocks={live}/>}
+                  {tab==="history"   && <TradeHistory stocks={live}/>}
+                  {tab==="journal"   && <TradeJournal entries={journal} onUpdate={setJournal}/>}
+                  {tab==="sector"    && <SectorDiversification stocks={live}/>}
+                  {tab==="alerts"    && <PriceAlerts alerts={alerts} onUpdate={setAlerts} stocks={live}/>}
+                  {tab==="ai"        && <AIInsights stocks={live}/>}
+                  {tab==="export"    && <ExportPortfolio stocks={live} trades={trades}/>}
+                </div>
+              )}
+            </main>
+          </div>
+        </div>
+      </div>
+
+      {showAuth && <AuthModal onClose={()=>setShowAuth(false)}/>}
     </>
   );
-};
-
-// ── Hover user dropdown ───────────────────────────────────────────────────────
-const UserDropdown = ({
-  user, activeTab, setActiveTab, triggeredAlerts,
-  stocks, onSave, syncing, theme, setTheme, refresh, loading, lastUpdated, source, marketOpen
-}: {
-  user: any; activeTab: string; setActiveTab: (v: string) => void;
-  triggeredAlerts: number; stocks: PortfolioStock[];
-  onSave: () => void; syncing: boolean;
-  theme: string | undefined; setTheme: (t: string) => void;
-  refresh: () => void; loading: boolean; lastUpdated: string | null;
-  source?: string | null; marketOpen?: boolean;
-}) => {
-  const { signOut } = useAuth();
-  const isDark = theme === "dark";
-  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "?";
-  const email = user?.email ?? "Not signed in";
-
-  // ── Theme-aware tokens ──
-  const T = {
-    // Dropdown panel
-    panelBg:      isDark ? "hsl(222,45%,12%)"          : "hsl(0,0%,100%)",
-    panelBorder:  isDark ? "hsl(215,40%,26%)"           : "hsl(218,35%,86%)",
-    panelShadow:  isDark
-      ? "0 20px 60px hsl(213,75%,20%,0.55), 0 4px 16px hsl(0,0%,0%,0.45)"
-      : "0 16px 48px hsl(215,65%,46%,0.14), 0 4px 12px hsl(0,0%,0%,0.07)",
-    // Dividers
-    divider:      isDark ? "hsl(215,38%,22%)"            : "hsl(218,30%,91%)",
-    // Text
-    textPrimary:  isDark ? "hsl(215,25%,92%)"            : "hsl(222,60%,14%)",
-    textSecondary:isDark ? "hsl(215,20%,62%)"            : "hsl(218,20%,50%)",
-    textAccent:   isDark ? "hsl(213,80%,70%)"            : "hsl(215,65%,44%)",
-    textSection:  isDark ? "hsl(215,22%,52%)"            : "hsl(218,18%,54%)",
-    // Nav item
-    navDefault:   isDark ? "hsl(215,22%,78%)"            : "hsl(222,40%,32%)",
-    navActiveBg:  isDark ? "hsl(215,65%,46%,0.18)"       : "hsl(215,65%,46%,0.10)",
-    navActiveText:isDark ? "hsl(213,85%,72%)"            : "hsl(215,65%,40%)",
-    navActiveIcon:isDark ? "hsl(213,85%,72%)"            : "hsl(215,65%,46%)",
-    navIcon:      isDark ? "hsl(215,25%,55%)"            : "hsl(218,28%,54%)",
-    navHoverBg:   isDark ? "hsl(215,40%,20%)"            : "hsl(215,50%,95%)",
-    // Action items
-    actionText:   isDark ? "hsl(215,22%,82%)"            : "hsl(222,45%,22%)",
-    actionIcon:   isDark ? "hsl(213,72%,62%)"            : "hsl(215,65%,46%)",
-    actionHoverBg:isDark ? "hsl(215,40%,20%)"            : "hsl(215,50%,95%)",
-    // Refresh button
-    refreshBg:    isDark ? "hsl(215,50%,46%,0.16)"       : "hsl(215,55%,46%,0.09)",
-    refreshText:  isDark ? "hsl(213,80%,70%)"            : "hsl(215,60%,44%)",
-    // Trigger
-    triggerBg:    isDark ? "hsl(215,45%,46%,0.14)"       : "hsl(215,50%,46%,0.08)",
-    triggerBorder:isDark ? "hsl(215,45%,46%,0.30)"       : "hsl(215,50%,46%,0.18)",
-    triggerText:  isDark ? "hsl(215,22%,82%)"            : "hsl(222,60%,22%)",
-    // Sign out
-    signOutText:  isDark ? "hsl(2,72%,65%)"              : "hsl(2,70%,42%)",
-    signOutHoverBg:isDark ? "hsl(2,60%,20%)"             : "hsl(2,80%,96%)",
-  };
-
-  const navItems = [
-    { value: "dashboard",  label: "Dashboard",   icon: LayoutDashboard },
-    { value: "portfolio",  label: "Portfolio",    icon: BarChart3 },
-    { value: "trades",     label: "Trades",       icon: Crosshair },
-    { value: "history",    label: "History",      icon: History },
-    { value: "watchlist",  label: "Watchlist",    icon: Eye },
-    { value: "analytics",  label: "Analytics",    icon: PieChart },
-    { value: "journal",    label: "Journal",      icon: BookOpen },
-    { value: "alerts",     label: "Alerts",       icon: Bell },
-    { value: "risk",       label: "Risk",         icon: Shield },
-    { value: "ai",         label: "AI Insights",  icon: Brain },
-  ];
-
-  const formatTime = (iso: string | null) =>
-    iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "";
-
-  return (
-    <div className="relative group">
-      {/* Trigger */}
-      <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg cursor-pointer select-none transition-all duration-200"
-           style={{ background: T.triggerBg, border: `1px solid ${T.triggerBorder}` }}>
-        <div className="h-7 w-7 rounded-lg flex items-center justify-center text-[11px] font-bold text-white shrink-0"
-             style={{ background: BLUE_MID }}>
-          {initials}
-        </div>
-        <span className="hidden sm:block text-[12px] font-medium max-w-[110px] truncate"
-              style={{ color: T.triggerText }}>
-          {email.split("@")[0]}
-        </span>
-        <ChevronDown className="h-3 w-3 transition-transform duration-300 group-hover:rotate-180"
-                     style={{ color: T.actionIcon }} />
-      </div>
-
-      {/* Dropdown panel */}
-      <div className="absolute right-0 top-full pt-2 z-[200] pointer-events-none opacity-0 translate-y-1
-                      group-hover:pointer-events-auto group-hover:opacity-100 group-hover:translate-y-0
-                      transition-all duration-200 ease-out"
-           style={{ minWidth: 268 }}>
-        <div className="rounded-2xl overflow-hidden"
-             style={{
-               background: T.panelBg,
-               border: `1px solid ${T.panelBorder}`,
-               boxShadow: T.panelShadow,
-               backdropFilter: "blur(28px) saturate(180%)",
-             }}>
-
-          {/* ── User info header ── */}
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${T.divider}` }}>
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl flex items-center justify-center text-[13px] font-bold text-white shrink-0"
-                   style={{ background: BLUE_GRAD }}>
-                {initials}
-              </div>
-              <div className="min-w-0">
-                <p className="text-[13px] font-semibold leading-none truncate"
-                   style={{ color: T.textPrimary }}>
-                  {email.split("@")[0]}
-                </p>
-                <p className="text-[11px] mt-0.5 truncate"
-                   style={{ color: T.textSecondary }}>{email}</p>
-              </div>
-            </div>
-
-            {/* Live status */}
-            <div className="mt-3 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${loading ? "bg-warning animate-pulse" : marketOpen ? "bg-profit animate-pulse-glow" : "bg-warning"}`} />
-                <span className="text-[11px] font-medium truncate" style={{ color: T.textAccent }}>
-                  {loading
-                    ? "Fetching…"
-                    : source === "upstox-live"  ? `Live · ${formatTime(lastUpdated)}`
-                    : source === "nse-delayed"   ? `NSE delayed · ${formatTime(lastUpdated)}`
-                    : source === "yahoo-eod"     ? `EOD · ${formatTime(lastUpdated)}`
-                    : lastUpdated               ? `Updated ${formatTime(lastUpdated)}`
-                    : "–"}
-                </span>
-                {!marketOpen && !loading && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                        style={{ background: isDark ? "hsl(36,80%,20%)" : "hsl(36,90%,94%)", color: "hsl(36,90%,48%)" }}>
-                    CLOSED
-                  </span>
-                )}
-              </div>
-              <button onClick={refresh} disabled={loading}
-                className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg transition-all"
-                style={{ color: T.refreshText, background: T.refreshBg }}>
-                <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
-                Refresh
-              </button>
-            </div>
-          </div>
-
-          {/* ── Navigation ── */}
-          <div className="py-2 px-2.5">
-            <p className="text-[9px] font-bold uppercase tracking-widest px-1.5 pb-1.5 pt-0.5"
-               style={{ color: T.textSection }}>Navigation</p>
-            <div className="grid grid-cols-2 gap-0.5">
-              {navItems.map(({ value, label, icon: Icon }) => {
-                const isActive = activeTab === value;
-                return (
-                  <button key={value}
-                    onClick={() => setActiveTab(value)}
-                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-[12.5px] font-medium transition-all duration-150 text-left"
-                    style={{
-                      background: isActive ? T.navActiveBg : "transparent",
-                      color: isActive ? T.navActiveText : T.navDefault,
-                    }}
-                    onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = T.navHoverBg; }}
-                    onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
-                    <Icon className="h-3.5 w-3.5 shrink-0"
-                          style={{ color: isActive ? T.navActiveIcon : T.navIcon }} />
-                    <span className="truncate">{label}</span>
-                    {value === "alerts" && triggeredAlerts > 0 && (
-                      <span className="ml-auto h-4 w-4 rounded-full bg-loss text-[8px] font-bold flex items-center justify-center text-white">{triggeredAlerts}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── Actions ── */}
-          <div className="py-2 px-2.5" style={{ borderTop: `1px solid ${T.divider}` }}>
-            <p className="text-[9px] font-bold uppercase tracking-widest px-1.5 pb-1.5 pt-0.5"
-               style={{ color: T.textSection }}>Actions</p>
-
-            {/* Save & Sync */}
-            <button onClick={onSave} disabled={syncing}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12.5px] font-medium transition-all"
-              style={{ color: T.actionText }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = T.actionHoverBg}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
-              <Save className="h-3.5 w-3.5 shrink-0" style={{ color: T.actionIcon }} />
-              {syncing ? "Saving…" : user ? "Save & Sync" : "Save Locally"}
-            </button>
-
-            {/* Export */}
-            <div className="px-0">
-              <ExportPortfolio stocks={stocks} />
-            </div>
-
-            {/* Theme toggle */}
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-[12.5px] font-medium transition-all"
-              style={{ color: T.actionText }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = T.actionHoverBg}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
-              {theme === "dark"
-                ? <Sun  className="h-3.5 w-3.5 shrink-0" style={{ color: T.actionIcon }} />
-                : <Moon className="h-3.5 w-3.5 shrink-0" style={{ color: T.actionIcon }} />}
-              {theme === "dark" ? "Light Mode" : "Dark Mode"}
-            </button>
-          </div>
-
-          {/* ── Sign out ── */}
-          {user && (
-            <div className="px-2.5 pb-2.5" style={{ borderTop: `1px solid ${T.divider}` }}>
-              <button onClick={() => signOut()}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-[12.5px] font-semibold transition-all mt-1.5"
-                style={{ color: T.signOutText }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = T.signOutHoverBg}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "transparent"}>
-                <LogOut className="h-3.5 w-3.5 shrink-0" style={{ color: T.signOutText }} />
-                Sign Out
-              </button>
-            </div>
-          )}
-          {!user && (
-            <div className="px-3 pb-3 pt-1">
-              <SignInButton />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ── Main ──────────────────────────────────────────────────────────────────────
-const Index = () => {
-  const { user }            = useAuth();
-  const { load, save }      = usePortfolioSync(user?.id);
-  const { toast }           = useToast();
-  const { theme, setTheme } = useTheme();
-
-  const local = loadFromLocal();
-  const [stocks,      setStocks]      = useState<PortfolioStock[]>(() => local?.stocks    ?? initialData);
-  const [trades,      setTrades]      = useState<TradeStrategy[]>(() => local?.trades    ?? initialTrades);
-  const [watchlist,   setWatchlist]   = useState<WatchlistStock[]>(() => local?.watchlist ?? initialWatchlist);
-  const [alerts,      setAlerts]      = useState<PriceAlert[]>(() => local?.alerts    ?? []);
-  const [activeTab,   setActiveTab]   = useState("dashboard");
-  const [syncing,     setSyncing]     = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  const loadedUserRef = useRef<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (loadedUserRef.current === user?.id) return;
-    loadedUserRef.current = user?.id;
-    load().then(snapshot => {
-      if (!snapshot) return;
-      setStocks(snapshot.stocks); setTrades(snapshot.trades);
-      setWatchlist(snapshot.watchlist); setAlerts(snapshot.alerts);
-      if (user) toast({ title: "Portfolio synced ☁️", description: "Latest data loaded from cloud." });
-    });
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleSavePortfolio = async () => {
-    setSyncing(true);
-    const err = await save({ stocks, trades, watchlist, alerts });
-    setSyncing(false);
-    if (err) toast({ title: "Save failed", description: err, variant: "destructive" });
-    else toast({ title: user ? "Saved to cloud ☁️" : "Saved locally", description: user ? "Synced across all your devices." : "Sign in to sync across devices." });
-  };
-
-  const allTickers = [
-    ...stocks.filter(s => s.status === "Active").map(s => s.ticker),
-    ...trades.map(t => t.ticker),
-    ...watchlist.map(w => w.stockName),
-  ];
-
-  const { prices, loading, lastUpdated, error, refresh } = useLivePrices(allTickers);
-
-  useEffect(() => {
-    if (Object.keys(prices).length === 0) return;
-    setStocks(prev => prev.map(s => { const l = prices[s.ticker]; if (!l || s.status !== "Active") return s; return { ...s, cmp: l.price, weekHigh52: l.weekHigh52 || s.weekHigh52, weekLow52: l.weekLow52 || s.weekLow52, dailyChange: l.change }; }));
-    setTrades(prev => prev.map(t => { const l = prices[t.ticker]; return l ? { ...t, livePrice: l.price } : t; }));
-    setWatchlist(prev => prev.map(w => { const l = prices[w.stockName]; return l ? { ...w, cmp: l.price } : w; }));
-  }, [prices]);
-
-  useEffect(() => {
-    if (Object.keys(prices).length === 0) return;
-    setAlerts(prev => prev.map(a => {
-      if (a.triggered) return a;
-      const l = prices[a.ticker]; if (!l) return a;
-      const hit = (a.direction === "above" && l.price >= a.targetPrice) || (a.direction === "below" && l.price <= a.targetPrice);
-      if (hit) toast({ title: `🔔 Alert: ${a.ticker}`, description: `${a.type === "target_hit" ? "Target hit" : a.type === "sl_hit" ? "SL hit" : "Entry zone"} at ₹${l.price.toFixed(2)}` });
-      return hit ? { ...a, triggered: true } : a;
-    }));
-  }, [prices]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => { if (error) toast({ title: "Price fetch issue", description: error, variant: "destructive" }); }, [error]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleAddStock        = (s: PortfolioStock)            => setStocks(p => [...p, s]);
-  const handleImportStocks    = (imp: PortfolioStock[])        => setStocks(p => [...p, ...imp]);
-  const handleEditStock       = (o: string, u: PortfolioStock) => { setStocks(p => p.map(s => s.ticker === o ? u : s)); toast({ title: "Transaction updated" }); };
-  const handleDeleteStock     = (t: string)                    => { setStocks(p => p.filter(s => s.ticker !== t)); toast({ title: "Transaction deleted" }); };
-  const handleEditTrade       = (o: string, u: TradeStrategy)  => { setTrades(p => p.map(t => t.ticker === o ? u : t)); toast({ title: "Trade updated" }); };
-  const handleDeleteTrade     = (t: string)                    => { setTrades(p => p.filter(x => x.ticker !== t)); toast({ title: "Trade deleted" }); };
-  const handleEditWatchlist   = (o: string, u: WatchlistStock) => { setWatchlist(p => p.map(w => w.stockName === o ? u : w)); toast({ title: "Watchlist updated" }); };
-  const handleDeleteWatchlist = (n: string)                    => { setWatchlist(p => p.filter(w => w.stockName !== n)); toast({ title: "Removed from watchlist" }); };
-  const handleUpdateNotes     = (t: string, n: TradeJournalEntry) => { setStocks(p => p.map(s => s.ticker === t ? { ...s, notes: n } : s)); toast({ title: "Journal updated" }); };
-  const handleAddAlert        = (a: PriceAlert)                => setAlerts(p => [...p, a]);
-  const handleDeleteAlert     = (id: string)                   => setAlerts(p => p.filter(a => a.id !== id));
-  const handleDismissAlert    = (id: string)                   => setAlerts(p => p.filter(a => a.id !== id));
-
-  const triggeredAlerts = alerts.filter(a => a.triggered).length;
-
-  return (
-    <div className="min-h-screen mesh-bg pb-20 sm:pb-0 relative overflow-x-hidden">
-
-      {/* Mobile sidebar only */}
-      <MobileSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)}
-        activeTab={activeTab} setActiveTab={setActiveTab}
-        triggeredAlerts={triggeredAlerts} stocks={stocks}
-        onSave={handleSavePortfolio} syncing={syncing} user={user} />
-
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-50 relative header-glass">
-        <div className="absolute inset-x-0 top-0 h-[2.5px]"
-             style={{ background: "linear-gradient(90deg, hsl(222,65%,16%), hsl(217,55%,30%), hsl(215,65%,44%), hsl(212,80%,56%), hsl(207,88%,64%))" }} />
-
-        <div className="flex items-center justify-between h-14 sm:h-16 px-4">
-
-          {/* Left — logo only, no hamburger on desktop */}
-          <div className="flex items-center gap-2.5">
-            {/* Hamburger mobile only */}
-            <button onClick={() => setSidebarOpen(true)}
-              className="sm:hidden h-8 w-8 rounded-lg flex items-center justify-center transition-all"
-              style={{ background: "hsl(215 50% 46% / 0.08)", border: "1px solid hsl(215 50% 46% / 0.20)", color: "hsl(215,60%,42%)" }}>
-              <Menu className="h-4 w-4" />
-            </button>
-
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center relative overflow-hidden shrink-0"
-                   style={{ background: BLUE_GRAD, boxShadow: "0 3px 14px hsl(215,65%,46%,0.38)" }}>
-                <Waves className="h-4 w-4 text-white" style={{ width: 15, height: 15 }} />
-                <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 55%)" }} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-[13px] sm:text-[15px] font-semibold leading-none truncate tracking-tight"
-                    style={{ color: "hsl(222,65%,14%)" }}>
-                  Smart Stock Tracker
-                </h1>
-                <p className="text-[9px] sm:text-[10px] mt-0.5 tracking-wide font-medium hidden sm:block"
-                   style={{ color: "hsl(215,55%,48%)" }}>
-                  Portfolio · ₹ INR
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Right — hover dropdown user menu */}
-          <div className="flex items-center gap-2">
-            <UserDropdown
-              user={user}
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              triggeredAlerts={triggeredAlerts}
-              stocks={stocks}
-              onSave={handleSavePortfolio}
-              syncing={syncing}
-              theme={theme}
-              setTheme={setTheme}
-              refresh={refresh}
-              loading={loading}
-              lastUpdated={lastUpdated}
-            />
-          </div>
-        </div>
-      </header>
-
-      {/* ── Main ── */}
-      <main className="px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5 max-w-screen-xl mx-auto">
-        <StatsPanel stocks={stocks} />
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="hidden sm:block overflow-x-auto pb-1">
-            <TabsList className="inline-flex w-auto min-w-full h-11 p-1.5 gap-0.5 rounded-xl tab-bar-glass">
-              {NAV_TABS.map(({ value, label, icon: Icon }) => (
-                <TabsTrigger key={value} value={value}
-                  className={`relative flex items-center gap-1.5 rounded-lg px-3 h-full font-medium transition-all duration-200 whitespace-nowrap text-[11.5px] border-0 outline-none shimmer-hover ${activeTab === value ? "tab-active-pill text-white" : ""}`}
-                  style={activeTab === value ? {} : {
-                    color: "hsl(218,45%,50%)", background: "transparent",
-                  }}>
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span>{label}</span>
-                  {value === "alerts" && triggeredAlerts > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-loss text-[9px] font-bold flex items-center justify-center text-white">{triggeredAlerts}</span>
-                  )}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-
-          <TabsContent value="dashboard"  className="mt-4 sm:mt-5 space-y-4 sm:space-y-5 animate-fade-up"><PortfolioCharts stocks={stocks} /><TradeAnalytics stocks={stocks} /><PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} /></TabsContent>
-          <TabsContent value="portfolio"  className="mt-4 sm:mt-5 animate-fade-up"><PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} /></TabsContent>
-          <TabsContent value="trades"     className="mt-4 sm:mt-5 animate-fade-up"><TradeStrategyTable trades={trades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} /></TabsContent>
-          <TabsContent value="history"    className="mt-4 sm:mt-5 animate-fade-up"><TradeHistory stocks={stocks} /></TabsContent>
-          <TabsContent value="watchlist"  className="mt-4 sm:mt-5 animate-fade-up"><WatchlistTable watchlist={watchlist} onEdit={handleEditWatchlist} onDelete={handleDeleteWatchlist} /></TabsContent>
-          <TabsContent value="analytics"  className="mt-4 sm:mt-5 space-y-4 sm:space-y-5 animate-fade-up"><TradeAnalytics stocks={stocks} /><SectorDiversification stocks={stocks} /><PortfolioCharts stocks={stocks} /></TabsContent>
-          <TabsContent value="journal"    className="mt-4 sm:mt-5 animate-fade-up"><TradeJournal stocks={stocks} onUpdateNotes={handleUpdateNotes} /></TabsContent>
-          <TabsContent value="alerts"     className="mt-4 sm:mt-5 animate-fade-up"><PriceAlerts alerts={alerts} onAddAlert={handleAddAlert} onDeleteAlert={handleDeleteAlert} onDismissAlert={handleDismissAlert} /></TabsContent>
-          <TabsContent value="risk"       className="mt-4 sm:mt-5 animate-fade-up"><RiskAnalysis stocks={stocks} trades={trades} onEditTrade={handleEditTrade} /></TabsContent>
-          <TabsContent value="ai"         className="mt-4 sm:mt-5 animate-fade-up"><AIInsights stocks={stocks} trades={trades} /></TabsContent>
-        </Tabs>
-      </main>
-
-      {/* ── Mobile bottom nav ── */}
-      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-50 bottom-nav-glass"
-           style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
-        <div className="flex items-center justify-around px-2 h-16">
-          {BOTTOM_NAV.map(({ value, label, icon: Icon }) => {
-            const isActive = activeTab === value;
-            return (
-              <button key={value} onClick={() => setActiveTab(value)}
-                className="flex flex-col items-center gap-1 flex-1 py-2 transition-all duration-200 relative"
-                style={{ color: isActive ? "hsl(215,65%,44%)" : "hsl(218,20%,52%)" }}>
-                {isActive && (
-                  <div className="absolute inset-x-3 top-0 h-[2px] rounded-full"
-                       style={{ background: BLUE_GRAD }} />
-                )}
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center transition-all ${isActive ? "scale-110" : ""}`}
-                     style={isActive ? { background: "hsl(215 65% 46% / 0.10)" } : {}}>
-                  <Icon style={{ width: 17, height: 17 }} />
-                </div>
-                <span className="text-[10px] font-semibold leading-none">{label}</span>
-                {value === "alerts" && triggeredAlerts > 0 && (
-                  <span className="absolute top-1 right-3 h-4 w-4 rounded-full bg-loss text-[9px] font-bold flex items-center justify-center text-white">{triggeredAlerts}</span>
-                )}
-              </button>
-            );
-          })}
-          <button onClick={() => setSidebarOpen(true)}
-            className="flex flex-col items-center gap-1 flex-1 py-2"
-            style={{ color: "hsl(218,20%,52%)" }}>
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center">
-              <Menu style={{ width: 17, height: 17 }} />
-            </div>
-            <span className="text-[10px] font-semibold leading-none">More</span>
-          </button>
-        </div>
-      </nav>
-    </div>
-  );
-};
-
-export default Index;
+}
