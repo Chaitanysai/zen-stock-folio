@@ -7,39 +7,39 @@
 @layer base {
   :root {
     /* ── ZenFolio: Warm Cream + Deep Navy ── */
-    --background:    36 38% 94%;      /* #f0ebe0 app bg */
-    --foreground:    215 32% 8%;      /* #0f1925 */
-    --card:          36 55% 98%;      /* #fdfaf5 card */
-    --card-foreground: 215 32% 8%;
-    --popover:       36 55% 98%;
-    --popover-foreground: 215 32% 8%;
-    --primary:       213 50% 24%;     /* #1c3557 navy */
+    --background:    220 14% 96%;     /* #f4f6f9 */
+    --foreground:    222 47% 11%;     /* #111827 */
+    --card:          0 0% 100%;       /* #ffffff */
+    --card-foreground: 222 47% 11%;
+    --popover:       0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary:       213 50% 24%;     /* #1c3557 */
     --primary-foreground: 0 0% 100%;
-    --secondary:     36 28% 92%;      /* #f0ebe0 */
+    --secondary:     220 13% 95%;     /* #f0f4f8 */
     --secondary-foreground: 213 50% 24%;
-    --muted:         36 22% 90%;      /* #ede8de */
-    --muted-foreground: 210 18% 52%;  /* #7a8fa3 */
-    --accent:        213 35% 93%;     /* #eef4fc navy pale */
+    --muted:         220 13% 96%;
+    --muted-foreground: 220 9% 46%;   /* #6b7280 */
+    --accent:        213 60% 95%;     /* #eef4fc */
     --accent-foreground: 213 50% 24%;
-    --destructive:   4 74% 38%;       /* #c0392b */
+    --destructive:   0 86% 57%;       /* #dc2626 */
     --destructive-foreground: 0 0% 100%;
-    --border:        35 25% 85%;      /* #e2d8c8 */
-    --input:         36 28% 92%;
+    --border:        220 13% 91%;     /* #e5e7eb */
+    --input:         220 13% 96%;
     --ring:          213 50% 24%;
     --radius:        0.75rem;
 
-    --profit: 150 72% 30%;            /* #14854f */
-    --profit-foreground: 150 72% 10%;
-    --loss:   4 74% 38%;              /* #c0392b */
-    --loss-foreground: 4 74% 96%;
-    --warning: 38 85% 36%;
-    --warning-foreground: 38 85% 10%;
+    --profit: 160 84% 39%;            /* #059669 */
+    --profit-foreground: 160 84% 10%;
+    --loss:   0 86% 57%;              /* #dc2626 */
+    --loss-foreground: 0 86% 97%;
+    --warning: 38 92% 45%;
+    --warning-foreground: 38 92% 10%;
 
     --chart-1: 213 50% 24%;
-    --chart-2: 150 72% 30%;
-    --chart-3: 4 74% 38%;
-    --chart-4: 38 85% 36%;
-    --chart-5: 213 32% 60%;
+    --chart-2: 160 84% 39%;
+    --chart-3: 0 86% 57%;
+    --chart-4: 38 92% 45%;
+    --chart-5: 199 89% 48%;
 
     --c1: 213,50%,24%;  --c1h: 213,54%,35%;
     --c2: 213,48%,28%;  --c2h: 213,52%,40%;

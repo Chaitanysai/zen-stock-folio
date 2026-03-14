@@ -100,7 +100,7 @@ function SectorBar({ stocks }: { stocks: PortfolioStock[] }) {
         {entries.slice(0,4).map(([sec, val], i) => (
           <div key={sec} style={{ display:"flex", alignItems:"center", gap:5 }}>
             <div style={{ width:8, height:8, borderRadius:2, background: COLORS[i % COLORS.length], flexShrink:0 }} />
-            <span style={{ fontSize:10, color:"var(--tx-lo)", fontWeight:500 }}>
+            <span style={{ fontSize:10, color:"var(--tx-400)", fontWeight:500 }}>
               {sec} {total > 0 ? (val/total*100).toFixed(0) : 0}%
             </span>
           </div>
@@ -118,13 +118,13 @@ const CSS = `
    DESIGN TOKENS
 ══════════════════════════════════════════════════ */
 .zf {
-  /* Backgrounds */
-  --bg-app:       #f0ebe0;
-  --bg-sidebar:   #fdfaf5;
-  --bg-card:      #fdfaf5;
-  --bg-surface:   #f7f2e8;
-  --bg-hover:     #f2ece0;
-  --bg-input:     #f7f2e8;
+  /* Backgrounds — pure white like reference */
+  --bg-app:       #f4f6f9;
+  --bg-sidebar:   #ffffff;
+  --bg-card:      #ffffff;
+  --bg-surface:   #f8f9fc;
+  --bg-hover:     #f0f4f8;
+  --bg-input:     #f8f9fc;
 
   /* Navy brand */
   --navy:         #1c3557;
@@ -134,33 +134,33 @@ const CSS = `
   --navy-50:      #eef4fc;
 
   /* Text */
-  --tx-900:       #0f1925;
-  --tx-700:       #2c3e55;
-  --tx-500:       #5c7080;
-  --tx-400:       #7a8fa3;
-  --tx-300:       #a8bcce;
-  --tx-200:       #cddae6;
+  --tx-900:       #111827;
+  --tx-700:       #1f2d3d;
+  --tx-500:       #4b5563;
+  --tx-400:       #6b7280;
+  --tx-300:       #9ca3af;
+  --tx-200:       #d1d5db;
 
-  /* Borders */
-  --bd-200:       #e2d8c8;
-  --bd-100:       #ede8de;
-  --bd-50:        #f4f0e8;
+  /* Borders — clean grey like reference */
+  --bd-200:       #e5e7eb;
+  --bd-100:       #f0f2f5;
+  --bd-50:        #f9fafb;
 
   /* Semantic */
-  --green:        #14854f;
-  --green-bg:     #edfaf4;
-  --green-bd:     #a7e8c8;
-  --red:          #c0392b;
-  --red-bg:       #fdf2f0;
-  --red-bd:       #f5c6c0;
-  --amber:        #b45309;
+  --green:        #059669;
+  --green-bg:     #ecfdf5;
+  --green-bd:     #a7f3d0;
+  --red:          #dc2626;
+  --red-bg:       #fef2f2;
+  --red-bd:       #fecaca;
+  --amber:        #d97706;
   --amber-bg:     #fffbeb;
   --amber-bd:     #fcd34d;
 
-  /* Shadows */
-  --sh-1: 0 1px 3px rgba(28,53,87,.07), 0 1px 2px rgba(28,53,87,.04);
-  --sh-2: 0 4px 12px rgba(28,53,87,.08), 0 2px 4px rgba(28,53,87,.05);
-  --sh-3: 0 8px 24px rgba(28,53,87,.10), 0 3px 8px rgba(28,53,87,.06);
+  /* Shadows — crisp like reference */
+  --sh-1: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --sh-2: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+  --sh-3: 0 8px 24px rgba(0,0,0,.10), 0 3px 8px rgba(0,0,0,.05);
 
   /* Typography */
   --ff-body: 'DM Sans', -apple-system, sans-serif;
@@ -980,6 +980,154 @@ function MiniAreaChart({ stocks }: { stocks: PortfolioStock[] }) {
   );
 }
 
+// ─── Line Chart Widget ────────────────────────────────────────────────────────
+function LineChartWidget({ stocks }: { stocks: PortfolioStock[] }) {
+  const active = stocks.filter(s => s.status === "Active");
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const curMonth = new Date().getMonth();
+  const W = 500, H = 130, pad = { l:36, r:12, t:10, b:28 };
+
+  const pts = months.slice(0, curMonth + 1).map((m, i) => {
+    const progress = (i + 0.7) / (curMonth + 1);
+    const val = active.reduce((sum, s) => {
+      const base = calcFinalValue(s) * (0.8 + progress * 0.22);
+      return sum + base + Math.sin(i * 0.7 + s.ticker.charCodeAt(0) * 0.1) * base * 0.04;
+    }, 0);
+    const prevVal = val * (0.82 + Math.sin(i * 0.5) * 0.06);
+    return { m, val, prevVal };
+  });
+
+  if (pts.length === 0) return (
+    <div style={{ height:130, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--tx-300)", fontSize:12 }}>No data</div>
+  );
+
+  const allVals = pts.flatMap(p => [p.val, p.prevVal]);
+  const minV = Math.min(...allVals) * 0.92;
+  const maxV = Math.max(...allVals) * 1.05;
+  const range = maxV - minV || 1;
+  const xStep = (W - pad.l - pad.r) / Math.max(pts.length - 1, 1);
+  const yOf = (v: number) => pad.t + (1 - (v - minV) / range) * (H - pad.t - pad.b);
+  const xOf = (i: number) => pad.l + i * xStep;
+
+  const thisLine = pts.map((p, i) => `${xOf(i).toFixed(1)},${yOf(p.val).toFixed(1)}`).join(" ");
+  const prevLine = pts.map((p, i) => `${xOf(i).toFixed(1)},${yOf(p.prevVal).toFixed(1)}`).join(" ");
+  const thisArea = `M${xOf(0).toFixed(1)},${yOf(pts[0].val).toFixed(1)} ` +
+    pts.slice(1).map((p,i) => `L${xOf(i+1).toFixed(1)},${yOf(p.val).toFixed(1)}`).join(" ") +
+    ` L${xOf(pts.length-1).toFixed(1)},${(H-pad.b).toFixed(1)} L${xOf(0).toFixed(1)},${(H-pad.b).toFixed(1)} Z`;
+
+  const yTicks = [minV, (minV+maxV)/2, maxV].map(v => ({
+    v, y: yOf(v),
+    label: v >= 100000 ? `${(v/100000).toFixed(0)}L` : v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0),
+  }));
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ width:"100%", height:130 }}>
+      <defs>
+        <linearGradient id="lgArea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#1c3557" stopOpacity=".14" />
+          <stop offset="100%" stopColor="#1c3557" stopOpacity=".01" />
+        </linearGradient>
+      </defs>
+      {yTicks.map(t => (
+        <g key={t.v}>
+          <line x1={pad.l} x2={W-pad.r} y1={t.y.toFixed(1)} y2={t.y.toFixed(1)} stroke="#f0f2f5" strokeWidth="1" />
+          <text x={pad.l-4} y={(t.y+3.5).toFixed(1)} textAnchor="end" fontSize="9" fill="var(--tx-300)" fontFamily="var(--ff-body)">{t.label}</text>
+        </g>
+      ))}
+      <path d={thisArea} fill="url(#lgArea)" />
+      <polyline points={prevLine} fill="none" stroke="var(--tx-200)" strokeWidth="1.5" strokeDasharray="4 3" strokeLinecap="round" />
+      <polyline points={thisLine} fill="none" stroke="#1c3557" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((p, i) => (i === 0 || i === pts.length - 1 || i % 2 === 0) && (
+        <text key={p.m} x={xOf(i).toFixed(1)} y={H - 6} textAnchor="middle" fontSize="9" fill="var(--tx-300)" fontFamily="var(--ff-body)">{p.m}</text>
+      ))}
+      <circle cx={xOf(pts.length-1).toFixed(1)} cy={yOf(pts[pts.length-1].val).toFixed(1)} r="4" fill="white" stroke="#1c3557" strokeWidth="2" />
+    </svg>
+  );
+}
+
+// ─── Donut Chart Widget ────────────────────────────────────────────────────────
+function DonutWidget({ stocks }: { stocks: PortfolioStock[] }) {
+  const active = stocks.filter(s => s.status === "Active");
+  const map = new Map<string, number>();
+  active.forEach(s => map.set(s.sector ?? "Other", (map.get(s.sector ?? "Other") ?? 0) + calcInvestedValue(s)));
+  const total = [...map.values()].reduce((a, b) => a + b, 0) || 1;
+  const entries = [...map.entries()].sort((a,b) => b[1]-a[1]).slice(0,5);
+  const COLORS = ["#1c3557","#6ea8d8","#a8cce8","#2a7ec9","#93b8d4"];
+
+  const R = 36, r = 22, cx = 50, cy = 50;
+  let startAngle = -Math.PI / 2;
+  const slices = entries.map(([name, val], i) => {
+    const pct   = val / total;
+    const angle = pct * 2 * Math.PI;
+    const x1 = cx + R * Math.cos(startAngle), y1 = cy + R * Math.sin(startAngle);
+    const x2 = cx + R * Math.cos(startAngle + angle), y2 = cy + R * Math.sin(startAngle + angle);
+    const ix1 = cx + r * Math.cos(startAngle), iy1 = cy + r * Math.sin(startAngle);
+    const ix2 = cx + r * Math.cos(startAngle + angle), iy2 = cy + r * Math.sin(startAngle + angle);
+    const large = angle > Math.PI ? 1 : 0;
+    const d = `M${x1.toFixed(2)},${y1.toFixed(2)} A${R},${R} 0 ${large},1 ${x2.toFixed(2)},${y2.toFixed(2)} L${ix2.toFixed(2)},${iy2.toFixed(2)} A${r},${r} 0 ${large},0 ${ix1.toFixed(2)},${iy1.toFixed(2)} Z`;
+    startAngle += angle;
+    return { name, val, pct, d, color: COLORS[i % COLORS.length] };
+  });
+
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+      <svg viewBox="0 0 100 100" style={{ width:88, height:88, flexShrink:0 }}>
+        {slices.map(s => <path key={s.name} d={s.d} fill={s.color} />)}
+        <text x="50" y="47" textAnchor="middle" fontSize="10" fontWeight="700" fill="#1f2d3d" fontFamily="var(--ff-body)">{fmt(total)}</text>
+        <text x="50" y="57" textAnchor="middle" fontSize="7" fill="var(--tx-300)" fontFamily="var(--ff-body)">invested</text>
+      </svg>
+      <div style={{ display:"flex", flexDirection:"column", gap:6, flex:1 }}>
+        {slices.map(s => (
+          <div key={s.name} style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:8, height:8, borderRadius:2, background:s.color, flexShrink:0 }} />
+              <span style={{ fontSize:11, color:"var(--tx-500)", fontWeight:500 }}>{s.name}</span>
+            </div>
+            <span style={{ fontSize:11, fontWeight:700, color:"var(--tx-700)", fontFamily:"var(--ff-mono)" }}>
+              {(s.pct*100).toFixed(1)}%
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Bar Chart Widget ────────────────────────────────────────────────────────
+function BarWidget({ stocks }: { stocks: PortfolioStock[] }) {
+  const active = stocks.filter(s => s.status === "Active");
+  const items  = active
+    .map(s => ({ ticker:s.ticker, val:calcFinalValue(s), pnlPct:s.entryPrice>0?(s.cmp-s.entryPrice)/s.entryPrice*100:0 }))
+    .sort((a,b) => b.val-a.val).slice(0,6);
+
+  if (items.length === 0) return (
+    <div style={{ height:80, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--tx-300)", fontSize:12 }}>No data</div>
+  );
+
+  const maxV = Math.max(...items.map(i => i.val)) || 1;
+  const COLORS = ["#1c3557","#2a5f9e","#3b82c4","#5a9fd4","#7ab8e0","#9fcce8"];
+
+  return (
+    <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:104 }}>
+      {items.map((item, i) => {
+        const h = Math.max(6, (item.val / maxV) * 80);
+        const pos = item.pnlPct >= 0;
+        return (
+          <div key={item.ticker} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, flex:1 }}>
+            <div style={{ fontSize:9, fontWeight:700, color:pos?"var(--green)":"var(--red)", fontFamily:"var(--ff-mono)" }}>
+              {pos?"+":""}{item.pnlPct.toFixed(1)}%
+            </div>
+            <div style={{ width:"100%", height:h, borderRadius:"5px 5px 0 0", background:COLORS[i%COLORS.length], opacity:pos?1:0.65 }} />
+            <div style={{ fontSize:9, color:"var(--tx-400)", fontWeight:600, textAlign:"center", whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%" }}>
+              {item.ticker}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 export default function Index() {
   const [tab,       setTab]       = useState<ActiveTab>("overview");
@@ -1173,139 +1321,141 @@ export default function Index() {
           {/* Content */}
           <div className="zf-content">
 
-            {/* ══════════ OVERVIEW ══════════ */}
+            {/* ══════════ OVERVIEW — ByeWind reference layout ══════════ */}
             {tab === "overview" && (<>
 
-              {/* KPI Row — 4 cards */}
+              {/* ── ROW 1: 4 KPI stat cards ── */}
               <div className="zf-kpi-row">
 
-                {/* 1. Portfolio Value */}
                 <div className="zf-kpi kpi-navy">
-                  <div className="zf-kpi-icon" style={{ background: "var(--navy-100)" }}>
-                    <Wallet size={18} color="var(--navy)" />
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+                    <div className="zf-kpi-icon" style={{ background:"var(--navy-100)", marginBottom:0 }}>
+                      <Wallet size={17} color="var(--navy)" />
+                    </div>
+                    <span className="zf-kpi-chip zf-chip-navy" style={{ margin:0 }}>{activePos.length} active</span>
+                  </div>
+                  <div className="zf-kpi-lbl">Total Invested</div>
+                  <div className="zf-kpi-val">{fmt(invested)}</div>
+                  <div className="zf-kpi-sub" style={{ marginTop:6 }}>
+                    {closedPos.length} closed · {live.length} total
+                  </div>
+                </div>
+
+                <div className={`zf-kpi ${pnl>=0?"kpi-green":"kpi-red"}`}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+                    <div className="zf-kpi-icon" style={{ background: pnl>=0?"#d1fae5":"#fee2e2", marginBottom:0 }}>
+                      {pnl>=0 ? <TrendingUp size={17} color="var(--green)" /> : <TrendingDown size={17} color="var(--red)" />}
+                    </div>
+                    <span className={`zf-kpi-chip ${pnl>=0?"zf-chip-green":"zf-chip-red"}`} style={{ margin:0 }}>
+                      {sign(pnlPct)}{Math.abs(pnlPct).toFixed(1)}%
+                    </span>
                   </div>
                   <div className="zf-kpi-lbl">Portfolio Value</div>
                   <div className="zf-kpi-val">{fmt(current)}</div>
-                  <div className={`zf-kpi-chip ${pnl >= 0 ? "zf-chip-green" : "zf-chip-red"}`}>
-                    {sign(pnl)}{fmt(Math.abs(pnl))} ({sign(pnlPct)}{Math.abs(pnlPct).toFixed(1)}%)
-                  </div>
-                  <div className="zf-kpi-sub">Invested: {fmt(invested)}</div>
-                  <div className="zf-kpi-divider">
-                    {activePos.length} active · {closedPos.length} closed
+                  <div className="zf-kpi-sub" style={{ marginTop:6 }}>
+                    P&L: {sign(pnl)}{fmt(Math.abs(pnl))}
                   </div>
                 </div>
 
-                {/* 2. Unrealised P&L */}
-                <div className={`zf-kpi ${pnl >= 0 ? "kpi-green" : "kpi-red"}`}>
-                  <div className="zf-kpi-icon" style={{ background: pnl >= 0 ? "#d1fae5" : "#fee2e2" }}>
-                    {pnl >= 0 ? <TrendingUp size={18} color="var(--green)" /> : <TrendingDown size={18} color="var(--red)" />}
-                  </div>
-                  <div className="zf-kpi-lbl">Unrealised P&L</div>
-                  <div className="zf-kpi-val">{sign(pnl)}{fmt(Math.abs(pnl))}</div>
-                  <div className={`zf-kpi-chip ${pnl >= 0 ? "zf-chip-green" : "zf-chip-red"}`}>
-                    {sign(pnlPct)}{Math.abs(pnlPct).toFixed(2)}% overall
-                  </div>
-                  <div className="zf-kpi-sub">Realised: {sign(realisedPnl)}{fmt(Math.abs(realisedPnl))}</div>
-                  {worst && (
-                    <div className="zf-kpi-divider">
-                      Worst: {worst.ticker} {worst.pct.toFixed(1)}%
+                <div className={`zf-kpi ${todayPnl>=0?"kpi-green":"kpi-red"}`}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+                    <div className="zf-kpi-icon" style={{ background: todayPnl>=0?"#d1fae5":"#fee2e2", marginBottom:0 }}>
+                      <Activity size={17} color={todayPnl>=0?"var(--green)":"var(--red)"} />
                     </div>
-                  )}
-                </div>
-
-                {/* 3. Today's P&L */}
-                <div className={`zf-kpi ${todayPnl >= 0 ? "kpi-green" : "kpi-red"}`}>
-                  <div className="zf-kpi-icon" style={{ background: todayPnl >= 0 ? "#d1fae5" : "#fee2e2" }}>
-                    <Activity size={18} color={todayPnl >= 0 ? "var(--green)" : "var(--red)"} />
+                    <span className={`zf-kpi-chip ${todayPnl>=0?"zf-chip-green":"zf-chip-red"}`} style={{ margin:0 }}>
+                      {sign(todayPnl)}{todayPct.toFixed(2)}%
+                    </span>
                   </div>
                   <div className="zf-kpi-lbl">Today's P&L</div>
                   <div className="zf-kpi-val">{sign(todayPnl)}{fmt(Math.abs(todayPnl))}</div>
-                  <div className={`zf-kpi-chip ${todayPnl >= 0 ? "zf-chip-green" : "zf-chip-red"}`}>
-                    {sign(todayPnl)}{todayPct.toFixed(2)}% today
+                  <div className="zf-kpi-sub" style={{ marginTop:6 }}>
+                    {isLive ? "Live" : "Cached"} · {now} IST
                   </div>
-                  <div className="zf-kpi-sub">{isLive ? "Live prices" : "Cached prices"}</div>
-                  {best && (
-                    <div className="zf-kpi-divider">
-                      Best: {best.ticker} +{best.pct.toFixed(1)}%
-                    </div>
-                  )}
                 </div>
 
-                {/* 4. Win Rate */}
-                <div className="zf-kpi">
-                  <div className="zf-kpi-icon" style={{ background: "#fff7ed" }}>
-                    <Award size={18} color="#b45309" />
+                <div className="zf-kpi" style={{ background:"var(--bg-card)" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+                    <div className="zf-kpi-icon" style={{ background:"#fff7ed", marginBottom:0 }}>
+                      <Award size={17} color="#d97706" />
+                    </div>
+                    <span className={`zf-kpi-chip ${winRate>=50?"zf-chip-green":"zf-chip-navy"}`} style={{ margin:0 }}>
+                      {winners.length}/{closedPos.length}
+                    </span>
                   </div>
                   <div className="zf-kpi-lbl">Win Rate</div>
-                  <div className="zf-kpi-val" style={{ color: winRate >= 50 ? "var(--green)" : winRate > 0 ? "var(--amber)" : "var(--tx-400)" }}>
+                  <div className="zf-kpi-val" style={{ color: winRate>=50?"var(--green)":winRate>0?"var(--amber)":"var(--tx-400)" }}>
                     {winRate.toFixed(0)}%
                   </div>
-                  <div className={`zf-kpi-chip ${winRate >= 50 ? "zf-chip-green" : "zf-chip-navy"}`}>
-                    {winners.length} wins / {closedPos.length} trades
-                  </div>
-                  <div className="zf-kpi-sub">Closed positions only</div>
-                  <div className="zf-kpi-divider">
-                    Target: ≥ 50% win rate
+                  <div className="zf-kpi-sub" style={{ marginTop:6 }}>
+                    Realised: {sign(realisedPnl)}{fmt(Math.abs(realisedPnl))}
                   </div>
                 </div>
               </div>
 
-              {/* Middle row — area chart + sector panel */}
-              <div className="zf-mid-row">
+              {/* ── ROW 2: Like ByeWind — left=line chart (large), right col = donut + bar ── */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 340px", gap:16 }}>
 
-                {/* Area chart card */}
+                {/* Large line chart — "Total Users" equivalent */}
                 <div className="zf-card">
                   <div className="zf-card-head">
-                    <span className="zf-card-title">Portfolio Performance</span>
-                    <div className="zf-card-meta">
-                      <span className="zf-card-badge">{new Date().getFullYear()}</span>
-                      <button className="zf-card-link" onClick={() => setTab("charts")}>
-                        Full charts →
-                      </button>
-                    </div>
-                  </div>
-                  <MiniAreaChart stocks={live} />
-                </div>
-
-                {/* Sector allocation panel */}
-                <div className="zf-card zf-sector-side">
-                  <div className="zf-card-head">
-                    <span className="zf-card-title">Sectors</span>
-                    <span className="zf-card-badge">{sectors.length}</span>
-                  </div>
-                  <div className="zf-sector-list">
-                    {/* Stacked bar */}
-                    <div style={{ marginBottom: 4 }}>
-                      <div style={{ display: "flex", height: 10, borderRadius: 5, overflow: "hidden", gap: 2 }}>
-                        {sectors.map((s, i) => (
-                          <div key={s.name} title={`${s.name}: ${s.pct.toFixed(1)}%`}
-                            style={{ flex: s.pct, background: SECTOR_COLORS[i % SECTOR_COLORS.length], minWidth: 2 }} />
+                    <div>
+                      <span className="zf-card-title">Portfolio Performance</span>
+                      <div style={{ display:"flex", gap:16, marginTop:4 }}>
+                        {(["Portfolio Value","Invested","P&L"] as const).map((label, i) => (
+                          <button key={label} style={{
+                            fontSize:11, fontWeight: i===0 ? 700 : 400,
+                            color: i===0 ? "var(--navy)" : "var(--tx-300)",
+                            background:"none", border:"none", cursor:"pointer", padding:0,
+                            fontFamily:"var(--ff-body)",
+                          }}>{label}</button>
                         ))}
                       </div>
                     </div>
-                    {sectors.map((s, i) => (
-                      <div key={s.name} className="zf-sector-item">
-                        <div className="zf-sector-row">
-                          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                            <div style={{ width: 9, height: 9, borderRadius: 2, background: SECTOR_COLORS[i % SECTOR_COLORS.length], flexShrink: 0 }} />
-                            <span className="zf-sector-name">{s.name}</span>
-                          </div>
-                          <span className="zf-sector-pct">{s.pct.toFixed(1)}%</span>
-                        </div>
-                        <div className="zf-sector-bar">
-                          <div className="zf-sector-fill" style={{ width: `${s.pct}%`, background: SECTOR_COLORS[i % SECTOR_COLORS.length] }} />
-                        </div>
-                        <div style={{ fontSize: 10, color: "var(--tx-400)", fontFamily: "var(--ff-mono)", marginTop: 1 }}>
-                          {fmt(s.val)}
-                        </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--tx-400)" }}>
+                        <span style={{ width:16, height:3, borderRadius:2, background:"var(--navy)", display:"inline-block" }} />
+                        This year
                       </div>
-                    ))}
+                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--tx-400)" }}>
+                        <span style={{ width:16, height:3, borderRadius:2, background:"var(--tx-200)", display:"inline-block", borderTop:"2px dashed var(--tx-200)" }} />
+                        Last year
+                      </div>
+                      <button className="zf-card-link" onClick={() => setTab("charts")}>Full view →</button>
+                    </div>
+                  </div>
+                  <div style={{ padding:"8px 20px 16px" }}>
+                    <LineChartWidget stocks={live} />
+                  </div>
+                </div>
+
+                {/* Right column: donut (sector) on top, bar chart (holdings) below */}
+                <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+
+                  {/* Donut chart — sector allocation like "Traffic by Location" */}
+                  <div className="zf-card" style={{ flex:1 }}>
+                    <div className="zf-card-head">
+                      <span className="zf-card-title">Sector Allocation</span>
+                    </div>
+                    <div style={{ padding:"14px 20px" }}>
+                      <DonutWidget stocks={live} />
+                    </div>
+                  </div>
+
+                  {/* Bar chart — top holdings like "Traffic by Device" */}
+                  <div className="zf-card" style={{ flex:1 }}>
+                    <div className="zf-card-head">
+                      <span className="zf-card-title">Holdings Value</span>
+                      <span className="zf-card-badge">{activePos.length} stocks</span>
+                    </div>
+                    <div style={{ padding:"14px 20px" }}>
+                      <BarWidget stocks={live} />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Bottom row — holdings table + watchlist */}
-              <div className="zf-bot-row">
+              {/* ── ROW 3: Holdings table + Watchlist side by side ── */}
+              <div style={{ display:"grid", gridTemplateColumns:"1.5fr 1fr", gap:16 }}>
 
                 {/* Holdings table */}
                 <div className="zf-card">
@@ -1313,9 +1463,7 @@ export default function Index() {
                     <span className="zf-card-title">Holdings</span>
                     <div className="zf-card-meta">
                       <span className="zf-card-badge">{activePos.length} active</span>
-                      <button className="zf-card-link" onClick={() => setTab("holdings")}>
-                        View all →
-                      </button>
+                      <button className="zf-card-link" onClick={() => setTab("holdings")}>View all →</button>
                     </div>
                   </div>
                   <div className="zf-card-body">
@@ -1326,7 +1474,7 @@ export default function Index() {
                       <span className="zf-th r">CMP</span>
                       <span className="zf-th r">P&L</span>
                     </div>
-                    {activePos.slice(0, 6).map(s => {
+                    {activePos.slice(0, 5).map(s => {
                       const pl    = s.entryPrice > 0 ? (s.cmp - s.entryPrice) / s.entryPrice * 100 : 0;
                       const plAmt = (s.cmp - s.entryPrice) * s.quantity;
                       const pos   = pl >= 0;
@@ -1334,14 +1482,8 @@ export default function Index() {
                         <div key={s.ticker} className="zf-trow">
                           <div className="zf-stock-cell">
                             <div className="zf-logo-wrap">
-                              <img
-                                src={`https://logo.clearbit.com/${(s.stockName ?? s.ticker).toLowerCase().replace(/\s+/g,"")}.com`}
-                                alt=""
-                                onError={e => {
-                                  (e.target as HTMLImageElement).style.display = "none";
-                                  (e.target as HTMLImageElement).parentElement!.textContent = s.ticker.slice(0, 2);
-                                }}
-                              />
+                              <img src={`https://logo.clearbit.com/${(s.stockName??s.ticker).toLowerCase().replace(/\s+/g,"")}.com`} alt=""
+                                onError={e => { (e.target as HTMLImageElement).style.display="none"; (e.target as HTMLImageElement).parentElement!.textContent=s.ticker.slice(0,2); }} />
                             </div>
                             <div>
                               <div className="zf-ticker-name">{s.ticker}</div>
@@ -1351,13 +1493,9 @@ export default function Index() {
                           <span className="zf-td r">{s.quantity}</span>
                           <span className="zf-td r">{fmtNum(s.entryPrice)}</span>
                           <span className="zf-td r">{fmtNum(s.cmp)}</span>
-                          <div style={{ textAlign: "right" }}>
-                            <div className="zf-pl" style={{ color: pos ? "var(--green)" : "var(--red)" }}>
-                              {sign(pl)}{Math.abs(pl).toFixed(1)}%
-                            </div>
-                            <div className="zf-pl-sub" style={{ color: pos ? "var(--green)" : "var(--red)" }}>
-                              {sign(plAmt)}₹{Math.abs(plAmt).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                            </div>
+                          <div style={{ textAlign:"right" }}>
+                            <div className="zf-pl" style={{ color: pos?"var(--green)":"var(--red)" }}>{sign(pl)}{Math.abs(pl).toFixed(1)}%</div>
+                            <div className="zf-pl-sub" style={{ color: pos?"var(--green)":"var(--red)" }}>{sign(plAmt)}₹{Math.abs(plAmt).toLocaleString("en-IN",{maximumFractionDigits:0})}</div>
                           </div>
                         </div>
                       );
@@ -1377,15 +1515,12 @@ export default function Index() {
                   <div className="zf-card-body">
                     <div className="zf-wl-head">
                       <span className="zf-th">Stock</span>
-                      <span className="zf-th" style={{ textAlign: "center" }}>Trend</span>
-                      <span className="zf-th" style={{ textAlign: "right" }}>Price</span>
+                      <span className="zf-th" style={{ textAlign:"center" }}>Trend</span>
+                      <span className="zf-th" style={{ textAlign:"right" }}>Price</span>
                     </div>
-                    {watchlist.slice(0, 7).map((w, wi) => {
-                      const cmp  = w.cmp ?? 0;
-                      const sl   = w.stopLoss ?? cmp;
-                      const t1   = w.target1 ?? cmp;
-                      const pos  = cmp >= (w.entryZoneLow ?? cmp);
-                      const seed = w.stockName.charCodeAt(0) + wi * 7;
+                    {watchlist.slice(0,6).map((w,wi) => {
+                      const cmp=w.cmp??0; const t1=w.target1??cmp; const sl=w.stopLoss??cmp;
+                      const pos=cmp>=(w.entryZoneLow??cmp); const seed=w.stockName.charCodeAt(0)+wi*7;
                       return (
                         <div key={w.stockName} className="zf-wl-row">
                           <div>
@@ -1393,23 +1528,14 @@ export default function Index() {
                             <div className="zf-wl-sub">T1 ₹{t1.toLocaleString("en-IN")} · SL ₹{sl.toLocaleString("en-IN")}</div>
                           </div>
                           <svg className="zf-wl-spark" viewBox="0 0 56 26" fill="none">
-                            <polyline
-                              points={Array.from({ length: 8 }, (_, i) => {
-                                const x = 4 + i * 7;
-                                const y = 13 + Math.sin((i + seed) * 1.1) * 8 * (pos ? 1 : -1);
-                                return `${x},${Math.max(2, Math.min(24, y))}`;
-                              }).join(" ")}
-                              stroke={pos ? "var(--green)" : "var(--red)"}
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
+                            <polyline points={Array.from({length:8},(_,i)=>{
+                              const x=4+i*7; const y=13+Math.sin((i+seed)*1.1)*8*(pos?1:-1);
+                              return `${x},${Math.max(2,Math.min(24,y))}`;
+                            }).join(" ")} stroke={pos?"var(--green)":"var(--red)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                           <div>
                             <div className="zf-wl-price">₹{cmp.toLocaleString("en-IN")}</div>
-                            <div className="zf-wl-chg" style={{ color: pos ? "var(--green)" : "var(--red)" }}>
-                              RSI {w.rsi?.toFixed(0) ?? "—"}
-                            </div>
+                            <div className="zf-wl-chg" style={{ color:pos?"var(--green)":"var(--red)" }}>RSI {w.rsi?.toFixed(0)??"—"}</div>
                           </div>
                         </div>
                       );
@@ -1418,6 +1544,7 @@ export default function Index() {
                 </div>
               </div>
 
+            </>)}
             </>)}
 
             {/* ══════════ OTHER TABS ══════════ */}
