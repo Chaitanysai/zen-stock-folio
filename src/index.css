@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;1,14..32,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,57 +6,58 @@
 
 @layer base {
   :root {
-    --background: 220 40% 97%;
-    --foreground: 222 65% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 60% 12%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 60% 12%;
-    --primary: 215 72% 48%;
+    /* ── Warm Cream + Deep Navy theme ── */
+    --background: 36 40% 95%;        /* #f5efe4 warm page bg */
+    --foreground: 220 30% 10%;       /* #111827 near-black */
+    --card: 36 50% 98%;              /* #fdfaf4 warm card */
+    --card-foreground: 220 30% 10%;
+    --popover: 36 50% 98%;
+    --popover-foreground: 220 30% 10%;
+    --primary: 213 50% 26%;          /* #1c3557 deep navy */
     --primary-foreground: 0 0% 100%;
-    --secondary: 218 30% 92%;
-    --secondary-foreground: 220 55% 22%;
-    --muted: 218 25% 92%;
-    --muted-foreground: 218 18% 46%;
-    --accent: 212 55% 90%;
-    --accent-foreground: 215 72% 32%;
+    --secondary: 36 30% 90%;         /* warm cream secondary */
+    --secondary-foreground: 213 50% 26%;
+    --muted: 36 25% 88%;             /* #ede5d6 */
+    --muted-foreground: 30 18% 48%;  /* #9c8f7a */
+    --accent: 213 35% 92%;           /* #e8f0f8 navy pale */
+    --accent-foreground: 213 50% 26%;
     --destructive: 2 78% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border: 218 28% 87%;
-    --input: 218 28% 87%;
-    --ring: 215 72% 48%;
-    --radius: 1rem;
+    --border: 35 28% 82%;            /* #ddd4c0 warm tan border */
+    --input: 35 28% 82%;
+    --ring: 213 50% 26%;
+    --radius: 0.875rem;
 
-    --profit: 152 58% 36%;
+    --profit: 152 58% 30%;           /* #166534 */
     --profit-foreground: 152 58% 12%;
-    --loss: 2 78% 44%;
+    --loss: 2 78% 36%;               /* #991b1b */
     --loss-foreground: 2 78% 92%;
     --warning: 36 95% 48%;
     --warning-foreground: 36 60% 15%;
 
-    --chart-1: 215 72% 48%;
-    --chart-2: 152 58% 36%;
-    --chart-3: 2 78% 44%;
-    --chart-4: 36 95% 48%;
-    --chart-5: 270 65% 58%;
+    --chart-1: 213 50% 26%;          /* navy */
+    --chart-2: 152 58% 30%;          /* profit green */
+    --chart-3: 2 78% 42%;            /* loss red */
+    --chart-4: 36 95% 48%;           /* amber */
+    --chart-5: 270 45% 50%;          /* soft violet */
 
-    /* Glossy card accent colors */
-    --c1: 222,62%,28%;   --c1h: 222,72%,46%;
-    --c2: 220,60%,34%;   --c2h: 216,78%,52%;
-    --c3: 216,65%,40%;   --c3h: 212,82%,58%;
-    --c4: 212,70%,46%;   --c4h: 208,86%,64%;
-    --c5: 208,75%,52%;   --c5h: 200,88%,68%;
-    --c6: 200,80%,56%;   --c6h: 190,88%,70%;
-    --c7: 190,82%,60%;   --c7h: 180,88%,72%;
+    /* Warm card accent tones — used by older stat card components */
+    --c1: 213,50%,26%;   --c1h: 213,55%,38%;
+    --c2: 213,48%,30%;   --c2h: 213,52%,42%;
+    --c3: 210,45%,34%;   --c3h: 210,50%,46%;
+    --c4: 208,42%,38%;   --c4h: 208,48%,50%;
+    --c5: 205,40%,42%;   --c5h: 205,46%,54%;
+    --c6: 200,38%,46%;   --c6h: 200,44%,58%;
+    --c7: 195,36%,50%;   --c7h: 195,42%,62%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 60% 12%;
-    --sidebar-primary: 215 72% 48%;
+    --sidebar-background: 36 50% 98%;
+    --sidebar-foreground: 220 30% 10%;
+    --sidebar-primary: 213 50% 26%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 212 55% 90%;
-    --sidebar-accent-foreground: 215 72% 32%;
-    --sidebar-border: 218 28% 87%;
-    --sidebar-ring: 215 72% 48%;
+    --sidebar-accent: 213 35% 92%;
+    --sidebar-accent-foreground: 213 50% 26%;
+    --sidebar-border: 35 28% 82%;
+    --sidebar-ring: 213 50% 26%;
   }
 
   .dark {
@@ -119,12 +120,12 @@
   html { scroll-behavior: smooth; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'DM Sans', system-ui, sans-serif;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     font-feature-settings: "cv02","cv03","cv04","cv11";
   }
-  .font-mono { font-family: 'JetBrains Mono', monospace; }
+  .font-mono { font-family: 'DM Mono', 'JetBrains Mono', monospace; }
 }
 
 @layer components {
@@ -142,16 +143,15 @@
   .border-profit { border-color: hsl(var(--profit)); }
   .border-loss   { border-color: hsl(var(--loss)); }
 
-  /* ── Glossy aurora background ── */
+  /* ── Warm cream page background ── */
   .mesh-bg {
     background-color: hsl(var(--background));
     background-image:
-      /* Large aurora blobs */
-      radial-gradient(ellipse 80% 60% at 10% 0%,   hsl(215 80% 60% / 0.12) 0%, transparent 55%),
-      radial-gradient(ellipse 60% 50% at 90% 5%,   hsl(260 70% 65% / 0.10) 0%, transparent 50%),
-      radial-gradient(ellipse 50% 40% at 5%  85%,  hsl(190 75% 60% / 0.09) 0%, transparent 50%),
-      radial-gradient(ellipse 40% 35% at 95% 80%,  hsl(215 72% 55% / 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse 30% 25% at 50% 50%,  hsl(240 60% 65% / 0.05) 0%, transparent 55%);
+      radial-gradient(ellipse 80% 60% at 10% 0%,   hsl(36 80% 75% / 0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 50% at 90% 5%,   hsl(213 50% 70% / 0.10) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 40% at 5%  85%,  hsl(30 60% 70% / 0.12) 0%, transparent 50%),
+      radial-gradient(ellipse 40% 35% at 95% 80%,  hsl(213 40% 65% / 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse 30% 25% at 50% 50%,  hsl(36 50% 80% / 0.06) 0%, transparent 55%);
   }
 
   .dark .mesh-bg {
@@ -163,32 +163,32 @@
       radial-gradient(ellipse 30% 25% at 50% 50%,  hsl(240 60% 50% / 0.10) 0%, transparent 55%);
   }
 
-  /* ── GLOSSY GLASS CARD ── */
+  /* ── GLOSSY GLASS CARD — Warm Cream variant ── */
   .glass-card {
     position: relative;
     border-radius: var(--radius);
     overflow: hidden;
     transition: all 0.30s cubic-bezier(0.4, 0, 0.2, 1);
 
-    /* Frosted base */
-    backdrop-filter: blur(24px) saturate(180%) brightness(1.02);
-    -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.02);
+    /* Frosted warm base */
+    backdrop-filter: blur(24px) saturate(160%) brightness(1.02);
+    -webkit-backdrop-filter: blur(24px) saturate(160%) brightness(1.02);
     background: linear-gradient(
       145deg,
-      hsl(0 0% 100% / 0.82) 0%,
-      hsl(215 40% 96% / 0.70) 50%,
-      hsl(0 0% 100% / 0.78) 100%
+      hsl(36 60% 99% / 0.88) 0%,
+      hsl(36 40% 97% / 0.78) 50%,
+      hsl(36 55% 98% / 0.85) 100%
     );
 
-    /* Prismatic border */
-    border: 1px solid hsl(215 50% 80% / 0.45);
+    /* Warm tan border */
+    border: 1px solid hsl(35 35% 80% / 0.55);
 
-    /* Multi-layer glow shadow */
+    /* Warm shadow */
     box-shadow:
-      0 8px 32px hsl(215 70% 50% / 0.10),
+      0 8px 32px hsl(30 50% 40% / 0.10),
       0 2px 8px  hsl(0 0% 0% / 0.05),
-      inset 0 1px 0 hsl(0 0% 100% / 0.95),
-      inset 0 -1px 0 hsl(215 50% 70% / 0.08);
+      inset 0 1px 0 hsl(0 0% 100% / 0.92),
+      inset 0 -1px 0 hsl(35 40% 70% / 0.08);
   }
 
   /* Top-left gloss sheen */
@@ -199,15 +199,15 @@
     border-radius: inherit;
     background: linear-gradient(
       135deg,
-      hsl(0 0% 100% / 0.35) 0%,
-      hsl(0 0% 100% / 0.10) 30%,
+      hsl(0 0% 100% / 0.32) 0%,
+      hsl(0 0% 100% / 0.08) 30%,
       transparent 55%
     );
     pointer-events: none;
     z-index: 1;
   }
 
-  /* Bottom-right iridescent shimmer */
+  /* Bottom-right warm shimmer */
   .glass-card::after {
     content: '';
     position: absolute;
@@ -215,8 +215,8 @@
     width: 60%; height: 60%;
     border-radius: 50%;
     background: radial-gradient(circle,
-      hsl(215 80% 65% / 0.10) 0%,
-      hsl(260 70% 65% / 0.06) 40%,
+      hsl(36 80% 65% / 0.08) 0%,
+      hsl(213 50% 65% / 0.05) 40%,
       transparent 70%
     );
     filter: blur(20px);
@@ -243,11 +243,11 @@
   .glass-card:hover {
     transform: translateY(-3px);
     box-shadow:
-      0 20px 60px hsl(215 70% 50% / 0.18),
-      0 4px 16px  hsl(0 0% 0% / 0.08),
-      inset 0 1px 0 hsl(0 0% 100% / 0.98),
-      inset 0 -1px 0 hsl(215 50% 70% / 0.12);
-    border-color: hsl(215 65% 65% / 0.55);
+      0 20px 60px hsl(30 50% 40% / 0.14),
+      0 4px 16px  hsl(0 0% 0% / 0.07),
+      inset 0 1px 0 hsl(0 0% 100% / 0.96),
+      inset 0 -1px 0 hsl(35 40% 70% / 0.10);
+    border-color: hsl(35 45% 72% / 0.65);
   }
 
   /* ── GLOSSY STAT CARDS ── */

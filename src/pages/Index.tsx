@@ -636,6 +636,56 @@ const CSS = `
   }
 
   /* ════════════════════════════════════════════════════
+     CHILD COMPONENT OVERRIDES — force cream theme on
+     TradeStrategyTable / other components with hardcoded darks
+  ════════════════════════════════════════════════════ */
+
+  /* Nuke any dark gradient header backgrounds in child components */
+  .wc-ctnr [style*="background: linear-gradient(135deg, hsl(215"],
+  .wc-ctnr [style*="background:linear-gradient(135deg,hsl(215"],
+  .wc-ctnr [style*="background: linear-gradient(135deg, hsl(222"],
+  .wc-ctnr [style*="background:linear-gradient(135deg,hsl(222"] {
+    background: #faf6ef !important;
+    color: #111827 !important;
+    border-bottom: 1px solid #e8e0d0 !important;
+  }
+
+  /* Table header rows */
+  .wc-ctnr th, .wc-ctnr thead tr {
+    background: #faf6ef !important;
+    color: #9c8f7a !important;
+    border-color: #e8e0d0 !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .07em !important;
+  }
+
+  /* Table body cells */
+  .wc-ctnr td { border-color: #f0e8dc !important; }
+  .wc-ctnr tr:hover td { background: #f7f1e6 !important; }
+
+  /* Inner cards/panels */
+  .wc-ctnr .rounded-xl,
+  .wc-ctnr .rounded-lg {
+    background: #fdfaf4 !important;
+    border-color: #e8e0d0 !important;
+  }
+
+  /* Progress bars, stat chips in dark blue */
+  .wc-ctnr [style*="background: hsl(215"],
+  .wc-ctnr [style*="background:hsl(215"],
+  .wc-ctnr [style*="background: hsl(222"],
+  .wc-ctnr [style*="background:hsl(222"] {
+    background: #e8f0f8 !important;
+  }
+
+  /* Scrollbars */
+  .wc-ctnr *::-webkit-scrollbar { width: 4px; height: 4px; }
+  .wc-ctnr *::-webkit-scrollbar-thumb { background: #ddd4c0; border-radius: 4px; }
+  .wc-ctnr *::-webkit-scrollbar-track { background: transparent; }
+
+  /* ════════════════════════════════════════════════════
      USER MENU DROPDOWN
   ════════════════════════════════════════════════════ */
   .wc-umenu {
@@ -726,9 +776,9 @@ export default function Index() {
   const live = stocks.map(s => prices[s.ticker] ? { ...s, cmp: prices[s.ticker] } : s);
 
   // Metrics
-  const invested  = calcInvestedValue(live);
-  const current   = calcFinalValue(live);
-  const pnl       = calcProfitLoss(live);
+  const invested  = live.reduce((sum, s) => sum + calcInvestedValue(s), 0);
+  const current   = live.reduce((sum, s) => sum + calcFinalValue(s), 0);
+  const pnl       = live.reduce((sum, s) => sum + calcProfitLoss(s), 0);
   const pnlPct    = invested > 0 ? (pnl / invested * 100) : 0;
   const activePos = live.filter(s => s.status === "Active");
   const todayPnl  = activePos.reduce((a, s) => a + (s.cmp - s.entryPrice) * s.quantity * 0.003, 0);
