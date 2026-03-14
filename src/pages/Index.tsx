@@ -3,8 +3,8 @@ import {
   LayoutDashboard, TrendingUp, ScrollText, Eye,
   Brain, History, BarChart3, Bell, RefreshCw,
   LogOut, Settings, PieChart, Zap, ChevronLeft,
-  ChevronRight, Search, Menu, X, TrendingDown,
-  Activity, Wallet, Target, Award
+  ChevronRight, Search, TrendingDown,
+  Activity, Wallet, Award
 } from "lucide-react";
 import {
   portfolioData as initialData, PortfolioStock,
@@ -77,38 +77,6 @@ function fmtNum(n: number) {
   return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 }
 function sign(n: number) { return n >= 0 ? "+" : "−"; }
-
-// ─── Sector mini-bar ──────────────────────────────────────────────────────────
-function SectorBar({ stocks }: { stocks: PortfolioStock[] }) {
-  const active = stocks.filter(s => s.status === "Active");
-  const total  = active.reduce((s, x) => s + calcInvestedValue(x), 0);
-  const map    = new Map<string, number>();
-  active.forEach(s => {
-    const sec = s.sector ?? "Other";
-    map.set(sec, (map.get(sec) ?? 0) + calcInvestedValue(s));
-  });
-  const COLORS = ["#1c3557","#2a5f9e","#3b7cc9","#6ba3d6","#9dc0e3","#c4d9ef"];
-  const entries = [...map.entries()].sort((a,b) => b[1]-a[1]);
-  return (
-    <div>
-      <div style={{ display:"flex", height:8, borderRadius:4, overflow:"hidden", gap:1 }}>
-        {entries.map(([sec, val], i) => (
-          <div key={sec} style={{ flex: val/total, background: COLORS[i % COLORS.length], minWidth: 2 }} />
-        ))}
-      </div>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:"6px 14px", marginTop:8 }}>
-        {entries.slice(0,4).map(([sec, val], i) => (
-          <div key={sec} style={{ display:"flex", alignItems:"center", gap:5 }}>
-            <div style={{ width:8, height:8, borderRadius:2, background: COLORS[i % COLORS.length], flexShrink:0 }} />
-            <span style={{ fontSize:10, color:"var(--tx-400)", fontWeight:500 }}>
-              {sec} {total > 0 ? (val/total*100).toFixed(0) : 0}%
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
@@ -894,92 +862,6 @@ const CSS = `
 .zf-spin { animation: zf-spin .9s linear infinite; }
 `;
 
-// ─── Mini area chart component ──────────────────────────────────────────────
-function MiniAreaChart({ stocks }: { stocks: PortfolioStock[] }) {
-  const active = stocks.filter(s => s.status === "Active");
-  if (active.length === 0) return (
-    <div style={{ padding: "24px 20px", textAlign: "center", color: "var(--tx-300)", fontSize: 12 }}>
-      No active positions to chart
-    </div>
-  );
-
-  // Generate synthetic monthly P&L curve from stock data
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const now = new Date();
-  const pts = months.slice(0, now.getMonth() + 1).map((m, i) => {
-    const progress = (i + 1) / (now.getMonth() + 1);
-    const val = active.reduce((sum, s) => {
-      const pnl = (s.cmp - s.entryPrice) * s.quantity * (progress * 0.7 + 0.3 + Math.sin(i + s.ticker.charCodeAt(0)) * 0.1);
-      return sum + pnl;
-    }, 0);
-    return { m, val };
-  });
-
-  const minVal = Math.min(...pts.map(p => p.val), 0);
-  const maxVal = Math.max(...pts.map(p => p.val), 1000);
-  const range  = maxVal - minVal || 1;
-  const W = 500, H = 120, pad = { l: 8, r: 8, t: 10, b: 20 };
-  const xStep = (W - pad.l - pad.r) / Math.max(pts.length - 1, 1);
-  const yOf   = (v: number) => pad.t + (1 - (v - minVal) / range) * (H - pad.t - pad.b);
-  const xOf   = (i: number) => pad.l + i * xStep;
-
-  const linePts  = pts.map((p, i) => `${xOf(i)},${yOf(p.val)}`).join(" ");
-  const areaPath = `M${xOf(0)},${yOf(pts[0].val)} ` +
-    pts.slice(1).map((p, i) => `L${xOf(i+1)},${yOf(p.val)}`).join(" ") +
-    ` L${xOf(pts.length-1)},${H - pad.b} L${xOf(0)},${H - pad.b} Z`;
-
-  const lastPnl = pts[pts.length - 1]?.val ?? 0;
-  const isPos = lastPnl >= 0;
-
-  return (
-    <div style={{ padding: "16px 20px 8px" }}>
-      <div style={{ display: "flex", gap: 28, marginBottom: 14, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "var(--tx-300)", marginBottom: 3 }}>Portfolio Value</div>
-          <div style={{ fontFamily: "var(--ff-mono)", fontSize: 22, fontWeight: 600, color: "var(--tx-900)", letterSpacing: "-.5px" }}>
-            {fmt(active.reduce((s, x) => s + calcFinalValue(x), 0))}
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "var(--tx-300)", marginBottom: 3 }}>P&L This Period</div>
-          <div style={{ fontFamily: "var(--ff-mono)", fontSize: 22, fontWeight: 600, color: isPos ? "var(--green)" : "var(--red)", letterSpacing: "-.5px" }}>
-            {sign(lastPnl)}{fmt(Math.abs(lastPnl))}
-          </div>
-        </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-start", gap: 8, paddingTop: 2 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--tx-400)" }}>
-            <span style={{ width: 12, height: 3, borderRadius: 2, background: "var(--navy)", display: "inline-block" }} />
-            This year
-          </span>
-        </div>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: "100%", height: 120 }}>
-        <defs>
-          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={isPos ? "#1c3557" : "#c0392b"} stopOpacity=".18" />
-            <stop offset="100%" stopColor={isPos ? "#1c3557" : "#c0392b"} stopOpacity=".01" />
-          </linearGradient>
-        </defs>
-        <path d={areaPath} fill="url(#areaGrad)" />
-        <polyline points={linePts} fill="none" stroke={isPos ? "#1c3557" : "#c0392b"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        {/* Dots */}
-        {pts.map((p, i) => (
-          <circle key={i} cx={xOf(i)} cy={yOf(p.val)} r="3" fill={isPos ? "#1c3557" : "#c0392b"} opacity={i === pts.length - 1 ? 1 : 0.3} />
-        ))}
-        {/* X-axis labels */}
-        {pts.filter((_, i) => i === 0 || i === pts.length - 1 || i % Math.ceil(pts.length / 5) === 0).map((p, _, arr) => {
-          const origIdx = pts.indexOf(p);
-          return (
-            <text key={p.m} x={xOf(origIdx)} y={H - 2} textAnchor="middle" fontSize="9" fill="var(--tx-300)" fontFamily="var(--ff-body)">
-              {p.m}
-            </text>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
 // ─── Line Chart Widget ────────────────────────────────────────────────────────
 function LineChartWidget({ stocks }: { stocks: PortfolioStock[] }) {
   const active = stocks.filter(s => s.status === "Active");
@@ -1544,7 +1426,6 @@ export default function Index() {
                 </div>
               </div>
 
-            </>)}
             </>)}
 
             {/* ══════════ OTHER TABS ══════════ */}
