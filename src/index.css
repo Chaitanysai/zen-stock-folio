@@ -6,58 +6,57 @@
 
 @layer base {
   :root {
-    /* ── Warm Cream + Deep Navy theme ── */
-    --background: 36 40% 95%;        /* #f5efe4 warm page bg */
-    --foreground: 220 30% 10%;       /* #111827 near-black */
-    --card: 36 50% 98%;              /* #fdfaf4 warm card */
-    --card-foreground: 220 30% 10%;
-    --popover: 36 50% 98%;
-    --popover-foreground: 220 30% 10%;
-    --primary: 213 50% 26%;          /* #1c3557 deep navy */
+    /* ── ZenFolio: Warm Cream + Deep Navy ── */
+    --background:    36 38% 94%;      /* #f0ebe0 app bg */
+    --foreground:    215 32% 8%;      /* #0f1925 */
+    --card:          36 55% 98%;      /* #fdfaf5 card */
+    --card-foreground: 215 32% 8%;
+    --popover:       36 55% 98%;
+    --popover-foreground: 215 32% 8%;
+    --primary:       213 50% 24%;     /* #1c3557 navy */
     --primary-foreground: 0 0% 100%;
-    --secondary: 36 30% 90%;         /* warm cream secondary */
-    --secondary-foreground: 213 50% 26%;
-    --muted: 36 25% 88%;             /* #ede5d6 */
-    --muted-foreground: 30 18% 48%;  /* #9c8f7a */
-    --accent: 213 35% 92%;           /* #e8f0f8 navy pale */
-    --accent-foreground: 213 50% 26%;
-    --destructive: 2 78% 42%;
+    --secondary:     36 28% 92%;      /* #f0ebe0 */
+    --secondary-foreground: 213 50% 24%;
+    --muted:         36 22% 90%;      /* #ede8de */
+    --muted-foreground: 210 18% 52%;  /* #7a8fa3 */
+    --accent:        213 35% 93%;     /* #eef4fc navy pale */
+    --accent-foreground: 213 50% 24%;
+    --destructive:   4 74% 38%;       /* #c0392b */
     --destructive-foreground: 0 0% 100%;
-    --border: 35 28% 82%;            /* #ddd4c0 warm tan border */
-    --input: 35 28% 82%;
-    --ring: 213 50% 26%;
-    --radius: 0.875rem;
+    --border:        35 25% 85%;      /* #e2d8c8 */
+    --input:         36 28% 92%;
+    --ring:          213 50% 24%;
+    --radius:        0.75rem;
 
-    --profit: 152 58% 30%;           /* #166534 */
-    --profit-foreground: 152 58% 12%;
-    --loss: 2 78% 36%;               /* #991b1b */
-    --loss-foreground: 2 78% 92%;
-    --warning: 36 95% 48%;
-    --warning-foreground: 36 60% 15%;
+    --profit: 150 72% 30%;            /* #14854f */
+    --profit-foreground: 150 72% 10%;
+    --loss:   4 74% 38%;              /* #c0392b */
+    --loss-foreground: 4 74% 96%;
+    --warning: 38 85% 36%;
+    --warning-foreground: 38 85% 10%;
 
-    --chart-1: 213 50% 26%;          /* navy */
-    --chart-2: 152 58% 30%;          /* profit green */
-    --chart-3: 2 78% 42%;            /* loss red */
-    --chart-4: 36 95% 48%;           /* amber */
-    --chart-5: 270 45% 50%;          /* soft violet */
+    --chart-1: 213 50% 24%;
+    --chart-2: 150 72% 30%;
+    --chart-3: 4 74% 38%;
+    --chart-4: 38 85% 36%;
+    --chart-5: 213 32% 60%;
 
-    /* Warm card accent tones — used by older stat card components */
-    --c1: 213,50%,26%;   --c1h: 213,55%,38%;
-    --c2: 213,48%,30%;   --c2h: 213,52%,42%;
-    --c3: 210,45%,34%;   --c3h: 210,50%,46%;
-    --c4: 208,42%,38%;   --c4h: 208,48%,50%;
-    --c5: 205,40%,42%;   --c5h: 205,46%,54%;
-    --c6: 200,38%,46%;   --c6h: 200,44%,58%;
-    --c7: 195,36%,50%;   --c7h: 195,42%,62%;
+    --c1: 213,50%,24%;  --c1h: 213,54%,35%;
+    --c2: 213,48%,28%;  --c2h: 213,52%,40%;
+    --c3: 210,45%,32%;  --c3h: 210,50%,44%;
+    --c4: 208,42%,36%;  --c4h: 208,48%,48%;
+    --c5: 205,40%,40%;  --c5h: 205,46%,52%;
+    --c6: 200,38%,44%;  --c6h: 200,44%,56%;
+    --c7: 195,36%,48%;  --c7h: 195,42%,60%;
 
-    --sidebar-background: 36 50% 98%;
-    --sidebar-foreground: 220 30% 10%;
-    --sidebar-primary: 213 50% 26%;
+    --sidebar-background: 36 55% 98%;
+    --sidebar-foreground: 215 32% 8%;
+    --sidebar-primary: 213 50% 24%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 213 35% 92%;
-    --sidebar-accent-foreground: 213 50% 26%;
-    --sidebar-border: 35 28% 82%;
-    --sidebar-ring: 213 50% 26%;
+    --sidebar-accent: 213 35% 93%;
+    --sidebar-accent-foreground: 213 50% 24%;
+    --sidebar-border: 35 25% 85%;
+    --sidebar-ring: 213 50% 24%;
   }
 
   .dark {
@@ -558,6 +557,147 @@
     letter-spacing: 0.09em;
   }
 
+  /* ── Shadcn Table overrides — proper spacing + warm cream theme ── */
+
+  /* Container */
+  [class*="PortfolioTable"] table,
+  [class*="TradeStrategy"] table,
+  [class*="Watchlist"] table,
+  .wc-ctnr table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  /* Header row */
+  .wc-ctnr thead tr th,
+  .wc-ctnr [role="columnheader"] {
+    padding: 10px 16px !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .09em !important;
+    color: #9c8f7a !important;
+    background: #faf6ef !important;
+    border-bottom: 1px solid #e8e0d0 !important;
+    white-space: nowrap;
+  }
+
+  /* Body rows */
+  .wc-ctnr tbody tr td,
+  .wc-ctnr [role="cell"] {
+    padding: 13px 16px !important;
+    font-size: 13px !important;
+    color: #5c4f3a;
+    border-bottom: 1px solid #f0e8dc !important;
+    vertical-align: middle !important;
+    line-height: 1.4;
+  }
+
+  /* Row hover */
+  .wc-ctnr tbody tr:hover td {
+    background: #f7f1e6 !important;
+  }
+
+  /* Last row no border */
+  .wc-ctnr tbody tr:last-child td {
+    border-bottom: none !important;
+  }
+
+  /* Ticker links — navy blue */
+  .wc-ctnr td a,
+  .wc-ctnr td [class*="ticker"],
+  .wc-ctnr td .font-semibold,
+  .wc-ctnr td .font-bold {
+    color: #1c3557 !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+  }
+
+  /* Section title row (Portfolio Holdings, etc.) */
+  .wc-ctnr h1, .wc-ctnr h2, .wc-ctnr h3 {
+    color: #1c3557 !important;
+    font-family: 'DM Serif Display', Georgia, serif !important;
+  }
+
+  /* Sub-text under title (positions count) */
+  .wc-ctnr p.text-muted-foreground,
+  .wc-ctnr [class*="text-muted"] {
+    color: #9c8f7a !important;
+    font-size: 12px;
+  }
+
+  /* Buttons inside content — navy outlined */
+  .wc-ctnr button[class*="outline"],
+  .wc-ctnr button[variant="outline"] {
+    border-color: #ddd4c0 !important;
+    color: #1c3557 !important;
+    background: #fdfaf4 !important;
+  }
+  .wc-ctnr button[class*="outline"]:hover {
+    background: #e8f0f8 !important;
+    border-color: rgba(28,53,87,.3) !important;
+  }
+
+  /* + Add Trade primary button — navy fill */
+  .wc-ctnr button[class*="default"]:not([class*="ghost"]):not([class*="outline"]),
+  .wc-ctnr .bg-primary {
+    background: #1c3557 !important;
+    color: white !important;
+    border: none !important;
+  }
+  .wc-ctnr button.bg-primary:hover,
+  .wc-ctnr .bg-primary:hover {
+    background: #2a4a70 !important;
+  }
+
+  /* Status badges — Open/Closed */
+  .wc-ctnr [class*="badge"],
+  .wc-ctnr .badge {
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    padding: 2px 9px !important;
+    border-radius: 20px !important;
+  }
+
+  /* Input fields inside content */
+  .wc-ctnr input,
+  .wc-ctnr select {
+    background: #faf6ef !important;
+    border-color: #ddd4c0 !important;
+    color: #111827 !important;
+    font-size: 13px !important;
+  }
+  .wc-ctnr input:focus,
+  .wc-ctnr select:focus {
+    border-color: #1c3557 !important;
+    box-shadow: 0 0 0 2px rgba(28,53,87,.12) !important;
+    outline: none !important;
+  }
+
+  /* Checkboxes */
+  .wc-ctnr [type="checkbox"] {
+    accent-color: #1c3557;
+  }
+
+  /* Separator lines */
+  .wc-ctnr [role="separator"],
+  .wc-ctnr .separator {
+    background: #e8e0d0 !important;
+  }
+
+  /* Dropdown menus inside content */
+  .wc-ctnr [role="menu"],
+  .wc-ctnr [data-radix-popper-content-wrapper] {
+    background: #fdfaf4 !important;
+    border: 1px solid #ddd4c0 !important;
+    box-shadow: 0 8px 24px rgba(120,80,20,.12) !important;
+  }
+  .wc-ctnr [role="menuitem"]:hover {
+    background: #f0e8dc !important;
+    color: #1c3557 !important;
+  }
+
   .ticker {
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
@@ -642,4 +782,229 @@
   button, a { -webkit-tap-highlight-color: transparent; }
   button:active { opacity: 0.80; transform: scale(0.96); transition: opacity 0.08s, transform 0.08s; }
   *:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+}
+
+/* ══════════════════════════════════════════════════════
+   GLOBAL TABLE SPACING + THEME FIX
+   Targets Shadcn <Table> which renders standard th/td
+   Works both inside .wc-ctnr AND anywhere on page
+   ══════════════════════════════════════════════════════ */
+
+/* Shadcn Table wrapper */
+.wc-ctnr [class*="relative w-full overflow-auto"],
+.wc-ctnr .overflow-auto {
+  border-radius: 10px;
+}
+
+/* TH — Shadcn TableHead: "h-12 px-4 text-left align-middle font-medium" */
+.wc-ctnr th {
+  height: auto !important;
+  padding: 11px 18px !important;
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .09em !important;
+  color: #9c8f7a !important;
+  background: #faf6ef !important;
+  border-bottom: 1.5px solid #e8e0d0 !important;
+  white-space: nowrap;
+  vertical-align: middle !important;
+}
+
+/* TD — Shadcn TableCell: "p-4 align-middle" */
+.wc-ctnr td {
+  padding: 14px 18px !important;
+  font-size: 13px !important;
+  color: #5c4f3a !important;
+  border-bottom: 1px solid #f0e8dc !important;
+  vertical-align: middle !important;
+  line-height: 1.5;
+}
+
+/* Row hover */
+.wc-ctnr tr:hover > td {
+  background: #f7f1e6 !important;
+}
+
+/* Last row — no bottom border */
+.wc-ctnr tbody tr:last-child > td {
+  border-bottom: none !important;
+}
+
+/* Thead background */
+.wc-ctnr thead {
+  background: #faf6ef !important;
+}
+
+/* Sticky header support */
+.wc-ctnr thead tr th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 #e8e0d0;
+}
+
+/* Ticker text — navy bold */
+.wc-ctnr td .font-semibold,
+.wc-ctnr td .font-bold,
+.wc-ctnr td .font-medium.text-primary,
+.wc-ctnr td [class*="ticker"],
+.wc-ctnr td a {
+  color: #1c3557 !important;
+  font-weight: 700 !important;
+}
+
+/* Positive P&L values */
+.wc-ctnr td .text-green-500,
+.wc-ctnr td .text-green-600,
+.wc-ctnr td [class*="profit"],
+.wc-ctnr td [class*="text-profit"] {
+  color: #166534 !important;
+  font-weight: 600 !important;
+}
+
+/* Negative P&L values */
+.wc-ctnr td .text-red-500,
+.wc-ctnr td .text-red-600,
+.wc-ctnr td [class*="loss"],
+.wc-ctnr td [class*="text-loss"] {
+  color: #991b1b !important;
+  font-weight: 600 !important;
+}
+
+/* Section titles inside content */
+.wc-ctnr h2, .wc-ctnr h3 {
+  color: #1c3557 !important;
+  font-family: 'DM Serif Display', Georgia, serif !important;
+  letter-spacing: -.2px;
+}
+.wc-ctnr p, .wc-ctnr span.text-muted-foreground,
+.wc-ctnr [class*="text-muted"] {
+  color: #9c8f7a !important;
+}
+
+/* Primary buttons (+ Add Trade, etc.) */
+.wc-ctnr button.bg-primary,
+.wc-ctnr [class*="bg-primary"] {
+  background: #1c3557 !important;
+  color: white !important;
+}
+.wc-ctnr button.bg-primary:hover {
+  background: #2a4a70 !important;
+}
+
+/* Outline buttons */
+.wc-ctnr button[class*="outline"],
+.wc-ctnr button[class*="border-input"] {
+  background: #fdfaf4 !important;
+  border-color: #ddd4c0 !important;
+  color: #1c3557 !important;
+}
+.wc-ctnr button[class*="outline"]:hover {
+  background: #e8f0f8 !important;
+}
+
+/* Ghost buttons */
+.wc-ctnr button[class*="ghost"] {
+  color: #5c4f3a !important;
+}
+.wc-ctnr button[class*="ghost"]:hover {
+  background: #f0e8dc !important;
+  color: #1c3557 !important;
+}
+
+/* Input / Select fields */
+.wc-ctnr input:not([type="checkbox"]):not([type="radio"]),
+.wc-ctnr select,
+.wc-ctnr textarea {
+  background: #faf6ef !important;
+  border-color: #ddd4c0 !important;
+  color: #111827 !important;
+  font-size: 13px !important;
+  border-radius: 8px !important;
+}
+.wc-ctnr input:focus,
+.wc-ctnr select:focus,
+.wc-ctnr textarea:focus {
+  border-color: #1c3557 !important;
+  box-shadow: 0 0 0 3px rgba(28,53,87,.1) !important;
+  outline: none !important;
+}
+.wc-ctnr label {
+  color: #5c4f3a !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+.wc-ctnr input::placeholder,
+.wc-ctnr textarea::placeholder {
+  color: #c4b49a !important;
+}
+
+/* Dropdown / Popover menus */
+.wc-ctnr [role="menu"],
+.wc-ctnr [data-radix-popper-content-wrapper] > div,
+.wc-ctnr [cmdk-root] {
+  background: #fdfaf4 !important;
+  border: 1px solid #ddd4c0 !important;
+  box-shadow: 0 8px 24px rgba(120,80,20,.12) !important;
+  border-radius: 10px !important;
+}
+.wc-ctnr [role="menuitem"],
+.wc-ctnr [cmdk-item] {
+  color: #5c4f3a !important;
+  font-size: 13px !important;
+}
+.wc-ctnr [role="menuitem"]:hover,
+.wc-ctnr [cmdk-item][aria-selected="true"] {
+  background: #f0e8dc !important;
+  color: #1c3557 !important;
+}
+
+/* Badges / status chips */
+.wc-ctnr [class*="badge"],
+.wc-ctnr .inline-flex.items-center.rounded-full {
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 2px 9px !important;
+}
+
+/* Card backgrounds inside content */
+.wc-ctnr .rounded-xl,
+.wc-ctnr .rounded-lg,
+.wc-ctnr [class*="card"] {
+  background: #fdfaf4 !important;
+  border-color: #e8e0d0 !important;
+}
+
+/* Scrollbars */
+.wc-ctnr ::-webkit-scrollbar { width: 5px; height: 5px; }
+.wc-ctnr ::-webkit-scrollbar-thumb { background: #ddd4c0; border-radius: 5px; }
+.wc-ctnr ::-webkit-scrollbar-track { background: transparent; }
+
+/* Tabs inside content (Analytics etc.) */
+.wc-ctnr [role="tablist"] {
+  background: #ede5d6 !important;
+  border-radius: 8px !important;
+  padding: 3px !important;
+}
+.wc-ctnr [role="tab"] {
+  color: #9c8f7a !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+.wc-ctnr [role="tab"][data-state="active"] {
+  background: #fdfaf4 !important;
+  color: #1c3557 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 4px rgba(120,80,20,.10) !important;
+}
+
+/* Recharts / Chart containers */
+.wc-ctnr .recharts-text { fill: #9c8f7a !important; }
+.wc-ctnr .recharts-cartesian-axis-tick-value { fill: #9c8f7a !important; }
+.wc-ctnr .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #fdfaf4 !important;
+  border: 1px solid #ddd4c0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(120,80,20,.10) !important;
 }

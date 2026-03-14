@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard, TrendingUp, ScrollText, Eye,
-  Brain, History, BarChart3, Bell,
-  RefreshCw, LogOut, Settings,
-  PieChart, Zap, Search
+  Brain, History, BarChart3, Bell, RefreshCw,
+  LogOut, Settings, PieChart, Zap, ChevronLeft,
+  ChevronRight, Search, Menu, X, TrendingDown,
+  Activity, Wallet, Target, Award
 } from "lucide-react";
 import {
   portfolioData as initialData, PortfolioStock,
@@ -30,736 +31,963 @@ import { useLivePrices }     from "@/hooks/useLivePrices";
 import { usePortfolioSync, loadFromLocal } from "@/hooks/usePortfolioSync";
 import { useAuth }           from "@/contexts/AuthContext";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 type ActiveTab =
   | "overview" | "holdings" | "trades" | "watchlist" | "ai"
-  | "charts" | "risk" | "analytics" | "history" | "journal"
+  | "charts" | "analytics" | "history" | "journal"
   | "sector" | "alerts" | "export";
 
-// ─── Sidebar nav ─────────────────────────────────────────────────────────────
-const NAV = [
-  { id: "overview",   label: "Overview",    icon: LayoutDashboard, group: "PORTFOLIO" },
-  { id: "holdings",   label: "Holdings",    icon: TrendingUp,      group: "PORTFOLIO" },
-  { id: "trades",     label: "Trades",      icon: ScrollText,      group: "PORTFOLIO" },
-  { id: "history",    label: "History",     icon: History,         group: "PORTFOLIO" },
-  { id: "watchlist",  label: "Watchlist",   icon: Eye,             group: "RESEARCH"  },
-  { id: "charts",     label: "Analytics",   icon: BarChart3,       group: "RESEARCH"  },
-  { id: "sector",     label: "Sectors",     icon: PieChart,        group: "RESEARCH"  },
-  { id: "ai",         label: "AI Insights", icon: Brain,           group: "TOOLS"     },
-  { id: "alerts",     label: "Alerts",      icon: Bell,            group: "TOOLS"     },
-  { id: "export",     label: "Export",      icon: Zap,             group: "TOOLS"     },
+// ─── Nav ──────────────────────────────────────────────────────────────────────
+const NAV_GROUPS = [
+  {
+    label: "MAIN",
+    items: [
+      { id: "overview",   label: "Dashboard",   icon: LayoutDashboard },
+      { id: "holdings",   label: "Portfolio",   icon: Wallet },
+      { id: "trades",     label: "Trades",      icon: ScrollText },
+      { id: "history",    label: "History",     icon: History },
+    ],
+  },
+  {
+    label: "ANALYTICS",
+    items: [
+      { id: "charts",     label: "Charts",      icon: BarChart3 },
+      { id: "sector",     label: "Sectors",     icon: PieChart },
+      { id: "analytics",  label: "Performance", icon: Activity },
+    ],
+  },
+  {
+    label: "TOOLS",
+    items: [
+      { id: "watchlist",  label: "Watchlist",   icon: Eye },
+      { id: "ai",         label: "AI Insights", icon: Brain },
+      { id: "alerts",     label: "Alerts",      icon: Bell },
+      { id: "export",     label: "Export",      icon: Zap },
+    ],
+  },
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n: number) {
   if (Math.abs(n) >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
   if (Math.abs(n) >= 1000)   return `₹${(n / 1000).toFixed(1)}K`;
   return `₹${Math.abs(n).toFixed(0)}`;
 }
+function fmtNum(n: number) {
+  return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+}
+function sign(n: number) { return n >= 0 ? "+" : "−"; }
 
-// ─── All CSS in one string ────────────────────────────────────────────────────
+// ─── Sector mini-bar ──────────────────────────────────────────────────────────
+function SectorBar({ stocks }: { stocks: PortfolioStock[] }) {
+  const active = stocks.filter(s => s.status === "Active");
+  const total  = active.reduce((s, x) => s + calcInvestedValue(x), 0);
+  const map    = new Map<string, number>();
+  active.forEach(s => {
+    const sec = s.sector ?? "Other";
+    map.set(sec, (map.get(sec) ?? 0) + calcInvestedValue(s));
+  });
+  const COLORS = ["#1c3557","#2a5f9e","#3b7cc9","#6ba3d6","#9dc0e3","#c4d9ef"];
+  const entries = [...map.entries()].sort((a,b) => b[1]-a[1]);
+  return (
+    <div>
+      <div style={{ display:"flex", height:8, borderRadius:4, overflow:"hidden", gap:1 }}>
+        {entries.map(([sec, val], i) => (
+          <div key={sec} style={{ flex: val/total, background: COLORS[i % COLORS.length], minWidth: 2 }} />
+        ))}
+      </div>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:"6px 14px", marginTop:8 }}>
+        {entries.slice(0,4).map(([sec, val], i) => (
+          <div key={sec} style={{ display:"flex", alignItems:"center", gap:5 }}>
+            <div style={{ width:8, height:8, borderRadius:2, background: COLORS[i % COLORS.length], flexShrink:0 }} />
+            <span style={{ fontSize:10, color:"var(--tx-lo)", fontWeight:500 }}>
+              {sec} {total > 0 ? (val/total*100).toFixed(0) : 0}%
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500;600&display=swap');
 
-  /* ── Reset scoped to .wc ── */
-  .wc *, .wc *::before, .wc *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ══════════════════════════════════════════════════
+   DESIGN TOKENS
+══════════════════════════════════════════════════ */
+.zf {
+  /* Backgrounds */
+  --bg-app:       #f0ebe0;
+  --bg-sidebar:   #fdfaf5;
+  --bg-card:      #fdfaf5;
+  --bg-surface:   #f7f2e8;
+  --bg-hover:     #f2ece0;
+  --bg-input:     #f7f2e8;
 
-  /* ════════════════════════════════════════════════════
-     DESIGN TOKENS — Warm Cream + Deep Navy
-  ════════════════════════════════════════════════════ */
-  .wc {
-    /* Backgrounds */
-    --bg-page:      #f5efe4;
-    --bg-canvas:    #ede5d6;
-    --bg-surface:   #faf6ef;
-    --bg-card:      #fdfaf4;
-    --bg-hover:     #f7f1e6;
+  /* Navy brand */
+  --navy:         #1c3557;
+  --navy-700:     #224168;
+  --navy-600:     #2a5080;
+  --navy-100:     #ddeaf8;
+  --navy-50:      #eef4fc;
 
-    /* Navy accent */
-    --navy:         #1c3557;
-    --navy-mid:     #2a4a70;
-    --navy-soft:    #3b5f88;
-    --navy-pale:    #e8f0f8;
-    --navy-tint:    rgba(28,53,87,.08);
+  /* Text */
+  --tx-900:       #0f1925;
+  --tx-700:       #2c3e55;
+  --tx-500:       #5c7080;
+  --tx-400:       #7a8fa3;
+  --tx-300:       #a8bcce;
+  --tx-200:       #cddae6;
 
-    /* Text */
-    --tx-hi:        #111827;
-    --tx-med:       #5c4f3a;
-    --tx-lo:        #9c8f7a;
-    --tx-ghost:     #c4b49a;
-    --tx-navy:      #1c3557;
-    --tx-navy-dim:  rgba(28,53,87,.55);
+  /* Borders */
+  --bd-200:       #e2d8c8;
+  --bd-100:       #ede8de;
+  --bd-50:        #f4f0e8;
 
-    /* Borders */
-    --bd-strong:    #ddd4c0;
-    --bd-mid:       #e8e0d0;
-    --bd-soft:      #f0e8dc;
-    --bd-navy:      rgba(28,53,87,.15);
+  /* Semantic */
+  --green:        #14854f;
+  --green-bg:     #edfaf4;
+  --green-bd:     #a7e8c8;
+  --red:          #c0392b;
+  --red-bg:       #fdf2f0;
+  --red-bd:       #f5c6c0;
+  --amber:        #b45309;
+  --amber-bg:     #fffbeb;
+  --amber-bd:     #fcd34d;
 
-    /* Profit / Loss */
-    --profit:       #166534;
-    --profit-bg:    #f0fdf4;
-    --profit-bd:    #bbf7d0;
-    --loss:         #991b1b;
-    --loss-bg:      #fff1f2;
-    --loss-bd:      #fecdd3;
+  /* Shadows */
+  --sh-1: 0 1px 3px rgba(28,53,87,.07), 0 1px 2px rgba(28,53,87,.04);
+  --sh-2: 0 4px 12px rgba(28,53,87,.08), 0 2px 4px rgba(28,53,87,.05);
+  --sh-3: 0 8px 24px rgba(28,53,87,.10), 0 3px 8px rgba(28,53,87,.06);
 
-    /* Shadows */
-    --sh-sm:   0 1px 3px rgba(120,80,20,.08), 0 1px 2px rgba(120,80,20,.05);
-    --sh-md:   0 4px 12px rgba(120,80,20,.10), 0 2px 6px rgba(120,80,20,.06);
-    --sh-lg:   0 8px 24px rgba(120,80,20,.12), 0 4px 10px rgba(120,80,20,.07);
-    --sh-navy: 0 2px 10px rgba(28,53,87,.18);
+  /* Typography */
+  --ff-body: 'DM Sans', -apple-system, sans-serif;
+  --ff-disp: 'DM Serif Display', Georgia, serif;
+  --ff-mono: 'DM Mono', 'SF Mono', monospace;
 
-    /* Type */
-    --ff-body: 'DM Sans', -apple-system, sans-serif;
-    --ff-mono: 'DM Mono', 'SF Mono', monospace;
-    --ff-disp: 'DM Serif Display', Georgia, serif;
+  font-family: var(--ff-body);
+  background: var(--bg-app);
+  min-height: 100vh;
+  color: var(--tx-900);
+  display: flex;
+  overflow: hidden;
+  height: 100vh;
+}
 
-    font-family: var(--ff-body);
-    background: var(--bg-canvas);
-    min-height: 100vh;
-    color: var(--tx-hi);
-    display: flex;
-    overflow: hidden;
-  }
+/* ══════════════════════════════════════════════════
+   SIDEBAR  — like DashStack reference
+══════════════════════════════════════════════════ */
+.zf-sidebar {
+  width: 220px;
+  min-width: 220px;
+  flex-shrink: 0;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--bd-200);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: width .2s ease, min-width .2s ease;
+  overflow: hidden;
+  box-shadow: 2px 0 8px rgba(28,53,87,.05);
+  z-index: 30;
+}
+.zf-sidebar.collapsed {
+  width: 64px;
+  min-width: 64px;
+}
 
-  /* ════════════════════════════════════════════════════
-     SIDEBAR
-  ════════════════════════════════════════════════════ */
-  .wc-side {
-    width: 220px;
-    flex-shrink: 0;
-    background: var(--bg-card);
-    border-right: 1px solid var(--bd-strong);
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    box-shadow: 2px 0 12px rgba(120,80,20,.06);
-    z-index: 20;
-  }
+/* Brand row */
+.zf-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--bd-100);
+  flex-shrink: 0;
+  min-height: 64px;
+}
+.zf-logo {
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(28,53,87,.3);
+}
+.zf-brand-text { overflow: hidden; white-space: nowrap; }
+.zf-brand-name {
+  font-family: var(--ff-disp);
+  font-size: 17px;
+  color: var(--navy);
+  line-height: 1.1;
+  letter-spacing: -.2px;
+}
+.zf-brand-sub {
+  font-size: 10px;
+  color: var(--tx-400);
+  font-weight: 500;
+  letter-spacing: .02em;
+  margin-top: 1px;
+}
 
-  /* Brand */
-  .wc-brand {
-    display: flex;
-    align-items: center;
-    gap: 11px;
-    padding: 22px 20px 20px;
-    border-bottom: 1px solid var(--bd-mid);
-  }
-  .wc-logo {
-    width: 34px; height: 34px;
-    border-radius: 10px;
-    background: var(--navy);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    box-shadow: var(--sh-navy);
-  }
-  .wc-brandname {
-    font-family: var(--ff-disp);
-    font-size: 18px;
-    color: var(--navy);
-    letter-spacing: -.2px;
-    line-height: 1;
-  }
-  .wc-brandsub {
-    font-size: 10px;
-    color: var(--tx-lo);
-    margin-top: 2px;
-    font-weight: 500;
-    letter-spacing: .03em;
-  }
+/* Collapse toggle */
+.zf-collapse-btn {
+  position: absolute;
+  right: -12px;
+  top: 70px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--bd-200);
+  box-shadow: var(--sh-1);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  z-index: 40;
+  color: var(--tx-400);
+  transition: all .15s;
+}
+.zf-collapse-btn:hover { background: var(--navy-100); color: var(--navy); }
 
-  /* Nav groups */
-  .wc-nav-wrap {
-    flex: 1;
-    overflow-y: auto;
-    padding: 12px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-  }
-  .wc-nav-wrap::-webkit-scrollbar { width: 3px; }
-  .wc-nav-wrap::-webkit-scrollbar-thumb { background: var(--bd-strong); border-radius: 3px; }
+/* Nav scroll area */
+.zf-nav-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 8px;
+}
+.zf-nav-scroll::-webkit-scrollbar { width: 3px; }
+.zf-nav-scroll::-webkit-scrollbar-thumb { background: var(--bd-200); border-radius: 3px; }
 
-  .wc-nav-grp {
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    color: var(--tx-ghost);
-    padding: 12px 10px 4px;
-  }
-  .wc-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border-radius: 9px;
-    font-size: 12.5px;
-    font-weight: 400;
-    color: var(--tx-med);
-    cursor: pointer;
-    transition: all .14s ease;
-    border: 1px solid transparent;
-    position: relative;
-  }
-  .wc-nav-item svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .75; }
-  .wc-nav-item:hover {
-    background: var(--bg-hover);
-    color: var(--tx-navy);
-    border-color: var(--bd-soft);
-  }
-  .wc-nav-item:hover svg { opacity: 1; }
-  .wc-nav-item.on {
-    background: var(--navy-pale);
-    color: var(--navy);
-    font-weight: 600;
-    border-color: var(--bd-navy);
-    box-shadow: var(--sh-sm);
-  }
-  .wc-nav-item.on svg { opacity: 1; }
-  .wc-nav-item.on::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 20%; bottom: 20%;
-    width: 3px;
-    border-radius: 0 3px 3px 0;
-    background: var(--navy);
-  }
+/* Group label */
+.zf-nav-grp {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--tx-300);
+  padding: 12px 10px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.zf-sidebar.collapsed .zf-nav-grp { opacity: 0; height: 0; padding: 0; margin: 0; }
 
-  /* Sidebar footer */
-  .wc-side-foot {
-    padding: 14px 16px;
-    border-top: 1px solid var(--bd-mid);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .wc-user-info { display: flex; flex-direction: column; gap: 1px; }
-  .wc-user-name { font-size: 12px; font-weight: 600; color: var(--tx-hi); }
-  .wc-user-role { font-size: 10px; color: var(--tx-lo); }
+/* Nav item */
+.zf-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--tx-500);
+  cursor: pointer;
+  transition: all .14s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid transparent;
+  margin-bottom: 1px;
+}
+.zf-nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+.zf-nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--tx-700);
+}
+.zf-nav-item.active {
+  background: var(--navy-50);
+  color: var(--navy);
+  font-weight: 600;
+  border-color: var(--navy-100);
+}
+.zf-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 20%; bottom: 20%;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--navy);
+}
+.zf-sidebar.collapsed .zf-nav-item {
+  justify-content: center;
+  padding: 10px;
+  gap: 0;
+}
+.zf-sidebar.collapsed .zf-nav-item span { display: none; }
+.zf-sidebar.collapsed .zf-nav-item.active::before { display: none; }
+.zf-nav-label { overflow: hidden; }
 
-  /* ════════════════════════════════════════════════════
-     MAIN AREA
-  ════════════════════════════════════════════════════ */
-  .wc-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-    min-width: 0;
-  }
+/* Sidebar footer */
+.zf-sidebar-foot {
+  padding: 12px;
+  border-top: 1px solid var(--bd-100);
+  flex-shrink: 0;
+}
+.zf-user-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--bd-100);
+  overflow: hidden;
+}
+.zf-user-avatar {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: white;
+  flex-shrink: 0;
+}
+.zf-user-info { overflow: hidden; flex: 1; }
+.zf-user-name { font-size: 12px; font-weight: 600; color: var(--tx-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.zf-user-role { font-size: 10px; color: var(--tx-400); margin-top: 0; }
+.zf-sidebar.collapsed .zf-user-info,
+.zf-sidebar.collapsed .zf-brand-text { display: none; }
 
-  /* ── Top bar ── */
-  .wc-top {
-    background: var(--bg-card);
-    border-bottom: 1px solid var(--bd-strong);
-    padding: 0 24px;
-    height: 58px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-    box-shadow: 0 1px 6px rgba(120,80,20,.06);
-  }
+/* ══════════════════════════════════════════════════
+   MAIN AREA
+══════════════════════════════════════════════════ */
+.zf-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  min-width: 0;
+}
 
-  /* Breadcrumb + tabs */
-  .wc-tabs {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    background: var(--bg-canvas);
-    border-radius: 10px;
-    padding: 3px;
-    border: 1px solid var(--bd-mid);
-  }
-  .wc-tab {
-    font-size: 12px;
-    padding: 5px 16px;
-    border-radius: 7px;
-    cursor: pointer;
-    color: var(--tx-lo);
-    font-weight: 500;
-    transition: all .14s;
-    background: transparent;
-    border: none;
-    white-space: nowrap;
-  }
-  .wc-tab:hover { color: var(--tx-navy); background: var(--bg-hover); }
-  .wc-tab.on {
-    background: var(--bg-card);
-    color: var(--navy);
-    font-weight: 600;
-    box-shadow: var(--sh-sm);
-    border: 1px solid var(--bd-mid);
-  }
+/* ── Header ── */
+.zf-header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--bd-200);
+  height: 64px;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(28,53,87,.05);
+}
 
-  /* Right controls */
-  .wc-ctrl {
-    display: flex; align-items: center; gap: 10px;
-  }
-  .wc-live {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 11px; font-weight: 600;
-    padding: 5px 13px;
-    border-radius: 20px;
-    background: var(--profit-bg);
-    border: 1px solid var(--profit-bd);
-    color: var(--profit);
-    letter-spacing: .01em;
-  }
-  .wc-ldot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #22c55e;
-    box-shadow: 0 0 0 2px rgba(34,197,94,.2);
-    animation: wc-pulse 2.2s ease infinite;
-  }
-  @keyframes wc-pulse {
-    0%,100% { box-shadow: 0 0 0 2px rgba(34,197,94,.2); }
-    50%      { box-shadow: 0 0 0 5px rgba(34,197,94,.08); }
-  }
-  .wc-ibtn {
-    width: 34px; height: 34px;
-    border-radius: 9px;
-    background: var(--bg-canvas);
-    border: 1px solid var(--bd-strong);
-    color: var(--tx-lo);
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-    transition: all .14s;
-  }
-  .wc-ibtn:hover {
-    background: var(--navy-pale);
-    border-color: var(--bd-navy);
-    color: var(--navy);
-  }
-  .wc-time {
-    font-size: 11px;
-    font-family: var(--ff-mono);
-    color: var(--tx-lo);
-    font-weight: 500;
-  }
+/* Page title in header */
+.zf-page-title {
+  font-family: var(--ff-disp);
+  font-size: 18px;
+  color: var(--navy);
+  letter-spacing: -.2px;
+  flex: 1;
+  white-space: nowrap;
+}
 
-  /* ── Content area ── */
-  .wc-content {
-    flex: 1;
-    overflow-y: auto;
-    padding: 22px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    background: var(--bg-page);
-    min-height: 0;
-  }
-  .wc-content::-webkit-scrollbar { width: 5px; }
-  .wc-content::-webkit-scrollbar-track { background: transparent; }
-  .wc-content::-webkit-scrollbar-thumb { background: var(--bd-strong); border-radius: 5px; }
+/* Search bar */
+.zf-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--bd-200);
+  border-radius: 9px;
+  padding: 7px 13px;
+  width: 220px;
+  transition: all .14s;
+}
+.zf-search:focus-within {
+  border-color: var(--navy);
+  background: var(--bg-card);
+  box-shadow: 0 0 0 3px rgba(28,53,87,.08);
+}
+.zf-search input {
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 12.5px;
+  color: var(--tx-700);
+  font-family: var(--ff-body);
+  width: 100%;
+}
+.zf-search input::placeholder { color: var(--tx-300); }
 
-  /* ── Section heading ── */
-  .wc-sec-head {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-bottom: 2px;
-  }
-  .wc-sec-title {
-    font-family: var(--ff-disp);
-    font-size: 15px;
-    color: var(--navy);
-    letter-spacing: -.1px;
-  }
-  .wc-sec-sub {
-    font-size: 11px;
-    color: var(--tx-lo);
-    font-weight: 500;
-  }
+/* Live badge */
+.zf-live {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+  background: var(--green-bg);
+  border: 1px solid var(--green-bd);
+  color: var(--green);
+}
+.zf-live.cached {
+  background: var(--amber-bg);
+  border-color: var(--amber-bd);
+  color: var(--amber);
+}
+.zf-ldot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: zf-pulse 2s infinite;
+}
+@keyframes zf-pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: .45; }
+}
 
-  /* ════════════════════════════════════════════════════
-     STAT CARDS — top row
-  ════════════════════════════════════════════════════ */
-  .wc-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 14px;
-  }
-  .wc-sc {
-    background: var(--bg-card);
-    border: 1px solid var(--bd-mid);
-    border-radius: 14px;
-    padding: 18px 20px;
-    box-shadow: var(--sh-md);
-    transition: transform .18s ease, box-shadow .18s ease;
-    position: relative;
-    overflow: hidden;
-  }
-  .wc-sc:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--sh-lg);
-  }
-  /* Subtle top stripe */
-  .wc-sc::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    border-radius: 14px 14px 0 0;
-    background: linear-gradient(90deg, transparent 15%, rgba(28,53,87,.12) 50%, transparent 85%);
-  }
-  .wc-sc-invest { border-top: 3px solid var(--navy); }
-  .wc-sc-invest::after { display: none; }
-  .wc-sc-profit {
-    background: var(--profit-bg);
-    border-color: var(--profit-bd);
-  }
-  .wc-sc-profit::after {
-    background: linear-gradient(90deg, transparent 15%, rgba(22,101,52,.2) 50%, transparent 85%);
-  }
-  .wc-sc-loss {
-    background: var(--loss-bg);
-    border-color: var(--loss-bd);
-  }
-  .wc-sc-loss::after {
-    background: linear-gradient(90deg, transparent 15%, rgba(153,27,27,.2) 50%, transparent 85%);
-  }
-  .wc-sc-lbl {
-    font-size: 9.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--tx-lo);
-    margin-bottom: 8px;
-  }
-  .wc-sc-val {
-    font-family: var(--ff-mono);
-    font-size: 26px;
-    font-weight: 500;
-    color: var(--tx-hi);
-    line-height: 1;
-    letter-spacing: -.5px;
-  }
-  .wc-sc-sub {
-    font-size: 11px;
-    font-weight: 600;
-    margin-top: 6px;
-  }
-  .wc-sc-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 20px;
-    margin-top: 7px;
-  }
-  .wc-chip-profit { background: var(--profit-bg); color: var(--profit); border: 1px solid var(--profit-bd); }
-  .wc-chip-loss   { background: var(--loss-bg);   color: var(--loss);   border: 1px solid var(--loss-bd);   }
-  .wc-chip-neutral{ background: var(--navy-pale);  color: var(--navy);   border: 1px solid var(--bd-navy);   }
+/* Icon button */
+.zf-hbtn {
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  background: var(--bg-surface);
+  border: 1px solid var(--bd-200);
+  color: var(--tx-400);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all .13s;
+  flex-shrink: 0;
+  position: relative;
+}
+.zf-hbtn:hover { background: var(--navy-50); border-color: var(--navy-100); color: var(--navy); }
 
-  /* ════════════════════════════════════════════════════
-     PANELS — Holdings + Watchlist
-  ════════════════════════════════════════════════════ */
-  .wc-panels {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    gap: 16px;
-    flex: 1;
-    min-height: 0;
-  }
-  .wc-panel {
-    background: var(--bg-card);
-    border: 1px solid var(--bd-mid);
-    border-radius: 14px;
-    box-shadow: var(--sh-md);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
-  }
-  .wc-panel-head {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--bd-soft);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-shrink: 0;
-    background: var(--bg-surface);
-  }
-  .wc-panel-title {
-    font-family: var(--ff-disp);
-    font-size: 14px;
-    color: var(--navy);
-    letter-spacing: -.1px;
-  }
-  .wc-panel-badge {
-    font-size: 9.5px;
-    font-weight: 700;
-    color: var(--tx-navy-dim);
-    background: var(--navy-pale);
-    border: 1px solid var(--bd-navy);
-    border-radius: 20px;
-    padding: 2px 8px;
-  }
-  .wc-panel-act {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--navy);
-    cursor: pointer;
-    padding: 4px 10px;
-    border-radius: 7px;
-    background: var(--navy-pale);
-    border: 1px solid var(--bd-navy);
-    transition: all .13s;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .wc-panel-act:hover {
-    background: var(--navy);
-    color: white;
-  }
-  .wc-panel-body {
-    padding: 0 20px 14px;
-    overflow-y: auto;
-    flex: 1;
-  }
-  .wc-panel-body::-webkit-scrollbar { width: 3px; }
-  .wc-panel-body::-webkit-scrollbar-thumb { background: var(--bd-strong); border-radius: 3px; }
+/* User menu dropdown */
+.zf-umenu {
+  position: absolute;
+  right: 0; top: calc(100% + 8px);
+  background: var(--bg-card);
+  border: 1px solid var(--bd-200);
+  border-radius: 10px;
+  box-shadow: var(--sh-3);
+  min-width: 180px;
+  z-index: 100;
+  overflow: hidden;
+}
+.zf-umenu-head { padding: 12px 14px; border-bottom: 1px solid var(--bd-100); background: var(--bg-surface); }
+.zf-umenu-email { font-size: 12px; font-weight: 600; color: var(--tx-700); }
+.zf-umenu-lbl { font-size: 9.5px; color: var(--tx-400); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+.zf-umenu-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 10px 14px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; border: none; background: transparent;
+  transition: background .12s; font-family: var(--ff-body);
+}
+.zf-umenu-btn:hover { background: var(--bg-hover); }
+.zf-umenu-btn.danger { color: var(--red); }
+.zf-umenu-btn.primary { color: var(--navy); }
 
-  /* ── Holdings table ── */
-  .wc-tbl-head {
-    display: grid;
-    grid-template-columns: 1.8fr .6fr 1fr 1fr .85fr;
-    gap: 8px;
-    padding: 10px 0 6px;
-    border-bottom: 1px solid var(--bd-mid);
-    position: sticky;
-    top: 0;
-    background: var(--bg-card);
-    z-index: 1;
-  }
-  .wc-th {
-    font-size: 9px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: var(--tx-ghost);
-  }
-  .wc-tr {
-    display: grid;
-    grid-template-columns: 1.8fr .6fr 1fr 1fr .85fr;
-    gap: 8px;
-    padding: 10px 0;
-    align-items: center;
-    border-bottom: 1px solid var(--bd-soft);
-    transition: background .12s;
-    margin: 0 -20px;
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-  .wc-tr:hover { background: var(--bg-hover); }
-  .wc-tr:last-child { border-bottom: none; }
-  .wc-ticker { font-size: 13px; font-weight: 700; color: var(--tx-hi); }
-  .wc-sector { font-size: 10px; color: var(--tx-lo); margin-top: 2px; font-weight: 500; }
-  .wc-td {
-    font-family: var(--ff-mono);
-    font-size: 12px;
-    color: var(--tx-med);
-    font-weight: 500;
-  }
-  .wc-pl {
-    font-family: var(--ff-mono);
-    font-size: 12px;
-    font-weight: 700;
-  }
+/* ── Content scroll area ── */
+.zf-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg-app);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+.zf-content::-webkit-scrollbar { width: 5px; }
+.zf-content::-webkit-scrollbar-thumb { background: var(--bd-200); border-radius: 5px; }
+.zf-content::-webkit-scrollbar-track { background: transparent; }
 
-  /* ── Sector chip badges ── */
-  .wc-sect-tag {
-    display: inline-block;
-    font-size: 9px;
-    font-weight: 600;
-    padding: 1px 6px;
-    border-radius: 4px;
-    background: var(--bg-canvas);
-    border: 1px solid var(--bd-mid);
-    color: var(--tx-lo);
-    margin-top: 3px;
-  }
+/* ══════════════════════════════════════════════════
+   KPI STAT CARDS  — 4 across, F-pattern top row
+══════════════════════════════════════════════════ */
+.zf-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.zf-kpi {
+  background: var(--bg-card);
+  border: 1px solid var(--bd-100);
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: var(--sh-1);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  transition: box-shadow .18s, transform .18s;
+  position: relative;
+  overflow: hidden;
+}
+.zf-kpi:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
 
-  /* ── Watchlist rows ── */
-  .wc-wr {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--bd-soft);
-    transition: background .12s;
-    margin: 0 -20px;
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-  .wc-wr:hover { background: var(--bg-hover); }
-  .wc-wr:last-child { border-bottom: none; }
-  .wc-wname { font-size: 13px; font-weight: 700; color: var(--tx-hi); }
-  .wc-wsect { font-size: 10px; color: var(--tx-lo); margin-top: 2px; font-weight: 500; }
-  .wc-wprice {
-    font-family: var(--ff-mono);
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--tx-hi);
-    text-align: right;
-  }
-  .wc-wchg { font-size: 11px; font-weight: 700; text-align: right; margin-top: 2px; }
+/* Left accent bar */
+.zf-kpi::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 12px 0 0 12px;
+  background: var(--navy-100);
+}
+.zf-kpi.kpi-green::before { background: var(--green-bg); border-left: 4px solid var(--green); left: 0; width: 0; }
+.zf-kpi.kpi-red::before   { background: var(--red-bg);   border-left: 4px solid var(--red);   left: 0; width: 0; }
+.zf-kpi.kpi-green { background: var(--green-bg); border-color: var(--green-bd); }
+.zf-kpi.kpi-red   { background: var(--red-bg);   border-color: var(--red-bd); }
+.zf-kpi.kpi-navy  { background: var(--navy-50);  border-color: var(--navy-100); }
+.zf-kpi.kpi-navy::before { background: var(--navy); }
 
-  /* ── Mini sparkline placeholder ── */
-  .wc-spark {
-    width: 52px; height: 24px;
-    flex-shrink: 0;
-    margin: 0 12px;
-    opacity: .6;
-  }
+/* Icon circle */
+.zf-kpi-icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+.zf-kpi-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--tx-400);
+  margin-bottom: 5px;
+}
+.zf-kpi-val {
+  font-family: var(--ff-mono);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--tx-900);
+  line-height: 1;
+  letter-spacing: -.6px;
+}
+.zf-kpi.kpi-green .zf-kpi-val { color: var(--green); }
+.zf-kpi.kpi-red   .zf-kpi-val { color: var(--red); }
+.zf-kpi-sub {
+  font-size: 11px;
+  color: var(--tx-400);
+  margin-top: 6px;
+  font-weight: 500;
+}
+.zf-kpi-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-top: 8px;
+  align-self: flex-start;
+}
+.zf-chip-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
+.zf-chip-red   { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-bd); }
+.zf-chip-navy  { background: var(--navy-50);  color: var(--navy);  border: 1px solid var(--navy-100); }
+.zf-kpi-divider {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid var(--bd-50);
+  font-size: 10px;
+  color: var(--tx-300);
+  font-weight: 500;
+}
 
-  /* ════════════════════════════════════════════════════
-     CONTENT PANEL — non-overview tabs
-  ════════════════════════════════════════════════════ */
-  .wc-ctnr {
-    background: var(--bg-card);
-    border: 1px solid var(--bd-mid);
-    border-radius: 14px;
-    box-shadow: var(--sh-md);
-    flex: 1;
-    overflow: auto;
-    padding: 22px;
-    min-height: 0;
-  }
+/* ══════════════════════════════════════════════════
+   MIDDLE ROW — wide chart + narrow sector panel
+   Grid type B from reference (image 4)
+══════════════════════════════════════════════════ */
+.zf-mid-row {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 16px;
+  min-height: 0;
+}
 
-  /* ════════════════════════════════════════════════════
-     CHILD COMPONENT OVERRIDES — force cream theme on
-     TradeStrategyTable / other components with hardcoded darks
-  ════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════
+   BOTTOM ROW — holdings table + watchlist
+   Grid type D from reference (image 4)
+══════════════════════════════════════════════════ */
+.zf-bot-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+  min-height: 0;
+}
 
-  /* Nuke any dark gradient header backgrounds in child components */
-  .wc-ctnr [style*="background: linear-gradient(135deg, hsl(215"],
-  .wc-ctnr [style*="background:linear-gradient(135deg,hsl(215"],
-  .wc-ctnr [style*="background: linear-gradient(135deg, hsl(222"],
-  .wc-ctnr [style*="background:linear-gradient(135deg,hsl(222"] {
-    background: #faf6ef !important;
-    color: #111827 !important;
-    border-bottom: 1px solid #e8e0d0 !important;
-  }
+/* ══════════════════════════════════════════════════
+   CARD — shared panel wrapper
+══════════════════════════════════════════════════ */
+.zf-card {
+  background: var(--bg-card);
+  border: 1px solid var(--bd-100);
+  border-radius: 12px;
+  box-shadow: var(--sh-1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.zf-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--bd-50);
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  gap: 10px;
+}
+.zf-card-title {
+  font-family: var(--ff-disp);
+  font-size: 14.5px;
+  color: var(--navy);
+  letter-spacing: -.1px;
+}
+.zf-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.zf-card-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--navy-50);
+  border: 1px solid var(--navy-100);
+  border-radius: 20px;
+  padding: 2px 9px;
+}
+.zf-card-link {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: var(--navy-50);
+  border: 1px solid var(--navy-100);
+  transition: all .13s;
+  white-space: nowrap;
+}
+.zf-card-link:hover { background: var(--navy); color: white; }
+.zf-card-body { padding: 0; overflow-y: auto; flex: 1; }
+.zf-card-body::-webkit-scrollbar { width: 3px; }
+.zf-card-body::-webkit-scrollbar-thumb { background: var(--bd-200); border-radius: 3px; }
 
-  /* Table header rows */
-  .wc-ctnr th, .wc-ctnr thead tr {
-    background: #faf6ef !important;
-    color: #9c8f7a !important;
-    border-color: #e8e0d0 !important;
-    font-size: 9.5px !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: .07em !important;
-  }
+/* ══════════════════════════════════════════════════
+   MINI PERFORMANCE CHART inside mid row
+══════════════════════════════════════════════════ */
+.zf-perf-wrap { padding: 16px 20px; }
+.zf-perf-numbers {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.zf-perf-num { display: flex; flex-direction: column; gap: 2px; }
+.zf-perf-num-val { font-family: var(--ff-mono); font-size: 20px; font-weight: 600; color: var(--tx-900); }
+.zf-perf-num-lbl { font-size: 10px; color: var(--tx-400); font-weight: 600; text-transform: uppercase; letter-spacing: .07em; }
 
-  /* Table body cells */
-  .wc-ctnr td { border-color: #f0e8dc !important; }
-  .wc-ctnr tr:hover td { background: #f7f1e6 !important; }
+/* SVG area chart */
+.zf-areachart { width: 100%; }
 
-  /* Inner cards/panels */
-  .wc-ctnr .rounded-xl,
-  .wc-ctnr .rounded-lg {
-    background: #fdfaf4 !important;
-    border-color: #e8e0d0 !important;
-  }
+/* ══════════════════════════════════════════════════
+   SECTOR PANEL (right side of mid row)
+══════════════════════════════════════════════════ */
+.zf-sector-list { padding: 12px 20px; display: flex; flex-direction: column; gap: 10px; }
+.zf-sector-item { display: flex; flex-direction: column; gap: 4px; }
+.zf-sector-row { display: flex; align-items: center; justify-content: space-between; }
+.zf-sector-name { font-size: 12px; font-weight: 600; color: var(--tx-700); }
+.zf-sector-pct  { font-family: var(--ff-mono); font-size: 11px; font-weight: 600; color: var(--navy); }
+.zf-sector-bar  { height: 5px; border-radius: 3px; background: var(--bd-100); overflow: hidden; }
+.zf-sector-fill { height: 100%; border-radius: 3px; background: var(--navy); transition: width .4s ease; }
 
-  /* Progress bars, stat chips in dark blue */
-  .wc-ctnr [style*="background: hsl(215"],
-  .wc-ctnr [style*="background:hsl(215"],
-  .wc-ctnr [style*="background: hsl(222"],
-  .wc-ctnr [style*="background:hsl(222"] {
-    background: #e8f0f8 !important;
-  }
+/* ══════════════════════════════════════════════════
+   HOLDINGS TABLE
+══════════════════════════════════════════════════ */
+.zf-tbl-head {
+  display: grid;
+  grid-template-columns: 2fr .6fr 1fr 1fr .9fr;
+  gap: 0;
+  padding: 10px 20px;
+  background: var(--bg-surface);
+  border-bottom: 1.5px solid var(--bd-200);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.zf-th {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--tx-300);
+}
+.zf-th.r { text-align: right; }
+.zf-trow {
+  display: grid;
+  grid-template-columns: 2fr .6fr 1fr 1fr .9fr;
+  gap: 0;
+  padding: 12px 20px;
+  align-items: center;
+  border-bottom: 1px solid var(--bd-50);
+  transition: background .12s;
+}
+.zf-trow:hover { background: var(--bg-hover); }
+.zf-trow:last-child { border-bottom: none; }
 
-  /* Scrollbars */
-  .wc-ctnr *::-webkit-scrollbar { width: 4px; height: 4px; }
-  .wc-ctnr *::-webkit-scrollbar-thumb { background: #ddd4c0; border-radius: 4px; }
-  .wc-ctnr *::-webkit-scrollbar-track { background: transparent; }
+.zf-stock-cell { display: flex; align-items: center; gap: 10px; }
+.zf-logo-wrap {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--navy-50);
+  border: 1px solid var(--navy-100);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: var(--navy);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.zf-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+.zf-ticker-name { font-size: 13px; font-weight: 700; color: var(--tx-900); letter-spacing: -.1px; }
+.zf-sector-tag {
+  display: inline-block;
+  font-size: 9.5px; font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--bg-app);
+  border: 1px solid var(--bd-200);
+  color: var(--tx-400);
+  margin-top: 2px;
+}
+.zf-td { font-family: var(--ff-mono); font-size: 12px; color: var(--tx-500); font-weight: 500; }
+.zf-td.r { text-align: right; }
+.zf-pl  { font-family: var(--ff-mono); font-size: 12px; font-weight: 700; text-align: right; }
+.zf-pl-sub { font-family: var(--ff-mono); font-size: 10px; text-align: right; margin-top: 1px; }
 
-  /* ════════════════════════════════════════════════════
-     USER MENU DROPDOWN
-  ════════════════════════════════════════════════════ */
-  .wc-umenu {
-    position: absolute;
-    right: 0; top: calc(100% + 8px);
-    background: var(--bg-card);
-    border: 1px solid var(--bd-strong);
-    border-radius: 12px;
-    box-shadow: var(--sh-lg);
-    min-width: 180px;
-    z-index: 100;
-    overflow: hidden;
-  }
-  .wc-umenu-head {
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--bd-soft);
-    background: var(--bg-surface);
-  }
-  .wc-umenu-email {
-    font-size: 11.5px;
-    font-weight: 600;
-    color: var(--tx-hi);
-  }
-  .wc-umenu-label {
-    font-size: 9.5px;
-    color: var(--tx-lo);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    margin-bottom: 2px;
-  }
-  .wc-umenu-btn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 10px 14px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    border: none;
-    background: transparent;
-    transition: background .12s;
-  }
-  .wc-umenu-btn:hover { background: var(--bg-hover); }
-  .wc-umenu-btn.danger { color: var(--loss); }
-  .wc-umenu-btn.primary { color: var(--navy); }
+/* ══════════════════════════════════════════════════
+   WATCHLIST PANEL
+══════════════════════════════════════════════════ */
+.zf-wl-head {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  padding: 10px 20px;
+  background: var(--bg-surface);
+  border-bottom: 1.5px solid var(--bd-200);
+}
+.zf-wl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--bd-50);
+  transition: background .12s;
+  gap: 10px;
+}
+.zf-wl-row:hover { background: var(--bg-hover); }
+.zf-wl-row:last-child { border-bottom: none; }
+.zf-wl-name { font-size: 13px; font-weight: 700; color: var(--tx-900); }
+.zf-wl-sub  { font-size: 10px; color: var(--tx-400); margin-top: 2px; font-weight: 500; }
+.zf-wl-spark { width: 56px; height: 26px; flex-shrink: 0; }
+.zf-wl-price { font-family: var(--ff-mono); font-size: 13px; font-weight: 600; color: var(--tx-900); text-align: right; }
+.zf-wl-chg   { font-size: 10.5px; font-weight: 700; text-align: right; margin-top: 2px; }
 
-  /* ════════════════════════════════════════════════════
-     RESPONSIVE
-  ════════════════════════════════════════════════════ */
-  @media (max-width: 900px) {
-    .wc-side { width: 64px; }
-    .wc-brandname, .wc-brandsub, .wc-nav-grp, .wc-nav-item span,
-    .wc-user-info { display: none; }
-    .wc-nav-item { justify-content: center; padding: 10px; }
-    .wc-nav-item::before { display: none; }
-    .wc-stats { grid-template-columns: repeat(2,1fr); }
-    .wc-panels { grid-template-columns: 1fr; }
-  }
-  @media (max-width: 640px) {
-    .wc-tabs { display: none; }
-    .wc-stats { grid-template-columns: 1fr 1fr; }
-  }
+/* ══════════════════════════════════════════════════
+   TAB CONTENT PANEL (non-overview)
+══════════════════════════════════════════════════ */
+.zf-tab-panel {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--bd-100);
+  border-radius: 12px;
+  box-shadow: var(--sh-1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.zf-tab-panel > * {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+/* Padded variant for charts/AI etc */
+.zf-tab-panel.padded > * { padding: 0; }
+.zf-tab-panel > *::-webkit-scrollbar { width: 5px; height: 5px; }
+.zf-tab-panel > *::-webkit-scrollbar-thumb { background: var(--bd-200); border-radius: 5px; }
 
-  @keyframes wc-spin { to { transform: rotate(360deg); } }
-  .wc-spin { animation: wc-spin .9s linear infinite; }
+/* Override child component colors to match cream theme */
+.zf-tab-panel th {
+  background: var(--bg-surface) !important;
+  color: var(--tx-300) !important;
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .09em !important;
+  border-bottom: 1.5px solid var(--bd-200) !important;
+  padding: 11px 18px !important;
+}
+.zf-tab-panel td {
+  padding: 13px 18px !important;
+  font-size: 13px !important;
+  color: var(--tx-500) !important;
+  border-bottom: 1px solid var(--bd-50) !important;
+  vertical-align: middle !important;
+}
+.zf-tab-panel tr:hover td { background: var(--bg-hover) !important; }
+.zf-tab-panel tbody tr:last-child td { border-bottom: none !important; }
+.zf-tab-panel .font-semibold,
+.zf-tab-panel .font-bold { color: var(--tx-900) !important; }
+.zf-tab-panel h2, .zf-tab-panel h3 { color: var(--navy) !important; font-family: var(--ff-disp) !important; }
+.zf-tab-panel p.text-muted-foreground,
+.zf-tab-panel [class*="text-muted"] { color: var(--tx-400) !important; }
+.zf-tab-panel button.bg-primary,
+.zf-tab-panel [class*="bg-primary"] { background: var(--navy) !important; color: white !important; }
+.zf-tab-panel button.bg-primary:hover { background: var(--navy-700) !important; }
+.zf-tab-panel button[class*="outline"] {
+  background: var(--bg-card) !important;
+  border-color: var(--bd-200) !important;
+  color: var(--navy) !important;
+}
+.zf-tab-panel button[class*="outline"]:hover { background: var(--navy-50) !important; }
+.zf-tab-panel button[class*="ghost"]:hover { background: var(--bg-hover) !important; color: var(--navy) !important; }
+.zf-tab-panel input:not([type="checkbox"]),
+.zf-tab-panel select, .zf-tab-panel textarea {
+  background: var(--bg-input) !important;
+  border-color: var(--bd-200) !important;
+  color: var(--tx-900) !important;
+  font-size: 13px !important;
+}
+.zf-tab-panel input:focus, .zf-tab-panel select:focus, .zf-tab-panel textarea:focus {
+  border-color: var(--navy) !important;
+  box-shadow: 0 0 0 3px rgba(28,53,87,.1) !important;
+}
+.zf-tab-panel label { color: var(--tx-500) !important; font-size: 12px !important; font-weight: 600 !important; }
+.zf-tab-panel input::placeholder, .zf-tab-panel textarea::placeholder { color: var(--tx-200) !important; }
+.zf-tab-panel [role="tablist"] { background: var(--bg-surface) !important; border-radius: 8px !important; }
+.zf-tab-panel [role="tab"] { color: var(--tx-400) !important; }
+.zf-tab-panel [role="tab"][data-state="active"] { background: var(--bg-card) !important; color: var(--navy) !important; font-weight: 700 !important; }
+.zf-tab-panel .recharts-text { fill: var(--tx-400) !important; }
+.zf-tab-panel .rounded-xl, .zf-tab-panel .rounded-lg, .zf-tab-panel [class*="card"] {
+  background: var(--bg-card) !important;
+  border-color: var(--bd-100) !important;
+}
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════ */
+@media (max-width: 1100px) {
+  .zf-mid-row { grid-template-columns: 1fr; }
+  .zf-mid-row .zf-sector-side { display: none; }
+}
+@media (max-width: 900px) {
+  .zf-kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .zf-bot-row { grid-template-columns: 1fr; }
+  .zf-search { display: none; }
+}
+@media (max-width: 640px) {
+  .zf-kpi-row { grid-template-columns: 1fr 1fr; }
+  .zf-content { padding: 14px; gap: 14px; }
+}
+
+/* ── Spinner ── */
+@keyframes zf-spin { to { transform: rotate(360deg); } }
+.zf-spin { animation: zf-spin .9s linear infinite; }
 `;
 
-// ═════════════════════════════════════════════════════════════════════════════
+// ─── Mini area chart component ──────────────────────────────────────────────
+function MiniAreaChart({ stocks }: { stocks: PortfolioStock[] }) {
+  const active = stocks.filter(s => s.status === "Active");
+  if (active.length === 0) return (
+    <div style={{ padding: "24px 20px", textAlign: "center", color: "var(--tx-300)", fontSize: 12 }}>
+      No active positions to chart
+    </div>
+  );
+
+  // Generate synthetic monthly P&L curve from stock data
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const now = new Date();
+  const pts = months.slice(0, now.getMonth() + 1).map((m, i) => {
+    const progress = (i + 1) / (now.getMonth() + 1);
+    const val = active.reduce((sum, s) => {
+      const pnl = (s.cmp - s.entryPrice) * s.quantity * (progress * 0.7 + 0.3 + Math.sin(i + s.ticker.charCodeAt(0)) * 0.1);
+      return sum + pnl;
+    }, 0);
+    return { m, val };
+  });
+
+  const minVal = Math.min(...pts.map(p => p.val), 0);
+  const maxVal = Math.max(...pts.map(p => p.val), 1000);
+  const range  = maxVal - minVal || 1;
+  const W = 500, H = 120, pad = { l: 8, r: 8, t: 10, b: 20 };
+  const xStep = (W - pad.l - pad.r) / Math.max(pts.length - 1, 1);
+  const yOf   = (v: number) => pad.t + (1 - (v - minVal) / range) * (H - pad.t - pad.b);
+  const xOf   = (i: number) => pad.l + i * xStep;
+
+  const linePts  = pts.map((p, i) => `${xOf(i)},${yOf(p.val)}`).join(" ");
+  const areaPath = `M${xOf(0)},${yOf(pts[0].val)} ` +
+    pts.slice(1).map((p, i) => `L${xOf(i+1)},${yOf(p.val)}`).join(" ") +
+    ` L${xOf(pts.length-1)},${H - pad.b} L${xOf(0)},${H - pad.b} Z`;
+
+  const lastPnl = pts[pts.length - 1]?.val ?? 0;
+  const isPos = lastPnl >= 0;
+
+  return (
+    <div style={{ padding: "16px 20px 8px" }}>
+      <div style={{ display: "flex", gap: 28, marginBottom: 14, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "var(--tx-300)", marginBottom: 3 }}>Portfolio Value</div>
+          <div style={{ fontFamily: "var(--ff-mono)", fontSize: 22, fontWeight: 600, color: "var(--tx-900)", letterSpacing: "-.5px" }}>
+            {fmt(active.reduce((s, x) => s + calcFinalValue(x), 0))}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "var(--tx-300)", marginBottom: 3 }}>P&L This Period</div>
+          <div style={{ fontFamily: "var(--ff-mono)", fontSize: 22, fontWeight: 600, color: isPos ? "var(--green)" : "var(--red)", letterSpacing: "-.5px" }}>
+            {sign(lastPnl)}{fmt(Math.abs(lastPnl))}
+          </div>
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "flex-start", gap: 8, paddingTop: 2 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--tx-400)" }}>
+            <span style={{ width: 12, height: 3, borderRadius: 2, background: "var(--navy)", display: "inline-block" }} />
+            This year
+          </span>
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: "100%", height: 120 }}>
+        <defs>
+          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={isPos ? "#1c3557" : "#c0392b"} stopOpacity=".18" />
+            <stop offset="100%" stopColor={isPos ? "#1c3557" : "#c0392b"} stopOpacity=".01" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#areaGrad)" />
+        <polyline points={linePts} fill="none" stroke={isPos ? "#1c3557" : "#c0392b"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Dots */}
+        {pts.map((p, i) => (
+          <circle key={i} cx={xOf(i)} cy={yOf(p.val)} r="3" fill={isPos ? "#1c3557" : "#c0392b"} opacity={i === pts.length - 1 ? 1 : 0.3} />
+        ))}
+        {/* X-axis labels */}
+        {pts.filter((_, i) => i === 0 || i === pts.length - 1 || i % Math.ceil(pts.length / 5) === 0).map((p, _, arr) => {
+          const origIdx = pts.indexOf(p);
+          return (
+            <text key={p.m} x={xOf(origIdx)} y={H - 2} textAnchor="middle" fontSize="9" fill="var(--tx-300)" fontFamily="var(--ff-body)">
+              {p.m}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 export default function Index() {
-  const [tab, setTab]     = useState<ActiveTab>("overview");
-  const [uMenu, setUMenu] = useState(false);
-  const [showAuth, setShowAuth] = useState(false);
+  const [tab,       setTab]       = useState<ActiveTab>("overview");
+  const [collapsed, setCollapsed] = useState(false);
+  const [uMenu,     setUMenu]     = useState(false);
+  const [showAuth,  setShowAuth]  = useState(false);
+  const [searchQ,   setSearchQ]   = useState("");
+  const uMenuRef = useRef<HTMLDivElement>(null);
 
   const [stocks,    setStocks]    = useState<PortfolioStock[]>(()  => loadFromLocal()?.stocks    ?? initialData);
   const [trades,    setTrades]    = useState<TradeStrategy[]>(()   => loadFromLocal()?.trades    ?? initialTrades);
@@ -769,92 +997,106 @@ export default function Index() {
 
   const { toast }         = useToast();
   const { user, signOut } = useAuth();
-  const { prices, isLive, refresh } = useLivePrices(stocks);
+  const tickers = stocks.map(s => s.ticker);
+  const { prices, isLive, refresh } = useLivePrices(tickers);
   usePortfolioSync({ stocks, trades, watchlist, alerts, setStocks, setTrades, setWatchlist, setAlerts });
 
-  // Merge live prices
-  const live = stocks.map(s => prices[s.ticker] ? { ...s, cmp: prices[s.ticker] } : s);
+  const live = stocks.map(s =>
+    prices[s.ticker]?.price ? { ...s, cmp: prices[s.ticker].price } : s
+  );
 
-  // Metrics
-  const invested  = live.reduce((sum, s) => sum + calcInvestedValue(s), 0);
-  const current   = live.reduce((sum, s) => sum + calcFinalValue(s), 0);
-  const pnl       = live.reduce((sum, s) => sum + calcProfitLoss(s), 0);
-  const pnlPct    = invested > 0 ? (pnl / invested * 100) : 0;
-  const activePos = live.filter(s => s.status === "Active");
-  const todayPnl  = activePos.reduce((a, s) => a + (s.cmp - s.entryPrice) * s.quantity * 0.003, 0);
-  const todayPct  = invested > 0 ? (Math.abs(todayPnl) / invested * 100) : 0;
+  // Close user menu on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (uMenuRef.current && !uMenuRef.current.contains(e.target as Node)) setUMenu(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // ── Metrics ──────────────────────────────────────────────────────────────
+  const invested    = live.reduce((s, x) => s + calcInvestedValue(x), 0);
+  const current     = live.reduce((s, x) => s + calcFinalValue(x), 0);
+  const pnl         = live.reduce((s, x) => s + calcProfitLoss(x), 0);
+  const pnlPct      = invested > 0 ? pnl / invested * 100 : 0;
+  const activePos   = live.filter(s => s.status === "Active");
+  const closedPos   = live.filter(s => s.status !== "Active");
+  const winners     = closedPos.filter(s => calcProfitLoss(s) > 0);
+  const winRate     = closedPos.length > 0 ? winners.length / closedPos.length * 100 : 0;
+  const realisedPnl = closedPos.reduce((s, x) => s + calcProfitLoss(x), 0);
+  const todayPnl    = activePos.reduce((a, s) => a + (s.cmp - s.entryPrice) * s.quantity * 0.003, 0);
+  const todayPct    = invested > 0 ? Math.abs(todayPnl) / invested * 100 : 0;
+
+  const performers = activePos
+    .filter(s => s.entryPrice > 0)
+    .map(s => ({ ticker: s.ticker, pct: (s.cmp - s.entryPrice) / s.entryPrice * 100 }))
+    .sort((a, b) => b.pct - a.pct);
+  const best  = performers[0];
+  const worst = performers[performers.length - 1];
+
+  // Sector allocation
+  const sectorMap = new Map<string, number>();
+  activePos.forEach(s => {
+    const sec = s.sector ?? "Other";
+    sectorMap.set(sec, (sectorMap.get(sec) ?? 0) + calcInvestedValue(s));
+  });
+  const sectorTotal = invested > 0 ? activePos.reduce((s, x) => s + calcInvestedValue(x), 0) : 1;
+  const sectors = [...sectorMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, val]) => ({ name, val, pct: val / sectorTotal * 100 }));
+
+  const SECTOR_COLORS = ["#1c3557","#2a5f9e","#3b82c4","#6aa8dc","#9ac5e8","#c0d9f0"];
 
   const now = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
-  // Stat cards config
-  const cards = [
-    {
-      lbl: "INVESTED",
-      val: fmt(invested),
-      sub: `${activePos.length} active positions`,
-      subC: "var(--tx-lo)",
-      chip: null,
-      cls: "wc-sc wc-sc-invest",
-    },
-    {
-      lbl: "CURRENT VALUE",
-      val: fmt(current),
-      sub: `+${fmt(current - invested)} unrealised`,
-      subC: "var(--profit)",
-      chip: null,
-      cls: "wc-sc",
-    },
-    {
-      lbl: "UNREALISED P&L",
-      val: (pnl >= 0 ? "+" : "−") + fmt(Math.abs(pnl)),
-      sub: `${pnl >= 0 ? "+" : "−"}${Math.abs(pnlPct).toFixed(1)}% overall`,
-      subC: pnl >= 0 ? "var(--profit)" : "var(--loss)",
-      chip: { label: pnl >= 0 ? `+${pnlPct.toFixed(1)}%` : `${pnlPct.toFixed(1)}%`, type: pnl >= 0 ? "profit" : "loss" },
-      cls: `wc-sc ${pnl >= 0 ? "wc-sc-profit" : "wc-sc-loss"}`,
-    },
-    {
-      lbl: "TODAY'S P&L",
-      val: (todayPnl >= 0 ? "+" : "−") + fmt(Math.abs(todayPnl)),
-      sub: `${todayPnl >= 0 ? "+" : "−"}${todayPct.toFixed(2)}% today`,
-      subC: todayPnl >= 0 ? "var(--profit)" : "var(--loss)",
-      chip: { label: todayPnl >= 0 ? `+${todayPct.toFixed(2)}%` : `−${todayPct.toFixed(2)}%`, type: todayPnl >= 0 ? "profit" : "loss" },
-      cls: `wc-sc ${todayPnl >= 0 ? "wc-sc-profit" : "wc-sc-loss"}`,
-    },
-  ];
+  // Page title per tab
+  const PAGE_TITLES: Record<ActiveTab, string> = {
+    overview: "Dashboard", holdings: "Portfolio Holdings", trades: "Trade Setups",
+    watchlist: "Watchlist", ai: "AI Insights", charts: "Charts & Analytics",
+    analytics: "Trade Analytics", history: "Trade History", journal: "Trade Journal",
+    sector: "Sector Allocation", alerts: "Price Alerts", export: "Export Data",
+  };
 
   return (
     <>
       <style>{CSS}</style>
 
-      <div className="wc">
-        {/* ── SIDEBAR ── */}
-        <aside className="wc-side">
+      <div className="zf">
+        {/* ══════════ SIDEBAR ══════════ */}
+        <aside className={`zf-sidebar${collapsed ? " collapsed" : ""}`} style={{ position: "relative" }}>
+
+          {/* Collapse toggle */}
+          <button className="zf-collapse-btn" onClick={() => setCollapsed(c => !c)}>
+            {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+          </button>
+
           {/* Brand */}
-          <div className="wc-brand">
-            <div className="wc-logo">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path d="M2 14L6 5L11 11L13.5 8L16 14H2Z" fill="white" />
+          <div className="zf-brand">
+            <div className="zf-logo">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 13L5.5 4.5L10 9L12 6.5L14 13H2Z" fill="white" />
               </svg>
             </div>
-            <div>
-              <div className="wc-brandname">ZenFolio</div>
-              <div className="wc-brandsub">Portfolio Tracker</div>
+            <div className="zf-brand-text">
+              <div className="zf-brand-name">ZenFolio</div>
+              <div className="zf-brand-sub">Portfolio Tracker</div>
             </div>
           </div>
 
           {/* Nav */}
-          <div className="wc-nav-wrap">
-            {Array.from(new Set(NAV.map(n => n.group))).map(grp => (
-              <div key={grp}>
-                <div className="wc-nav-grp">{grp}</div>
-                {NAV.filter(n => n.group === grp).map(({ id, label, icon: Icon }) => (
+          <div className="zf-nav-scroll">
+            {NAV_GROUPS.map(grp => (
+              <div key={grp.label}>
+                <div className="zf-nav-grp">{grp.label}</div>
+                {grp.items.map(({ id, label, icon: Icon }) => (
                   <div
                     key={id}
-                    className={`wc-nav-item${tab === id ? " on" : ""}`}
+                    className={`zf-nav-item${tab === id ? " active" : ""}`}
                     onClick={() => setTab(id as ActiveTab)}
+                    title={collapsed ? label : undefined}
                   >
-                    <Icon strokeWidth={1.8} />
-                    <span>{label}</span>
+                    <Icon strokeWidth={tab === id ? 2.2 : 1.8} size={15} />
+                    <span className="zf-nav-label">{label}</span>
                   </div>
                 ))}
               </div>
@@ -862,201 +1104,329 @@ export default function Index() {
           </div>
 
           {/* Footer */}
-          <div className="wc-side-foot">
-            <div className="wc-user-info">
-              <div className="wc-user-name">{user?.email?.split("@")[0] ?? "Guest"}</div>
-              <div className="wc-user-role">Portfolio Owner</div>
+          <div className="zf-sidebar-foot">
+            <div className="zf-user-row" title={collapsed ? (user?.email ?? "Guest") : undefined}>
+              <div className="zf-user-avatar">
+                {(user?.email?.[0] ?? "G").toUpperCase()}
+              </div>
+              <div className="zf-user-info">
+                <div className="zf-user-name">{user?.email?.split("@")[0] ?? "Guest"}</div>
+                <div className="zf-user-role">Trader</div>
+              </div>
             </div>
-            <button className="wc-ibtn" onClick={() => user ? signOut() : setShowAuth(true)} title={user ? "Sign out" : "Sign in"}>
-              <LogOut size={14} />
-            </button>
           </div>
         </aside>
 
-        {/* ── MAIN ── */}
-        <div className="wc-main">
-          {/* Topbar */}
-          <header className="wc-top">
-            {/* Tab switcher */}
-            <div className="wc-tabs">
-              {(["overview","holdings","trades","watchlist","ai"] as ActiveTab[]).map(t => (
-                <button
-                  key={t}
-                  className={`wc-tab${tab === t ? " on" : ""}`}
-                  onClick={() => setTab(t)}
-                >
-                  {t === "ai" ? "AI" : t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
+        {/* ══════════ MAIN ══════════ */}
+        <div className="zf-main">
+
+          {/* Header */}
+          <header className="zf-header">
+            <div className="zf-page-title">{PAGE_TITLES[tab]}</div>
+
+            {/* Search */}
+            <div className="zf-search">
+              <Search size={13} color="var(--tx-300)" />
+              <input
+                placeholder="Search stocks…"
+                value={searchQ}
+                onChange={e => setSearchQ(e.target.value)}
+              />
             </div>
 
-            {/* Controls */}
-            <div className="wc-ctrl">
-              <span className="wc-time">{now} IST</span>
-              <div className="wc-live">
-                <div className="wc-ldot" />
-                NSE {isLive ? "Live" : "Cached"}
-              </div>
-              <button className="wc-ibtn" onClick={refresh} title="Refresh prices">
-                <RefreshCw size={14} className={!isLive ? "wc-spin" : ""} />
+            {/* NSE status */}
+            <div className={`zf-live${!isLive ? " cached" : ""}`}>
+              <div className="zf-ldot" />
+              NSE {isLive ? "Live" : "Cached"} · {now}
+            </div>
+
+            {/* Refresh */}
+            <button className="zf-hbtn" onClick={refresh} title="Refresh prices">
+              <RefreshCw size={14} className={!isLive ? "zf-spin" : ""} />
+            </button>
+
+            {/* User menu */}
+            <div style={{ position: "relative" }} ref={uMenuRef}>
+              <button className="zf-hbtn" onClick={() => setUMenu(p => !p)}>
+                <Settings size={14} />
               </button>
-              <div style={{ position: "relative" }}>
-                <button className="wc-ibtn" onClick={() => setUMenu(p => !p)} title="Account">
-                  <Settings size={14} />
-                </button>
-                {uMenu && (
-                  <div className="wc-umenu">
-                    <div className="wc-umenu-head">
-                      <div className="wc-umenu-label">Signed in as</div>
-                      <div className="wc-umenu-email">{user?.email ?? "Not signed in"}</div>
-                    </div>
-                    {user ? (
-                      <button className="wc-umenu-btn danger" onClick={() => { signOut(); setUMenu(false); }}>
-                        <LogOut size={13} /> Sign out
-                      </button>
-                    ) : (
-                      <button className="wc-umenu-btn primary" onClick={() => { setShowAuth(true); setUMenu(false); }}>
-                        <LogOut size={13} /> Sign in
-                      </button>
-                    )}
+              {uMenu && (
+                <div className="zf-umenu">
+                  <div className="zf-umenu-head">
+                    <div className="zf-umenu-lbl">Signed in as</div>
+                    <div className="zf-umenu-email">{user?.email ?? "Not signed in"}</div>
                   </div>
-                )}
-              </div>
+                  {user ? (
+                    <button className="zf-umenu-btn danger" onClick={() => { signOut(); setUMenu(false); }}>
+                      <LogOut size={13} /> Sign out
+                    </button>
+                  ) : (
+                    <button className="zf-umenu-btn primary" onClick={() => { setShowAuth(true); setUMenu(false); }}>
+                      <LogOut size={13} /> Sign in
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </header>
 
           {/* Content */}
-          <div className="wc-content">
+          <div className="zf-content">
 
-            {/* ── OVERVIEW ── */}
-            {tab === "overview" && (
-              <>
-                {/* Stat cards */}
-                <div>
-                  <div className="wc-sec-head">
-                    <span className="wc-sec-title">Portfolio Summary</span>
-                    <span className="wc-sec-sub">as of {now} IST</span>
+            {/* ══════════ OVERVIEW ══════════ */}
+            {tab === "overview" && (<>
+
+              {/* KPI Row — 4 cards */}
+              <div className="zf-kpi-row">
+
+                {/* 1. Portfolio Value */}
+                <div className="zf-kpi kpi-navy">
+                  <div className="zf-kpi-icon" style={{ background: "var(--navy-100)" }}>
+                    <Wallet size={18} color="var(--navy)" />
                   </div>
-                  <div className="wc-stats">
-                    {cards.map((c, i) => (
-                      <div key={i} className={c.cls}>
-                        <div className="wc-sc-lbl">{c.lbl}</div>
-                        <div className="wc-sc-val" style={{ color: i >= 2 ? c.subC : undefined }}>
-                          {c.val}
+                  <div className="zf-kpi-lbl">Portfolio Value</div>
+                  <div className="zf-kpi-val">{fmt(current)}</div>
+                  <div className={`zf-kpi-chip ${pnl >= 0 ? "zf-chip-green" : "zf-chip-red"}`}>
+                    {sign(pnl)}{fmt(Math.abs(pnl))} ({sign(pnlPct)}{Math.abs(pnlPct).toFixed(1)}%)
+                  </div>
+                  <div className="zf-kpi-sub">Invested: {fmt(invested)}</div>
+                  <div className="zf-kpi-divider">
+                    {activePos.length} active · {closedPos.length} closed
+                  </div>
+                </div>
+
+                {/* 2. Unrealised P&L */}
+                <div className={`zf-kpi ${pnl >= 0 ? "kpi-green" : "kpi-red"}`}>
+                  <div className="zf-kpi-icon" style={{ background: pnl >= 0 ? "#d1fae5" : "#fee2e2" }}>
+                    {pnl >= 0 ? <TrendingUp size={18} color="var(--green)" /> : <TrendingDown size={18} color="var(--red)" />}
+                  </div>
+                  <div className="zf-kpi-lbl">Unrealised P&L</div>
+                  <div className="zf-kpi-val">{sign(pnl)}{fmt(Math.abs(pnl))}</div>
+                  <div className={`zf-kpi-chip ${pnl >= 0 ? "zf-chip-green" : "zf-chip-red"}`}>
+                    {sign(pnlPct)}{Math.abs(pnlPct).toFixed(2)}% overall
+                  </div>
+                  <div className="zf-kpi-sub">Realised: {sign(realisedPnl)}{fmt(Math.abs(realisedPnl))}</div>
+                  {worst && (
+                    <div className="zf-kpi-divider">
+                      Worst: {worst.ticker} {worst.pct.toFixed(1)}%
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Today's P&L */}
+                <div className={`zf-kpi ${todayPnl >= 0 ? "kpi-green" : "kpi-red"}`}>
+                  <div className="zf-kpi-icon" style={{ background: todayPnl >= 0 ? "#d1fae5" : "#fee2e2" }}>
+                    <Activity size={18} color={todayPnl >= 0 ? "var(--green)" : "var(--red)"} />
+                  </div>
+                  <div className="zf-kpi-lbl">Today's P&L</div>
+                  <div className="zf-kpi-val">{sign(todayPnl)}{fmt(Math.abs(todayPnl))}</div>
+                  <div className={`zf-kpi-chip ${todayPnl >= 0 ? "zf-chip-green" : "zf-chip-red"}`}>
+                    {sign(todayPnl)}{todayPct.toFixed(2)}% today
+                  </div>
+                  <div className="zf-kpi-sub">{isLive ? "Live prices" : "Cached prices"}</div>
+                  {best && (
+                    <div className="zf-kpi-divider">
+                      Best: {best.ticker} +{best.pct.toFixed(1)}%
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Win Rate */}
+                <div className="zf-kpi">
+                  <div className="zf-kpi-icon" style={{ background: "#fff7ed" }}>
+                    <Award size={18} color="#b45309" />
+                  </div>
+                  <div className="zf-kpi-lbl">Win Rate</div>
+                  <div className="zf-kpi-val" style={{ color: winRate >= 50 ? "var(--green)" : winRate > 0 ? "var(--amber)" : "var(--tx-400)" }}>
+                    {winRate.toFixed(0)}%
+                  </div>
+                  <div className={`zf-kpi-chip ${winRate >= 50 ? "zf-chip-green" : "zf-chip-navy"}`}>
+                    {winners.length} wins / {closedPos.length} trades
+                  </div>
+                  <div className="zf-kpi-sub">Closed positions only</div>
+                  <div className="zf-kpi-divider">
+                    Target: ≥ 50% win rate
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle row — area chart + sector panel */}
+              <div className="zf-mid-row">
+
+                {/* Area chart card */}
+                <div className="zf-card">
+                  <div className="zf-card-head">
+                    <span className="zf-card-title">Portfolio Performance</span>
+                    <div className="zf-card-meta">
+                      <span className="zf-card-badge">{new Date().getFullYear()}</span>
+                      <button className="zf-card-link" onClick={() => setTab("charts")}>
+                        Full charts →
+                      </button>
+                    </div>
+                  </div>
+                  <MiniAreaChart stocks={live} />
+                </div>
+
+                {/* Sector allocation panel */}
+                <div className="zf-card zf-sector-side">
+                  <div className="zf-card-head">
+                    <span className="zf-card-title">Sectors</span>
+                    <span className="zf-card-badge">{sectors.length}</span>
+                  </div>
+                  <div className="zf-sector-list">
+                    {/* Stacked bar */}
+                    <div style={{ marginBottom: 4 }}>
+                      <div style={{ display: "flex", height: 10, borderRadius: 5, overflow: "hidden", gap: 2 }}>
+                        {sectors.map((s, i) => (
+                          <div key={s.name} title={`${s.name}: ${s.pct.toFixed(1)}%`}
+                            style={{ flex: s.pct, background: SECTOR_COLORS[i % SECTOR_COLORS.length], minWidth: 2 }} />
+                        ))}
+                      </div>
+                    </div>
+                    {sectors.map((s, i) => (
+                      <div key={s.name} className="zf-sector-item">
+                        <div className="zf-sector-row">
+                          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                            <div style={{ width: 9, height: 9, borderRadius: 2, background: SECTOR_COLORS[i % SECTOR_COLORS.length], flexShrink: 0 }} />
+                            <span className="zf-sector-name">{s.name}</span>
+                          </div>
+                          <span className="zf-sector-pct">{s.pct.toFixed(1)}%</span>
                         </div>
-                        {c.chip ? (
-                          <span className={`wc-sc-chip wc-chip-${c.chip.type}`}>
-                            {c.chip.label}
-                          </span>
-                        ) : (
-                          <div className="wc-sc-sub" style={{ color: c.subC }}>{c.sub}</div>
-                        )}
-                        {c.chip && (
-                          <div style={{ fontSize: 10, color: "var(--tx-lo)", marginTop: 3, fontWeight: 500 }}>{c.sub}</div>
-                        )}
+                        <div className="zf-sector-bar">
+                          <div className="zf-sector-fill" style={{ width: `${s.pct}%`, background: SECTOR_COLORS[i % SECTOR_COLORS.length] }} />
+                        </div>
+                        <div style={{ fontSize: 10, color: "var(--tx-400)", fontFamily: "var(--ff-mono)", marginTop: 1 }}>
+                          {fmt(s.val)}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
+              </div>
 
-                {/* Holdings + Watchlist */}
-                <div className="wc-panels" style={{ flex: 1 }}>
-                  {/* Holdings */}
-                  <div className="wc-panel">
-                    <div className="wc-panel-head">
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span className="wc-panel-title">Holdings</span>
-                        <span className="wc-panel-badge">{activePos.length} active</span>
-                      </div>
-                      <button className="wc-panel-act" onClick={() => setTab("holdings")}>
+              {/* Bottom row — holdings table + watchlist */}
+              <div className="zf-bot-row">
+
+                {/* Holdings table */}
+                <div className="zf-card">
+                  <div className="zf-card-head">
+                    <span className="zf-card-title">Holdings</span>
+                    <div className="zf-card-meta">
+                      <span className="zf-card-badge">{activePos.length} active</span>
+                      <button className="zf-card-link" onClick={() => setTab("holdings")}>
                         View all →
                       </button>
                     </div>
-                    <div className="wc-panel-body">
-                      <div className="wc-tbl-head">
-                        {["TICKER", "QTY", "AVG", "CMP", "P&L"].map(h => (
-                          <span key={h} className="wc-th">{h}</span>
-                        ))}
-                      </div>
-                      {activePos.slice(0, 7).map(s => {
-                        const pl  = (s.cmp - s.entryPrice) / s.entryPrice * 100;
-                        const pos = pl >= 0;
-                        return (
-                          <div key={s.ticker} className="wc-tr">
-                            <div>
-                              <div className="wc-ticker">{s.ticker}</div>
-                              <span className="wc-sect-tag">{s.sector}</span>
-                            </div>
-                            <span className="wc-td">{s.quantity}</span>
-                            <span className="wc-td">{s.entryPrice.toLocaleString("en-IN")}</span>
-                            <span className="wc-td">{s.cmp.toLocaleString("en-IN")}</span>
-                            <span className="wc-pl" style={{ color: pos ? "var(--profit)" : "var(--loss)" }}>
-                              {pos ? "+" : "−"}{Math.abs(pl).toFixed(1)}%
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
                   </div>
-
-                  {/* Watchlist */}
-                  <div className="wc-panel">
-                    <div className="wc-panel-head">
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span className="wc-panel-title">Watchlist</span>
-                        <span className="wc-panel-badge">{watchlist.length} stocks</span>
-                      </div>
-                      <button className="wc-panel-act" onClick={() => setTab("watchlist")}>
-                        + Add
-                      </button>
+                  <div className="zf-card-body">
+                    <div className="zf-tbl-head">
+                      <span className="zf-th">Stock</span>
+                      <span className="zf-th r">Qty</span>
+                      <span className="zf-th r">Avg</span>
+                      <span className="zf-th r">CMP</span>
+                      <span className="zf-th r">P&L</span>
                     </div>
-                    <div className="wc-panel-body">
-                      {watchlist.slice(0, 8).map(w => {
-                        const chg = w.change ?? 0;
-                        const pos = chg >= 0;
-                        return (
-                          <div key={w.ticker} className="wc-wr">
-                            <div>
-                              <div className="wc-wname">{w.ticker}</div>
-                              <div className="wc-wsect">{w.sector}</div>
-                            </div>
-                            {/* Mini sparkline SVG */}
-                            <svg className="wc-spark" viewBox="0 0 52 24" fill="none">
-                              <polyline
-                                points={Array.from({ length: 8 }, (_, i) => {
-                                  const x = i * 7.5;
-                                  const y = 12 + Math.sin((i + w.ticker.charCodeAt(0)) * 0.8) * 8 * (pos ? 1 : -1);
-                                  return `${x},${y}`;
-                                }).join(" ")}
-                                stroke={pos ? "#16a34a" : "#991b1b"}
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                    {activePos.slice(0, 6).map(s => {
+                      const pl    = s.entryPrice > 0 ? (s.cmp - s.entryPrice) / s.entryPrice * 100 : 0;
+                      const plAmt = (s.cmp - s.entryPrice) * s.quantity;
+                      const pos   = pl >= 0;
+                      return (
+                        <div key={s.ticker} className="zf-trow">
+                          <div className="zf-stock-cell">
+                            <div className="zf-logo-wrap">
+                              <img
+                                src={`https://logo.clearbit.com/${(s.stockName ?? s.ticker).toLowerCase().replace(/\s+/g,"")}.com`}
+                                alt=""
+                                onError={e => {
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                  (e.target as HTMLImageElement).parentElement!.textContent = s.ticker.slice(0, 2);
+                                }}
                               />
-                            </svg>
-                            <div style={{ textAlign: "right" }}>
-                              <div className="wc-wprice">₹{(w.cmp ?? w.targetPrice ?? 0).toLocaleString("en-IN")}</div>
-                              <div className="wc-wchg" style={{ color: pos ? "var(--profit)" : "var(--loss)" }}>
-                                {pos ? "+" : "−"}{Math.abs(chg).toFixed(1)}%
-                              </div>
+                            </div>
+                            <div>
+                              <div className="zf-ticker-name">{s.ticker}</div>
+                              <span className="zf-sector-tag">{s.sector}</span>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                          <span className="zf-td r">{s.quantity}</span>
+                          <span className="zf-td r">{fmtNum(s.entryPrice)}</span>
+                          <span className="zf-td r">{fmtNum(s.cmp)}</span>
+                          <div style={{ textAlign: "right" }}>
+                            <div className="zf-pl" style={{ color: pos ? "var(--green)" : "var(--red)" }}>
+                              {sign(pl)}{Math.abs(pl).toFixed(1)}%
+                            </div>
+                            <div className="zf-pl-sub" style={{ color: pos ? "var(--green)" : "var(--red)" }}>
+                              {sign(plAmt)}₹{Math.abs(plAmt).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </>
-            )}
 
-            {/* ── OTHER TABS ── */}
+                {/* Watchlist */}
+                <div className="zf-card">
+                  <div className="zf-card-head">
+                    <span className="zf-card-title">Watchlist</span>
+                    <div className="zf-card-meta">
+                      <span className="zf-card-badge">{watchlist.length}</span>
+                      <button className="zf-card-link" onClick={() => setTab("watchlist")}>+ Add</button>
+                    </div>
+                  </div>
+                  <div className="zf-card-body">
+                    <div className="zf-wl-head">
+                      <span className="zf-th">Stock</span>
+                      <span className="zf-th" style={{ textAlign: "center" }}>Trend</span>
+                      <span className="zf-th" style={{ textAlign: "right" }}>Price</span>
+                    </div>
+                    {watchlist.slice(0, 7).map((w, wi) => {
+                      const cmp  = w.cmp ?? 0;
+                      const sl   = w.stopLoss ?? cmp;
+                      const t1   = w.target1 ?? cmp;
+                      const pos  = cmp >= (w.entryZoneLow ?? cmp);
+                      const seed = w.stockName.charCodeAt(0) + wi * 7;
+                      return (
+                        <div key={w.stockName} className="zf-wl-row">
+                          <div>
+                            <div className="zf-wl-name">{w.stockName}</div>
+                            <div className="zf-wl-sub">T1 ₹{t1.toLocaleString("en-IN")} · SL ₹{sl.toLocaleString("en-IN")}</div>
+                          </div>
+                          <svg className="zf-wl-spark" viewBox="0 0 56 26" fill="none">
+                            <polyline
+                              points={Array.from({ length: 8 }, (_, i) => {
+                                const x = 4 + i * 7;
+                                const y = 13 + Math.sin((i + seed) * 1.1) * 8 * (pos ? 1 : -1);
+                                return `${x},${Math.max(2, Math.min(24, y))}`;
+                              }).join(" ")}
+                              stroke={pos ? "var(--green)" : "var(--red)"}
+                              strokeWidth="1.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <div>
+                            <div className="zf-wl-price">₹{cmp.toLocaleString("en-IN")}</div>
+                            <div className="zf-wl-chg" style={{ color: pos ? "var(--green)" : "var(--red)" }}>
+                              RSI {w.rsi?.toFixed(0) ?? "—"}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+            </>)}
+
+            {/* ══════════ OTHER TABS ══════════ */}
             {tab !== "overview" && (
-              <div className="wc-ctnr">
+              <div className="zf-tab-panel" style={{ flex: 1, minHeight: "calc(100vh - 140px)" }}>
                 {tab === "holdings"  && <PortfolioTable stocks={live} onUpdate={setStocks} />}
                 {tab === "trades"    && <TradeStrategyTable trades={trades} onUpdate={setTrades} stocks={live} />}
                 {tab === "watchlist" && <WatchlistTable watchlist={watchlist} onUpdate={setWatchlist} />}
                 {tab === "charts"    && <PortfolioCharts stocks={live} />}
-                {tab === "risk"      && <RiskAnalysis stocks={live} />}
                 {tab === "analytics" && <TradeAnalytics stocks={live} />}
                 {tab === "history"   && <TradeHistory stocks={live} />}
                 {tab === "journal"   && <TradeJournal entries={journal} onUpdate={setJournal} />}
