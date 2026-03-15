@@ -1008,3 +1008,162 @@
   border-radius: 8px !important;
   box-shadow: 0 4px 12px rgba(120,80,20,.10) !important;
 }
+/* ══════════════════════════════════════════════════════════════════════════════
+   GLOBAL DARK MODE COMPLETIONS + LAYOUT / SPACING IMPROVEMENTS
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Dark mode: shadcn Table inside .wc-ctnr ────────────────────────────────── */
+.dark .wc-ctnr th {
+  background: hsl(220 42% 12%) !important;
+  color: hsl(215 18% 48%) !important;
+  border-color: hsl(218 32% 20%) !important;
+}
+.dark .wc-ctnr td {
+  color: hsl(215 20% 72%) !important;
+  border-color: hsl(218 32% 18%) !important;
+}
+.dark .wc-ctnr tr:hover > td {
+  background: hsl(220 42% 17%) !important;
+}
+.dark .wc-ctnr thead {
+  background: hsl(220 42% 12%) !important;
+}
+.dark .wc-ctnr thead tr th {
+  box-shadow: 0 1px 0 hsl(218 32% 20%);
+}
+.dark .wc-ctnr .rounded-xl,
+.dark .wc-ctnr .rounded-lg,
+.dark .wc-ctnr [class*="card"] {
+  background: hsl(220 42% 16%) !important;
+  border-color: hsl(218 32% 22%) !important;
+}
+.dark .wc-ctnr input:not([type="checkbox"]):not([type="radio"]),
+.dark .wc-ctnr select,
+.dark .wc-ctnr textarea {
+  background: hsl(220 42% 12%) !important;
+  border-color: hsl(218 32% 24%) !important;
+  color: hsl(215 25% 88%) !important;
+}
+.dark .wc-ctnr input:focus,
+.dark .wc-ctnr select:focus,
+.dark .wc-ctnr textarea:focus {
+  border-color: hsl(213 65% 52%) !important;
+  box-shadow: 0 0 0 3px hsl(213 65% 40% / .18) !important;
+}
+.dark .wc-ctnr label {
+  color: hsl(215 20% 62%) !important;
+}
+.dark .wc-ctnr input::placeholder,
+.dark .wc-ctnr textarea::placeholder {
+  color: hsl(215 18% 38%) !important;
+}
+.dark .wc-ctnr [role="tablist"] {
+  background: hsl(220 42% 12%) !important;
+}
+.dark .wc-ctnr [role="tab"] {
+  color: hsl(215 18% 52%) !important;
+}
+.dark .wc-ctnr [role="tab"][data-state="active"] {
+  background: hsl(213 52% 22%) !important;
+  color: hsl(210 82% 74%) !important;
+  box-shadow: 0 1px 4px hsl(213 60% 20% / .25) !important;
+}
+.dark .wc-ctnr button.bg-primary,
+.dark .wc-ctnr [class*="bg-primary"] {
+  background: hsl(213 65% 42%) !important;
+}
+.dark .wc-ctnr button.bg-primary:hover {
+  background: hsl(213 65% 50%) !important;
+}
+.dark .wc-ctnr button[class*="outline"],
+.dark .wc-ctnr button[class*="border-input"] {
+  background: hsl(220 42% 16%) !important;
+  border-color: hsl(218 32% 26%) !important;
+  color: hsl(215 22% 72%) !important;
+}
+.dark .wc-ctnr button[class*="outline"]:hover {
+  background: hsl(213 42% 20%) !important;
+}
+.dark .wc-ctnr button[class*="ghost"] {
+  color: hsl(215 20% 62%) !important;
+}
+.dark .wc-ctnr button[class*="ghost"]:hover {
+  background: hsl(220 42% 18%) !important;
+  color: hsl(215 22% 78%) !important;
+}
+.dark .wc-ctnr [role="menu"],
+.dark .wc-ctnr [data-radix-popper-content-wrapper] > div {
+  background: hsl(220 42% 15%) !important;
+  border-color: hsl(218 32% 24%) !important;
+  box-shadow: 0 8px 24px hsl(215 60% 10% / .45) !important;
+}
+.dark .wc-ctnr [role="menuitem"]:hover {
+  background: hsl(213 42% 20%) !important;
+  color: hsl(210 72% 74%) !important;
+}
+.dark .wc-ctnr [role="separator"],
+.dark .wc-ctnr .separator {
+  background: hsl(218 32% 22%) !important;
+}
+.dark .wc-ctnr ::-webkit-scrollbar-thumb { background: hsl(218 32% 24%); }
+
+/* ── Dark mode: muted text legibility fix ─────────────────────────────────── */
+.dark .text-muted-foreground {
+  color: hsl(215 22% 62%) !important;
+}
+
+/* ── Dark mode: glass-card text color ────────────────────────────────────── */
+.dark .glass-card {
+  color: hsl(215 25% 88%);
+}
+.dark .stat-card {
+  color: hsl(215 25% 88%);
+}
+.dark .stat-card .text-muted-foreground {
+  color: hsl(215 20% 56%) !important;
+}
+
+/* ── Dark mode: page background fix for any white leaks ─────────────────── */
+.dark .bg-background,
+.dark [data-radix-scroll-area-viewport] {
+  background-color: transparent;
+}
+.dark body {
+  background-color: hsl(var(--background));
+}
+
+/* ── Layout / spacing improvements ──────────────────────────────────────── */
+
+/* Stat cards — more breathing room on wide screens */
+@media (min-width: 1280px) {
+  .stat-card { padding: 1.375rem; }
+}
+
+/* Slightly tighter gaps between dashboard sections */
+.space-y-6 > * + * { margin-top: 1.25rem !important; }
+
+/* Consistent card header padding */
+.card > .card-header {
+  padding: 14px 18px 12px;
+}
+
+/* ── Smooth dark/light mode transition ───────────────────────────────────── */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
+}
+/* Don't slow down interactive elements */
+button, a, input, select, textarea {
+  transition-duration: 110ms !important;
+}
+/* Don't apply to animations or transforms */
+.animate-fade-up,
+.animate-pulse-glow,
+.animate-float-orb,
+[style*="animation"],
+[style*="transform"] {
+  transition-property: none !important;
+}
