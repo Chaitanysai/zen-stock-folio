@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   LayoutDashboard, TrendingUp, ScrollText, Eye,
   Brain, History, BarChart3, Bell, RefreshCw,
   LogOut, Settings, PieChart, Zap, ChevronLeft,
   ChevronRight, Search, TrendingDown,
-  Activity, Wallet, Award, Newspaper
+  Activity, Wallet, Award
 } from "lucide-react";
 import {
   portfolioData as initialData, PortfolioStock,
@@ -26,7 +26,6 @@ import TradeJournal          from "@/components/TradeJournal";
 import SectorDiversification from "@/components/SectorDiversification";
 import PriceAlerts           from "@/components/PriceAlerts";
 import AIInsights            from "@/components/AIInsights";
-import StockNewsFeed         from "@/components/StockNewsFeed";
 import ExportPortfolio       from "@/components/ExportPortfolio";
 import AuthModal             from "@/components/AuthModal";
 import { useToast }          from "@/hooks/use-toast";
@@ -38,7 +37,7 @@ import { useAuth }           from "@/contexts/AuthContext";
 type ActiveTab =
   | "overview" | "holdings" | "trades" | "watchlist" | "ai"
   | "charts" | "analytics" | "history" | "journal"
-  | "sector" | "alerts" | "export" | "news";
+  | "sector" | "alerts" | "export";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 const NAV_GROUPS = [
@@ -63,7 +62,6 @@ const NAV_GROUPS = [
     label: "TOOLS",
     items: [
       { id: "watchlist",  label: "Watchlist",   icon: Eye },
-      { id: "news",       label: "News Feed",   icon: Newspaper },
       { id: "ai",         label: "AI Insights", icon: Brain },
       { id: "alerts",     label: "Alerts",      icon: Bell },
       { id: "export",     label: "Export",      icon: Zap },
@@ -866,6 +864,116 @@ const CSS = `
 .zf-spin { animation: zf-spin .9s linear infinite; }
 
 /* ══════════════════════════════════════════════════
+   FLUID PAGE TRANSITIONS
+══════════════════════════════════════════════════ */
+
+/* Page enter — content flows up from slightly below, fades in, scales from 98% */
+@keyframes zf-page-in {
+  0%   { opacity: 0; transform: translateY(18px) scale(0.982); filter: blur(4px); }
+  60%  { opacity: 1; filter: blur(0px); }
+  100% { opacity: 1; transform: translateY(0px) scale(1); filter: blur(0px); }
+}
+
+/* Page exit — content vanishes upward, fades out, scales up slightly (feels like it recedes) */
+@keyframes zf-page-out {
+  0%   { opacity: 1; transform: translateY(0px) scale(1); filter: blur(0px); }
+  100% { opacity: 0; transform: translateY(-10px) scale(1.012); filter: blur(3px); }
+}
+
+/* The animated wrapper */
+.zf-page-wrap {
+  animation: zf-page-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity, filter;
+  width: 100%;
+  display: contents;
+}
+.zf-page-wrap.exiting {
+  animation: zf-page-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
+  pointer-events: none;
+}
+
+/* Staggered children — each direct child gets a slight cascade delay */
+.zf-page-wrap > * { animation: zf-page-in 0.44s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.zf-page-wrap > *:nth-child(1) { animation-delay: 0ms; }
+.zf-page-wrap > *:nth-child(2) { animation-delay: 40ms; }
+.zf-page-wrap > *:nth-child(3) { animation-delay: 80ms; }
+.zf-page-wrap > *:nth-child(4) { animation-delay: 110ms; }
+.zf-page-wrap > *:nth-child(5) { animation-delay: 135ms; }
+.zf-page-wrap > *:nth-child(n+6) { animation-delay: 155ms; }
+
+/* KPI cards stagger inside overview */
+.zf-kpi-row .zf-kpi { animation: zf-page-in 0.46s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.zf-kpi-row .zf-kpi:nth-child(1) { animation-delay: 30ms; }
+.zf-kpi-row .zf-kpi:nth-child(2) { animation-delay: 70ms; }
+.zf-kpi-row .zf-kpi:nth-child(3) { animation-delay: 105ms; }
+.zf-kpi-row .zf-kpi:nth-child(4) { animation-delay: 135ms; }
+
+/* Cards in mid/bot rows cascade slightly */
+.zf-mid-row > *, .zf-bot-row > * {
+  animation: zf-page-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.zf-mid-row > *:nth-child(1), .zf-bot-row > *:nth-child(1) { animation-delay: 80ms; }
+.zf-mid-row > *:nth-child(2), .zf-bot-row > *:nth-child(2) { animation-delay: 130ms; }
+
+/* Tab panel (non-overview) enters as one piece */
+.zf-tab-panel {
+  animation: zf-page-in 0.40s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 20ms;
+}
+
+/* Sidebar nav item active state — smooth slide */
+.zf-nav-item {
+  transition: background .16s ease, color .16s ease, border-color .16s ease, transform .14s cubic-bezier(0.22,1,0.36,1);
+}
+.zf-nav-item:active { transform: scale(0.96); }
+
+/* Header title — smooth crossfade on tab change */
+.zf-page-title {
+  transition: opacity .18s ease, transform .22s cubic-bezier(0.22,1,0.36,1);
+}
+.zf-page-title.changing {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* KPI card hover — spring lift */
+.zf-kpi {
+  transition: box-shadow .22s cubic-bezier(0.22,1,0.36,1), transform .22s cubic-bezier(0.22,1,0.36,1), border-color .18s ease !important;
+}
+.zf-kpi:hover {
+  transform: translateY(-3px) scale(1.012) !important;
+  box-shadow: var(--sh-3) !important;
+}
+.zf-kpi:active {
+  transform: translateY(0px) scale(0.99) !important;
+  transition-duration: 0.08s !important;
+}
+
+/* zf-card hover spring */
+.zf-card {
+  transition: box-shadow .22s cubic-bezier(0.22,1,0.36,1), transform .22s cubic-bezier(0.22,1,0.36,1) !important;
+}
+.zf-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--sh-2) !important;
+}
+
+/* Watchlist / holdings rows — smooth hover */
+.zf-trow, .zf-wl-row {
+  transition: background .12s ease !important;
+}
+
+/* Content scroll area — smoother scroll */
+.zf-content {
+  scroll-behavior: smooth;
+}
+
+/* Remove default transition override that was slowing things down */
+.zf-nav-item svg {
+  transition: color .16s ease;
+}
+
+/* ══════════════════════════════════════════════════
    DARK MODE — complete, white text everywhere
    Rule: --navy accent stays blue for UI elements
          ALL body text = white/light, NOT blue
@@ -1212,11 +1320,25 @@ function BarWidget({ stocks }: { stocks: PortfolioStock[] }) {
 
 // ════════════════════════════════════════════════════════════════════════════
 export default function Index() {
-  const [tab,       setTab]       = useState<ActiveTab>("overview");
-  const [collapsed, setCollapsed] = useState(false);
-  const [darkMode,  setDarkMode]  = useState(() => {
+  const [tab,            setTab]           = useState<ActiveTab>("overview");
+  const [transitionKey,  setTransitionKey] = useState(0);
+  const [titleChanging,  setTitleChanging] = useState(false);
+  const [collapsed,      setCollapsed]     = useState(false);
+  const [darkMode,       setDarkMode]      = useState(() => {
     try { return localStorage.getItem("zf-dark") === "1"; } catch { return false; }
   });
+
+  // Animated tab switch — exit → swap → enter
+  const switchTab = useCallback((next: ActiveTab) => {
+    if (next === tab) return;
+    // Animate title out
+    setTitleChanging(true);
+    setTimeout(() => {
+      setTab(next);
+      setTransitionKey(k => k + 1);
+      setTitleChanging(false);
+    }, 160);
+  }, [tab]);
 
   // Apply dark mode to <html>
   useEffect(() => {
@@ -1324,7 +1446,6 @@ export default function Index() {
     watchlist: "Watchlist", ai: "AI Insights", charts: "Charts & Analytics",
     analytics: "Trade Analytics", history: "Trade History", journal: "Trade Journal",
     sector: "Sector Allocation", alerts: "Price Alerts", export: "Export Data",
-    news: "Holdings News Feed",
   };
 
   // ── Auth gate ─────────────────────────────────────────────────────────────
@@ -1460,7 +1581,7 @@ export default function Index() {
                   <div
                     key={id}
                     className={`zf-nav-item${tab === id ? " active" : ""}`}
-                    onClick={() => setTab(id as ActiveTab)}
+                    onClick={() => switchTab(id as ActiveTab)}
                     title={collapsed ? label : undefined}
                   >
                     <Icon strokeWidth={tab === id ? 2.2 : 1.8} size={15} />
@@ -1490,7 +1611,7 @@ export default function Index() {
 
           {/* Header */}
           <header className="zf-header">
-            <div className="zf-page-title">{PAGE_TITLES[tab]}</div>
+            <div className={`zf-page-title${titleChanging ? " changing" : ""}`}>{PAGE_TITLES[tab]}</div>
 
             {/* Search */}
             <div className="zf-search">
@@ -1547,6 +1668,7 @@ export default function Index() {
 
           {/* Content */}
           <div className="zf-content">
+            <div key={transitionKey} className="zf-page-wrap">
 
             {/* ══════════ OVERVIEW — ByeWind reference layout ══════════ */}
             {tab === "overview" && (<>
@@ -1628,7 +1750,7 @@ export default function Index() {
                     <span className="zf-card-title">Holdings</span>
                     <div className="zf-card-meta">
                       <span className="zf-card-badge">{activePos.length} active</span>
-                      <button className="zf-card-link" onClick={() => setTab("holdings")}>View all →</button>
+                      <button className="zf-card-link" onClick={() => switchTab("holdings")}>View all →</button>
                     </div>
                   </div>
                   <div className="zf-card-body">
@@ -1678,7 +1800,7 @@ export default function Index() {
                     <span className="zf-card-title">Watchlist</span>
                     <div className="zf-card-meta">
                       <span className="zf-card-badge">{watchlist.length}</span>
-                      <button className="zf-card-link" onClick={() => setTab("watchlist")}>+ Add</button>
+                      <button className="zf-card-link" onClick={() => switchTab("watchlist")}>+ Add</button>
                     </div>
                   </div>
                   <div className="zf-card-body">
@@ -1735,7 +1857,7 @@ export default function Index() {
                     )}
                   </div>
                   <div className="zf-card-meta">
-                    <button className="zf-card-link" onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}>
+                    <button className="zf-card-link" onClick={() => { switchTab("trades"); setTradesSubTab("fno"); }}>
                       View all F&O →
                     </button>
                   </div>
@@ -1743,7 +1865,7 @@ export default function Index() {
                 <div className="zf-card-body">
                   {fnoTrades.filter(t => t.status === "Open").length === 0 ? (
                     <div style={{ padding:"28px 20px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
-                      No open F&O positions · <button onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}
+                      No open F&O positions · <button onClick={() => { switchTab("trades"); setTradesSubTab("fno"); }}
                         style={{ background:"none", border:"none", color:"var(--navy)", fontSize:12, fontWeight:600, cursor:"pointer" }}>
                         Add one →
                       </button>
@@ -1865,7 +1987,7 @@ export default function Index() {
                         <span style={{ width:16, height:3, borderRadius:2, background:"var(--tx-200)", display:"inline-block" }} />
                         Last year
                       </div>
-                      <button className="zf-card-link" onClick={() => setTab("charts")}>Full view →</button>
+                      <button className="zf-card-link" onClick={() => switchTab("charts")}>Full view →</button>
                     </div>
                   </div>
                   <div style={{ padding:"8px 20px 16px" }}>
@@ -1955,6 +2077,7 @@ export default function Index() {
               </div>
             )}
 
+            </div>{/* end zf-page-wrap */}
           </div>
         </div>
       </div>
