@@ -4,7 +4,7 @@ import {
   Brain, History, BarChart3, Bell, RefreshCw,
   LogOut, Settings, PieChart, Zap, ChevronLeft,
   ChevronRight, Search, TrendingDown,
-  Activity, Wallet, Award
+  Activity, Wallet, Award, Newspaper
 } from "lucide-react";
 import {
   portfolioData as initialData, PortfolioStock,
@@ -26,6 +26,7 @@ import TradeJournal          from "@/components/TradeJournal";
 import SectorDiversification from "@/components/SectorDiversification";
 import PriceAlerts           from "@/components/PriceAlerts";
 import AIInsights            from "@/components/AIInsights";
+import StockNewsFeed         from "@/components/StockNewsFeed";
 import ExportPortfolio       from "@/components/ExportPortfolio";
 import AuthModal             from "@/components/AuthModal";
 import { useToast }          from "@/hooks/use-toast";
@@ -37,7 +38,7 @@ import { useAuth }           from "@/contexts/AuthContext";
 type ActiveTab =
   | "overview" | "holdings" | "trades" | "watchlist" | "ai"
   | "charts" | "analytics" | "history" | "journal"
-  | "sector" | "alerts" | "export";
+  | "sector" | "alerts" | "export" | "news";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 const NAV_GROUPS = [
@@ -62,6 +63,7 @@ const NAV_GROUPS = [
     label: "TOOLS",
     items: [
       { id: "watchlist",  label: "Watchlist",   icon: Eye },
+      { id: "news",       label: "News Feed",   icon: Newspaper },
       { id: "ai",         label: "AI Insights", icon: Brain },
       { id: "alerts",     label: "Alerts",      icon: Bell },
       { id: "export",     label: "Export",      icon: Zap },
@@ -1322,6 +1324,7 @@ export default function Index() {
     watchlist: "Watchlist", ai: "AI Insights", charts: "Charts & Analytics",
     analytics: "Trade Analytics", history: "Trade History", journal: "Trade Journal",
     sector: "Sector Allocation", alerts: "Price Alerts", export: "Export Data",
+    news: "Holdings News Feed",
   };
 
   // ── Auth gate ─────────────────────────────────────────────────────────────
@@ -1940,6 +1943,7 @@ export default function Index() {
                   </div>
                 )}
                 {tab === "watchlist" && <WatchlistTable watchlist={watchlist} onUpdate={setWatchlist} />}
+                {tab === "news"      && <StockNewsFeed stocks={live} />}
                 {tab === "charts"    && <PortfolioCharts stocks={live} />}
                 {tab === "analytics" && <TradeAnalytics stocks={live} />}
                 {tab === "history"   && <TradeHistory stocks={live} />}
