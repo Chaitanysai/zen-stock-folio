@@ -1026,7 +1026,7 @@ export default function Index() {
   const [journal,   setJournal]   = useState<TradeJournalEntry[]>([]);
 
   const { toast }         = useToast();
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: _authLoading } = useAuth();
   const tickers = stocks.map(s => s.ticker);
   const { prices, isLive, refresh } = useLivePrices(tickers);
   usePortfolioSync({ stocks, trades, watchlist, alerts, setStocks, setTrades, setWatchlist, setAlerts });
@@ -1045,15 +1045,21 @@ export default function Index() {
   }, []);
 
   // ── Metrics ──────────────────────────────────────────────────────────────
-  const invested    = live.reduce((s, x) => s + calcInvestedValue(x), 0);
-  const current     = live.reduce((s, x) => s + calcFinalValue(x), 0);
-  const pnl         = live.reduce((s, x) => s + calcProfitLoss(x), 0);
-  const pnlPct      = invested > 0 ? pnl / invested * 100 : 0;
   const activePos   = live.filter(s => s.status === "Active");
   const closedPos   = live.filter(s => s.status !== "Active");
+
+  // Invested = only active positions (money currently deployed)
+  const invested    = activePos.reduce((s, x) => s + calcInvestedValue(x), 0);
+  // Portfolio Value = active current value + realised from closed trades
+  const activeCurr  = activePos.reduce((s, x) => s + calcFinalValue(x), 0);
+  const realisedPnl = closedPos.reduce((s, x) => s + calcProfitLoss(x), 0);
+  const current     = activeCurr + realisedPnl;
+  // Unrealised P&L = active positions only
+  const unrealisedPnl = activePos.reduce((s, x) => s + calcProfitLoss(x), 0);
+  const pnl         = unrealisedPnl;
+  const pnlPct      = invested > 0 ? pnl / invested * 100 : 0;
   const winners     = closedPos.filter(s => calcProfitLoss(s) > 0);
   const winRate     = closedPos.length > 0 ? winners.length / closedPos.length * 100 : 0;
-  const realisedPnl = closedPos.reduce((s, x) => s + calcProfitLoss(x), 0);
   const todayPnl    = activePos.reduce((a, s) => a + (s.cmp - s.entryPrice) * s.quantity * 0.003, 0);
   const todayPct    = invested > 0 ? Math.abs(todayPnl) / invested * 100 : 0;
 
@@ -1086,6 +1092,104 @@ export default function Index() {
     analytics: "Trade Analytics", history: "Trade History", journal: "Trade Journal",
     sector: "Sector Allocation", alerts: "Price Alerts", export: "Export Data",
   };
+
+  // ── Auth gate ─────────────────────────────────────────────────────────────
+  // Loading state
+  if (_authLoading) return (
+    <div style={{ height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#f4f6f9", fontFamily:"DM Sans, sans-serif" }}>
+      <div style={{ textAlign:"center" }}>
+        <div style={{ width:40, height:40, border:"3px solid #e5e7eb", borderTop:"3px solid #1c3557", borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 12px" }} />
+        <div style={{ fontSize:13, color:"#6b7280" }}>Loading…</div>
+      </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+
+  // Not logged in — show landing / intro page
+  if (!user) return (
+    <>
+      <style>{CSS}</style>
+      <style>{`
+        .lp { min-height:100vh; background:#f4f6f9; font-family:'DM Sans',-apple-system,sans-serif; display:flex; flex-direction:column; }
+        .lp-nav { background:#fff; border-bottom:1px solid #e5e7eb; padding:0 40px; height:64px; display:flex; align-items:center; justify-content:space-between; }
+        .lp-brand { display:flex; align-items:center; gap:10px; }
+        .lp-logo { width:32px; height:32px; background:#1c3557; border-radius:9px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(28,53,87,.3); }
+        .lp-name { font-size:18px; font-weight:700; color:#1c3557; letter-spacing:-.3px; }
+        .lp-signin-btn { background:#1c3557; color:white; border:none; padding:9px 22px; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:background .15s; }
+        .lp-signin-btn:hover { background:#224168; }
+        .lp-hero { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 24px; text-align:center; }
+        .lp-hero-badge { display:inline-flex; align-items:center; gap:6px; background:#eef4fc; color:#1c3557; border:1px solid #ddeaf8; border-radius:20px; padding:5px 14px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; margin-bottom:24px; }
+        .lp-hero-dot { width:6px; height:6px; border-radius:50%; background:#059669; }
+        .lp-h1 { font-size:clamp(32px,5vw,56px); font-weight:800; color:#111827; line-height:1.1; letter-spacing:-1.5px; max-width:700px; margin-bottom:18px; }
+        .lp-h1 span { color:#1c3557; }
+        .lp-sub { font-size:17px; color:#6b7280; max-width:520px; line-height:1.6; margin-bottom:36px; }
+        .lp-cta-row { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+        .lp-cta-primary { background:#1c3557; color:white; border:none; padding:13px 32px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:all .15s; box-shadow:0 4px 14px rgba(28,53,87,.3); }
+        .lp-cta-primary:hover { background:#224168; transform:translateY(-1px); box-shadow:0 6px 20px rgba(28,53,87,.35); }
+        .lp-cta-ghost { background:transparent; color:#1c3557; border:1.5px solid #ddeaf8; padding:13px 32px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s; }
+        .lp-cta-ghost:hover { background:#eef4fc; border-color:#1c3557; }
+        .lp-features { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; max-width:860px; width:100%; margin-top:64px; }
+        .lp-feat { background:#fff; border:1px solid #f0f2f5; border-radius:14px; padding:26px 22px; text-align:left; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+        .lp-feat-icon { width:40px; height:40px; border-radius:10px; background:#eef4fc; border:1px solid #ddeaf8; display:flex; align-items:center; justify-content:center; margin-bottom:14px; font-size:20px; }
+        .lp-feat-title { font-size:14px; font-weight:700; color:#111827; margin-bottom:6px; }
+        .lp-feat-desc { font-size:12.5px; color:#6b7280; line-height:1.6; }
+        .lp-stats { display:flex; gap:40px; justify-content:center; margin-top:52px; flex-wrap:wrap; }
+        .lp-stat { text-align:center; }
+        .lp-stat-val { font-size:28px; font-weight:800; color:#1c3557; letter-spacing:-1px; }
+        .lp-stat-lbl { font-size:11px; color:#9ca3af; font-weight:600; text-transform:uppercase; letter-spacing:.08em; margin-top:3px; }
+        @media(max-width:640px){ .lp-features{grid-template-columns:1fr;} .lp-h1{font-size:32px;} }
+      `}</style>
+      <div className="lp">
+        <nav className="lp-nav">
+          <div className="lp-brand">
+            <div className="lp-logo">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 13L5.5 4.5L10 9L12 6.5L14 13H2Z" fill="white" />
+              </svg>
+            </div>
+            <span className="lp-name">ZenFolio</span>
+          </div>
+          <button className="lp-signin-btn" onClick={() => setShowAuth(true)}>Sign in</button>
+        </nav>
+        <div className="lp-hero">
+          <div className="lp-hero-badge"><div className="lp-hero-dot" />NSE Live Prices · AI-Powered</div>
+          <h1 className="lp-h1">Track your <span>Indian stocks</span> like a pro trader</h1>
+          <p className="lp-sub">Real-time portfolio tracking, AI-powered insights, trade journal, and sector analysis — built for NSE/BSE investors.</p>
+          <div className="lp-cta-row">
+            <button className="lp-cta-primary" onClick={() => setShowAuth(true)}>Get started free →</button>
+            <button className="lp-cta-ghost" onClick={() => setShowAuth(true)}>Sign in to your account</button>
+          </div>
+          <div className="lp-features">
+            {[
+              { icon:"📊", title:"Live Portfolio Tracker", desc:"Real-time NSE prices via Upstox with 5-tier fallback. Watch your P&L update every 60 seconds during market hours." },
+              { icon:"🤖", title:"AI Portfolio Analyst", desc:"Powered by Groq's Llama 3.3 70B. Get instant analysis, risk assessment, and actionable trade recommendations." },
+              { icon:"📈", title:"Trade Journal & Analytics", desc:"Track every trade with entry/exit, win rate, sector allocation, and performance charts. Know what's working." },
+            ].map(f => (
+              <div key={f.title} className="lp-feat">
+                <div className="lp-feat-icon">{f.icon}</div>
+                <div className="lp-feat-title">{f.title}</div>
+                <div className="lp-feat-desc">{f.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div className="lp-stats">
+            {[
+              { val:"5-Tier", lbl:"Price Fallback" },
+              { val:"Real-time", lbl:"NSE/BSE Data" },
+              { val:"AI-Powered", lbl:"Trade Analysis" },
+              { val:"100%", lbl:"Private & Secure" },
+            ].map(s => (
+              <div key={s.lbl} className="lp-stat">
+                <div className="lp-stat-val">{s.val}</div>
+                <div className="lp-stat-lbl">{s.lbl}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+    </>
+  );
 
   return (
     <>
@@ -1431,7 +1535,8 @@ export default function Index() {
             {/* ══════════ OTHER TABS ══════════ */}
             {tab !== "overview" && (
               <div className="zf-tab-panel" style={{ flex: 1, minHeight: "calc(100vh - 140px)" }}>
-                {tab === "holdings"  && <PortfolioTable stocks={live} onUpdate={setStocks} />}
+                {/* Holdings = active positions only; Trades = all including closed */}
+                {tab === "holdings"  && <PortfolioTable stocks={live.filter(s => s.status === "Active")} onUpdate={setStocks} />}
                 {tab === "trades"    && <TradeStrategyTable trades={trades} onUpdate={setTrades} stocks={live} />}
                 {tab === "watchlist" && <WatchlistTable watchlist={watchlist} onUpdate={setWatchlist} />}
                 {tab === "charts"    && <PortfolioCharts stocks={live} />}

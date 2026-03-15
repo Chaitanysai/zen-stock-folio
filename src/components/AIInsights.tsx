@@ -1,7 +1,8 @@
 /**
  * AIInsights.tsx — AI Portfolio Analysis + Chat
- * Warm cream + deep navy theme. No hardcoded dark blues.
+ * Clean white theme matching dashboard. No hardcoded dark blues.
  * Uses PortfolioStock: entryPrice, quantity, cmp, status
+ * White theme: #ffffff cards, #f4f6f9 page bg, #1c3557 navy accent
  */
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
@@ -16,30 +17,30 @@ import type { PortfolioStock, TradeStrategy } from "@/data/sampleData";
 interface ChatMessage { role: "user" | "assistant"; content: string; ts: number; }
 interface Props { stocks: PortfolioStock[]; trades?: TradeStrategy[]; }
 
-// ── Theme tokens (matches warm cream index) ──────────────────────────────────
+// ── Theme tokens — white theme matching dashboard ─────────────────────────────
 const T = {
   navy:      "#1c3557",
   navyMid:   "#2a4a70",
-  navyPale:  "#e8f0f8",
-  navyBd:    "rgba(28,53,87,.15)",
-  navyTint:  "rgba(28,53,87,.07)",
-  navyTint2: "rgba(28,53,87,.12)",
-  bg:        "#fdfaf4",
-  bgSurf:    "#faf6ef",
-  bgPage:    "#f5efe4",
-  bdMid:     "#e8e0d0",
-  bdSoft:    "#f0e8dc",
+  navyPale:  "#eef4fc",
+  navyBd:    "rgba(28,53,87,.12)",
+  navyTint:  "rgba(28,53,87,.06)",
+  navyTint2: "rgba(28,53,87,.10)",
+  bg:        "#ffffff",
+  bgSurf:    "#f8f9fc",
+  bgPage:    "#f4f6f9",
+  bdMid:     "#e5e7eb",
+  bdSoft:    "#f0f2f5",
   txHi:      "#111827",
-  txMed:     "#5c4f3a",
-  txLo:      "#9c8f7a",
-  txGhost:   "#c4b49a",
-  profit:    "#166534",
-  profitBg:  "#f0fdf4",
-  profitBd:  "#bbf7d0",
-  loss:      "#991b1b",
-  lossBg:    "#fff1f2",
-  lossBd:    "#fecdd3",
-  shadow:    "0 4px 16px rgba(120,80,20,.10), 0 1px 4px rgba(120,80,20,.06)",
+  txMed:     "#4b5563",
+  txLo:      "#6b7280",
+  txGhost:   "#9ca3af",
+  profit:    "#059669",
+  profitBg:  "#ecfdf5",
+  profitBd:  "#a7f3d0",
+  loss:      "#dc2626",
+  lossBg:    "#fef2f2",
+  lossBd:    "#fecaca",
+  shadow:    "0 4px 16px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04)",
 };
 
 // ── Build portfolio context ──────────────────────────────────────────────────
