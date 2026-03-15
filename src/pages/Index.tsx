@@ -12,9 +12,11 @@ import {
   watchlistData as initialWatchlist, WatchlistStock,
   PriceAlert, TradeJournalEntry,
   calcInvestedValue, calcFinalValue, calcProfitLoss,
+  FnOTrade, fnOTradesData,
 } from "@/data/sampleData";
 import PortfolioTable        from "@/components/PortfolioTable";
 import TradeStrategyTable    from "@/components/TradeStrategyTable";
+import FnOTable             from "@/components/FnOTable";
 import WatchlistTable        from "@/components/WatchlistTable";
 import PortfolioCharts       from "@/components/PortfolioCharts";
 import RiskAnalysis          from "@/components/RiskAnalysis";
@@ -1024,6 +1026,15 @@ export default function Index() {
   const [watchlist, setWatchlist] = useState<WatchlistStock[]>(()  => loadFromLocal()?.watchlist ?? initialWatchlist);
   const [alerts,    setAlerts]    = useState<PriceAlert[]>(()      => loadFromLocal()?.alerts    ?? []);
   const [journal,   setJournal]   = useState<TradeJournalEntry[]>([]);
+  const [fnoTrades, setFnoTrades] = useState<FnOTrade[]>(() =>
+    (() => { try { const d = localStorage.getItem("zf-fno-trades"); return d ? JSON.parse(d) : fnOTradesData; } catch { return fnOTradesData; } })()
+  );
+  const [tradesSubTab, setTradesSubTab] = useState<"equity"|"fno">("equity");
+
+  // Persist F&O trades
+  useEffect(() => {
+    try { localStorage.setItem("zf-fno-trades", JSON.stringify(fnoTrades)); } catch {}
+  }, [fnoTrades]);
 
   const { toast }         = useToast();
   const { user, signOut, loading: _authLoading } = useAuth();
@@ -1087,7 +1098,7 @@ export default function Index() {
 
   // Page title per tab
   const PAGE_TITLES: Record<ActiveTab, string> = {
-    overview: "Dashboard", holdings: "Portfolio Holdings", trades: "Trade Setups",
+    overview: "Dashboard", holdings: "Portfolio Holdings", trades: "Trades & F&O",
     watchlist: "Watchlist", ai: "AI Insights", charts: "Charts & Analytics",
     analytics: "Trade Analytics", history: "Trade History", journal: "Trade Journal",
     sector: "Sector Allocation", alerts: "Price Alerts", export: "Export Data",
@@ -1187,7 +1198,7 @@ export default function Index() {
           </div>
         </div>
       </div>
-      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+      <AuthModal open={showAuth} onOpenChange={setShowAuth} />
     </>
   );
 
@@ -1535,9 +1546,54 @@ export default function Index() {
             {/* ══════════ OTHER TABS ══════════ */}
             {tab !== "overview" && (
               <div className="zf-tab-panel" style={{ flex: 1, minHeight: "calc(100vh - 140px)" }}>
-                {/* Holdings = active positions only; Trades = all including closed */}
+                {/* Holdings = active positions only */}
                 {tab === "holdings"  && <PortfolioTable stocks={live.filter(s => s.status === "Active")} onUpdate={setStocks} />}
-                {tab === "trades"    && <TradeStrategyTable trades={trades} onUpdate={setTrades} stocks={live} />}
+
+                {/* Trades = sub-tabbed: Equity | F&O */}
+                {tab === "trades" && (
+                  <div style={{ display:"flex", flexDirection:"column", height:"100%", background:"#fff" }}>
+                    {/* Sub-tab bar */}
+                    <div style={{ display:"flex", alignItems:"center", gap:2, padding:"14px 20px 0", borderBottom:"1.5px solid #e5e7eb", background:"#f8f9fc", flexShrink:0 }}>
+                      {([
+                        { id:"equity", label:"Equity Trades", count: live.length },
+                        { id:"fno",    label:"F&O Positions", count: fnoTrades.length },
+                      ] as const).map(st => (
+                        <button key={st.id}
+                          onClick={() => setTradesSubTab(st.id)}
+                          style={{
+                            fontSize:13, fontWeight: tradesSubTab === st.id ? 700 : 500,
+                            color: tradesSubTab === st.id ? "#1c3557" : "#6b7280",
+                            padding:"9px 18px 10px", borderRadius:"8px 8px 0 0",
+                            border: tradesSubTab === st.id ? "1px solid #e5e7eb" : "1px solid transparent",
+                            borderBottom: tradesSubTab === st.id ? "1.5px solid #fff" : "1px solid transparent",
+                            background: tradesSubTab === st.id ? "#fff" : "transparent",
+                            cursor:"pointer", fontFamily:"inherit", position:"relative", bottom:"-1.5px",
+                            display:"flex", alignItems:"center", gap:7, transition:"all .14s",
+                          }}>
+                          {st.label}
+                          <span style={{
+                            display:"inline-flex", alignItems:"center", justifyContent:"center",
+                            width:18, height:18, borderRadius:"50%", fontSize:9, fontWeight:700,
+                            background: tradesSubTab === st.id ? "#eef4fc" : "#f0f2f5",
+                            color: tradesSubTab === st.id ? "#1c3557" : "#9ca3af",
+                          }}>{st.count}</span>
+                          {st.id === "fno" && (
+                            <span style={{
+                              fontSize:9, fontWeight:700, padding:"1px 6px", borderRadius:4,
+                              background:"#eef4fc", color:"#1c3557", border:"1px solid #ddeaf8",
+                              letterSpacing:".04em",
+                            }}>NEW</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Sub-tab content */}
+                    <div style={{ flex:1, overflow:"auto", minHeight:0 }}>
+                      {tradesSubTab === "equity" && <TradeStrategyTable trades={trades} onUpdate={setTrades} stocks={live} />}
+                      {tradesSubTab === "fno"    && <FnOTable trades={fnoTrades} onUpdate={setFnoTrades} />}
+                    </div>
+                  </div>
+                )}
                 {tab === "watchlist" && <WatchlistTable watchlist={watchlist} onUpdate={setWatchlist} />}
                 {tab === "charts"    && <PortfolioCharts stocks={live} />}
                 {tab === "analytics" && <TradeAnalytics stocks={live} />}
@@ -1554,7 +1610,7 @@ export default function Index() {
         </div>
       </div>
 
-      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+      <AuthModal open={showAuth} onOpenChange={setShowAuth} />
     </>
   );
 }

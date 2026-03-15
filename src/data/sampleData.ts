@@ -217,3 +217,170 @@ export function getSectorAllocation(stocks: PortfolioStock[]): { sector: string;
     percentage: total > 0 ? (value / total) * 100 : 0,
   })).sort((a, b) => b.value - a.value);
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// F&O DATA TYPES + SAMPLE DATA
+// ════════════════════════════════════════════════════════════════════════════
+
+export type FnOInstrumentType = "FUT" | "CE" | "PE";
+export type FnOStatus = "Open" | "Closed Profit" | "Closed Loss" | "Expired";
+
+export interface FnOTrade {
+  id:              string;
+  symbol:          string;       // e.g. "RELIANCE", "TCS"
+  instrumentType:  FnOInstrumentType;
+  strike?:         number;       // null for futures
+  expiry:          string;       // "27-Mar-2025" format
+  lotSize:         number;       // NSE standard lot size
+  lots:            number;       // number of lots traded
+  entryPrice:      number;       // premium per unit (options) or futures price
+  exitPrice?:      number;       // filled when closed
+  entryDate:       string;
+  exitDate?:       string;
+  status:          FnOStatus;
+  ltp?:            number;       // live last traded price (from API)
+  iv?:             number;       // implied volatility % (options only)
+  delta?:          number;       // delta (options only)
+  notes?:          string;
+}
+
+// NSE standard lot sizes (as of 2025)
+export const LOT_SIZES: Record<string, number> = {
+  RELIANCE:    250,
+  TCS:         150,
+  INFY:        300,
+  HDFCBANK:    550,
+  ICICIBANK:   700,
+  SBIN:        1500,
+  TATAMOTORS:  1500,
+  WIPRO:       1500,
+  BAJFINANCE:  125,
+  MARUTI:      100,
+  AXISBANK:    1200,
+  HCLTECH:     700,
+  LT:          375,
+  SUNPHARMA:   700,
+  TATASTEEL:   3000,
+  ADANIENT:    250,
+  KOTAKBANK:   400,
+  ASIANPAINT:  200,
+  ULTRACEMCO:  200,
+  ONGC:        3850,
+};
+
+// Helper: get lot size with fallback
+export function getLotSize(symbol: string): number {
+  return LOT_SIZES[symbol.toUpperCase()] ?? 500;
+}
+
+// Helper: calc F&O P&L
+export function calcFnOPnL(trade: FnOTrade): number {
+  const exitP = trade.exitPrice ?? trade.ltp ?? trade.entryPrice;
+  const direction = trade.instrumentType === "PE"
+    ? (trade.entryPrice - exitP)   // PE: profit when price falls
+    : (exitP - trade.entryPrice);  // CE / FUT: profit when price rises
+  return direction * trade.lots * trade.lotSize;
+}
+
+// Helper: calc F&O invested (margin approximation)
+export function calcFnOInvested(trade: FnOTrade): number {
+  // Options: premium paid = entry × lots × lotSize
+  // Futures: margin ≈ 15% of notional (approximate)
+  if (trade.instrumentType === "FUT") {
+    return trade.entryPrice * trade.lots * trade.lotSize * 0.15;
+  }
+  return trade.entryPrice * trade.lots * trade.lotSize;
+}
+
+// Helper: format expiry to display
+export function fmtExpiry(expiry: string): string {
+  try {
+    const parts = expiry.split("-");
+    if (parts.length === 3) {
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const d = parseInt(parts[0]);
+      const m = parseInt(parts[1]) - 1;
+      const y = parts[2].slice(-2);
+      return `${d} ${months[m]} '${y}`;
+    }
+    return expiry;
+  } catch { return expiry; }
+}
+
+// Sample F&O trades data
+export const fnOTradesData: FnOTrade[] = [
+  {
+    id: "fno-1",
+    symbol: "RELIANCE",
+    instrumentType: "FUT",
+    expiry: "27-03-2025",
+    lotSize: 250,
+    lots: 1,
+    entryPrice: 2510.0,
+    exitPrice: 2590.0,
+    entryDate: "10-Mar-2025",
+    exitDate: "20-Mar-2025",
+    status: "Closed Profit",
+    notes: "Positional long on breakout",
+  },
+  {
+    id: "fno-2",
+    symbol: "TCS",
+    instrumentType: "CE",
+    strike: 4000,
+    expiry: "27-03-2025",
+    lotSize: 150,
+    lots: 2,
+    entryPrice: 85.0,
+    exitPrice: 42.0,
+    entryDate: "15-Mar-2025",
+    exitDate: "25-Mar-2025",
+    status: "Closed Loss",
+    notes: "Earnings play — went against",
+  },
+  {
+    id: "fno-3",
+    symbol: "HDFCBANK",
+    instrumentType: "PE",
+    strike: 1700,
+    expiry: "24-04-2025",
+    lotSize: 550,
+    lots: 1,
+    entryPrice: 32.5,
+    entryDate: "01-Apr-2025",
+    status: "Open",
+    ltp: 48.0,
+    iv: 18.5,
+    delta: -0.38,
+    notes: "Hedge against banking sector weakness",
+  },
+  {
+    id: "fno-4",
+    symbol: "RELIANCE",
+    instrumentType: "FUT",
+    expiry: "24-04-2025",
+    lotSize: 250,
+    lots: 2,
+    entryPrice: 2465.0,
+    entryDate: "05-Apr-2025",
+    status: "Open",
+    ltp: 2490.0,
+    notes: "Swing trade — Q4 results play",
+  },
+  {
+    id: "fno-5",
+    symbol: "INFY",
+    instrumentType: "CE",
+    strike: 1800,
+    expiry: "24-04-2025",
+    lotSize: 300,
+    lots: 3,
+    entryPrice: 28.0,
+    entryDate: "08-Apr-2025",
+    status: "Open",
+    ltp: 35.5,
+    iv: 22.1,
+    delta: 0.45,
+    notes: "IT sector momentum",
+  },
+];
