@@ -12,7 +12,7 @@ import {
   watchlistData as initialWatchlist, WatchlistStock,
   PriceAlert, TradeJournalEntry,
   calcInvestedValue, calcFinalValue, calcProfitLoss,
-  FnOTrade, fnOTradesData,
+  FnOTrade, fnOTradesData, calcFnOInvested, calcFnOPnL,
 } from "@/data/sampleData";
 import PortfolioTable        from "@/components/PortfolioTable";
 import TradeStrategyTable    from "@/components/TradeStrategyTable";
@@ -862,6 +862,126 @@ const CSS = `
 /* ── Spinner ── */
 @keyframes zf-spin { to { transform: rotate(360deg); } }
 .zf-spin { animation: zf-spin .9s linear infinite; }
+
+/* ══════════════════════════════════════════════════
+   DARK MODE — activated by .dark on <html>
+══════════════════════════════════════════════════ */
+.dark .zf {
+  --bg-app:       #0f1117;
+  --bg-sidebar:   #13161f;
+  --bg-card:      #1a1f2e;
+  --bg-surface:   #161b27;
+  --bg-hover:     #1e2538;
+  --bg-input:     #161b27;
+  --navy:         #4d9de0;
+  --navy-700:     #5baae8;
+  --navy-600:     #6ab7f0;
+  --navy-100:     rgba(77,157,224,.15);
+  --navy-50:      rgba(77,157,224,.08);
+  --tx-900:       #f0f4ff;
+  --tx-700:       #c8d3e8;
+  --tx-500:       #8899bb;
+  --tx-400:       #5c6e8a;
+  --tx-300:       #3d4f6a;
+  --tx-200:       #2a3a55;
+  --bd-200:       #1e2a3f;
+  --bd-100:       #192035;
+  --bd-50:        #151d30;
+  --green:        #34d399;
+  --green-bg:     rgba(52,211,153,.10);
+  --green-bd:     rgba(52,211,153,.25);
+  --red:          #f87171;
+  --red-bg:       rgba(248,113,113,.10);
+  --red-bd:       rgba(248,113,113,.25);
+  --amber:        #fbbf24;
+  --amber-bg:     rgba(251,191,36,.10);
+  --amber-bd:     rgba(251,191,36,.25);
+  --sh-1: 0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+  --sh-2: 0 4px 12px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.3);
+  --sh-3: 0 8px 24px rgba(0,0,0,.6), 0 3px 8px rgba(0,0,0,.4);
+  color: var(--tx-900);
+}
+
+/* Dark sidebar */
+.dark .zf-sidebar { box-shadow: 2px 0 12px rgba(0,0,0,.4); }
+.dark .zf-nav-item:hover { background: var(--bg-hover); }
+.dark .zf-nav-item.active { background: var(--navy-50); border-color: var(--navy-100); }
+
+/* Dark header */
+.dark .zf-header { box-shadow: 0 1px 6px rgba(0,0,0,.4); }
+.dark .zf-search:focus-within { box-shadow: 0 0 0 3px rgba(77,157,224,.15); }
+
+/* Dark KPI cards */
+.dark .zf-kpi.kpi-navy  { background: rgba(77,157,224,.08); border-color: rgba(77,157,224,.15); }
+.dark .zf-kpi.kpi-green { background: rgba(52,211,153,.08); border-color: rgba(52,211,153,.18); }
+.dark .zf-kpi.kpi-red   { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.18); }
+.dark .zf-kpi.kpi-green .zf-kpi-val { color: var(--green); }
+.dark .zf-kpi.kpi-red   .zf-kpi-val { color: var(--red); }
+.dark .zf-kpi-divider { border-top-color: var(--bd-100); }
+
+/* Dark cards */
+.dark .zf-card { border-color: var(--bd-200); }
+.dark .zf-card-head { background: var(--bg-surface); border-bottom-color: var(--bd-100); }
+.dark .zf-card-badge { background: var(--navy-50); border-color: var(--navy-100); color: var(--navy); }
+.dark .zf-card-link { background: var(--navy-50); border-color: var(--navy-100); color: var(--navy); }
+.dark .zf-card-link:hover { background: var(--navy); color: #fff; }
+
+/* Dark table rows */
+.dark .zf-tbl-head { background: var(--bg-surface); border-bottom-color: var(--bd-200); }
+.dark .zf-trow:hover { background: var(--bg-hover); }
+.dark .zf-trow { border-bottom-color: var(--bd-50); }
+.dark .zf-sector-tag { background: var(--bg-hover); border-color: var(--bd-200); color: var(--tx-400); }
+.dark .zf-logo-wrap { background: var(--navy-50); border-color: var(--navy-100); color: var(--navy); }
+
+/* Dark watchlist */
+.dark .zf-wl-head { background: var(--bg-surface); border-bottom-color: var(--bd-200); }
+.dark .zf-wl-row { border-bottom-color: var(--bd-50); }
+.dark .zf-wl-row:hover { background: var(--bg-hover); }
+
+/* Dark tab panel */
+.dark .zf-tab-panel th { background: var(--bg-surface) !important; color: var(--tx-300) !important; border-bottom-color: var(--bd-200) !important; }
+.dark .zf-tab-panel td { color: var(--tx-500) !important; border-bottom-color: var(--bd-50) !important; }
+.dark .zf-tab-panel tr:hover td { background: var(--bg-hover) !important; }
+.dark .zf-tab-panel .font-semibold, .dark .zf-tab-panel .font-bold { color: var(--tx-900) !important; }
+.dark .zf-tab-panel h2, .dark .zf-tab-panel h3 { color: var(--navy) !important; }
+.dark .zf-tab-panel [class*="text-muted"] { color: var(--tx-400) !important; }
+.dark .zf-tab-panel button.bg-primary, .dark .zf-tab-panel [class*="bg-primary"] { background: var(--navy) !important; }
+.dark .zf-tab-panel button[class*="outline"] { background: var(--bg-card) !important; border-color: var(--bd-200) !important; color: var(--navy) !important; }
+.dark .zf-tab-panel button[class*="ghost"]:hover { background: var(--bg-hover) !important; }
+.dark .zf-tab-panel input:not([type="checkbox"]), .dark .zf-tab-panel select, .dark .zf-tab-panel textarea {
+  background: var(--bg-input) !important; border-color: var(--bd-200) !important; color: var(--tx-900) !important;
+}
+.dark .zf-tab-panel [role="tablist"] { background: var(--bg-surface) !important; }
+.dark .zf-tab-panel [role="tab"][data-state="active"] { background: var(--bg-card) !important; color: var(--navy) !important; }
+.dark .zf-tab-panel .rounded-xl, .dark .zf-tab-panel .rounded-lg { background: var(--bg-card) !important; border-color: var(--bd-200) !important; }
+
+/* Dark trades sub-tabs */
+.dark .zf-tab-panel > div > div[style*="background:#f8f9fc"] { background: var(--bg-surface) !important; border-bottom-color: var(--bd-200) !important; }
+
+/* Dark user menu */
+.dark .zf-umenu { background: var(--bg-card); border-color: var(--bd-200); }
+.dark .zf-umenu-head { background: var(--bg-surface); }
+.dark .zf-umenu-btn:hover { background: var(--bg-hover); }
+
+/* Dark live badge */
+.dark .zf-live { background: rgba(52,211,153,.10); border-color: rgba(52,211,153,.25); color: var(--green); }
+.dark .zf-live.cached { background: rgba(251,191,36,.10); border-color: rgba(251,191,36,.25); color: var(--amber); }
+
+/* Dark sector tags in overview */
+.dark [style*="background:#f8f9fc"] { background: var(--bg-surface) !important; }
+.dark [style*="border-bottom: 1.5px solid var(--bd-200)"] { border-bottom-color: var(--bd-200) !important; }
+
+/* Dark FnO table within overview */
+.dark table th { background: var(--bg-surface) !important; border-bottom-color: var(--bd-200) !important; }
+.dark table td { border-bottom-color: var(--bd-50) !important; }
+
+/* Dark SVG chart lines */
+.dark .zf-areachart polyline { stroke: var(--navy); }
+
+/* Dark F&O chip badges */
+.dark .zf-chip-green { background: rgba(52,211,153,.10) !important; color: var(--green) !important; border-color: rgba(52,211,153,.25) !important; }
+.dark .zf-chip-red   { background: rgba(248,113,113,.10) !important; color: var(--red) !important;   border-color: rgba(248,113,113,.25) !important; }
+.dark .zf-chip-navy  { background: var(--navy-50) !important; color: var(--navy) !important; border-color: var(--navy-100) !important; }
 `;
 
 // ─── Line Chart Widget ────────────────────────────────────────────────────────
@@ -1016,6 +1136,15 @@ function BarWidget({ stocks }: { stocks: PortfolioStock[] }) {
 export default function Index() {
   const [tab,       setTab]       = useState<ActiveTab>("overview");
   const [collapsed, setCollapsed] = useState(false);
+  const [darkMode,  setDarkMode]  = useState(() => {
+    try { return localStorage.getItem("zf-dark") === "1"; } catch { return false; }
+  });
+
+  // Apply dark mode to <html>
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+    try { localStorage.setItem("zf-dark", darkMode ? "1" : "0"); } catch {}
+  }, [darkMode]);
   const [uMenu,     setUMenu]     = useState(false);
   const [showAuth,  setShowAuth]  = useState(false);
   const [searchQ,   setSearchQ]   = useState("");
@@ -1059,20 +1188,35 @@ export default function Index() {
   const activePos   = live.filter(s => s.status === "Active");
   const closedPos   = live.filter(s => s.status !== "Active");
 
-  // Invested = only active positions (money currently deployed)
-  const invested    = activePos.reduce((s, x) => s + calcInvestedValue(x), 0);
-  // Portfolio Value = active current value + realised from closed trades
-  const activeCurr  = activePos.reduce((s, x) => s + calcFinalValue(x), 0);
-  const realisedPnl = closedPos.reduce((s, x) => s + calcProfitLoss(x), 0);
-  const current     = activeCurr + realisedPnl;
-  // Unrealised P&L = active positions only
-  const unrealisedPnl = activePos.reduce((s, x) => s + calcProfitLoss(x), 0);
-  const pnl         = unrealisedPnl;
-  const pnlPct      = invested > 0 ? pnl / invested * 100 : 0;
-  const winners     = closedPos.filter(s => calcProfitLoss(s) > 0);
-  const winRate     = closedPos.length > 0 ? winners.length / closedPos.length * 100 : 0;
-  const todayPnl    = activePos.reduce((a, s) => a + (s.cmp - s.entryPrice) * s.quantity * 0.003, 0);
-  const todayPct    = invested > 0 ? Math.abs(todayPnl) / invested * 100 : 0;
+  // Equity metrics
+  const equityInvested  = live.reduce((s, x) => s + calcInvestedValue(x), 0);          // ALL equity ever invested
+  const activeCurr      = activePos.reduce((s, x) => s + calcFinalValue(x), 0);         // current value of open positions
+  const realisedPnl     = closedPos.reduce((s, x) => s + calcProfitLoss(x), 0);         // closed trade P&L
+  const unrealisedPnl   = activePos.reduce((s, x) => s + calcProfitLoss(x), 0);         // open position P&L
+
+  // F&O metrics
+  const fnoOpen         = fnoTrades.filter(t => t.status === "Open");
+  const fnoClosed       = fnoTrades.filter(t => t.status !== "Open");
+  const fnoInvested     = fnoTrades.reduce((s, t) => s + calcFnOInvested(t), 0);        // all F&O premium/margin
+  const fnoActiveCurr   = fnoOpen.reduce((s, t) => s + (t.ltp ?? t.entryPrice) * t.lots * t.lotSize, 0);
+  const fnoUnrealised   = fnoOpen.reduce((s, t) => s + calcFnOPnL(t), 0);
+  const fnoRealised     = fnoClosed.reduce((s, t) => s + calcFnOPnL(t), 0);
+
+  // COMBINED dashboard metrics
+  // "Total Invested" = everything ever put in (equity ALL trades + F&O ALL premium)
+  const invested        = equityInvested + fnoInvested;
+  // "Portfolio Value" = active equity CMP value + F&O open positions value
+  const current         = activeCurr + fnoActiveCurr;
+  // "Unrealised P&L" = equity open + F&O open
+  const pnl             = unrealisedPnl + fnoUnrealised;
+  const pnlPct          = invested > 0 ? pnl / invested * 100 : 0;
+  // "Realised P&L" = equity closed + F&O closed
+  const totalRealised   = realisedPnl + fnoRealised;
+
+  const winners         = closedPos.filter(s => calcProfitLoss(s) > 0);
+  const winRate         = closedPos.length > 0 ? winners.length / closedPos.length * 100 : 0;
+  const todayPnl        = activePos.reduce((a, s) => a + (s.cmp - s.entryPrice) * s.quantity * 0.003, 0);
+  const todayPct        = invested > 0 ? Math.abs(todayPnl) / invested * 100 : 0;
 
   const performers = activePos
     .filter(s => s.entryPrice > 0)
@@ -1290,6 +1434,13 @@ export default function Index() {
               <RefreshCw size={14} className={!isLive ? "zf-spin" : ""} />
             </button>
 
+            {/* Dark mode toggle */}
+            <button className="zf-hbtn" onClick={() => setDarkMode(d => !d)}
+              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
+              style={{ fontSize:14 }}>
+              {darkMode ? "☀️" : "🌙"}
+            </button>
+
             {/* User menu */}
             <div style={{ position: "relative" }} ref={uMenuRef}>
               <button className="zf-hbtn" onClick={() => setUMenu(p => !p)}>
@@ -1350,7 +1501,7 @@ export default function Index() {
                   <div className="zf-kpi-lbl">Portfolio Value</div>
                   <div className="zf-kpi-val">{fmt(current)}</div>
                   <div className="zf-kpi-sub" style={{ marginTop:6 }}>
-                    P&L: {sign(pnl)}{fmt(Math.abs(pnl))}
+                    P&L: {sign(pnl)}{fmt(Math.abs(pnl))} · F&O: {sign(fnoUnrealised)}{fmt(Math.abs(fnoUnrealised))}
                   </div>
                 </div>
 
@@ -1384,74 +1535,12 @@ export default function Index() {
                     {winRate.toFixed(0)}%
                   </div>
                   <div className="zf-kpi-sub" style={{ marginTop:6 }}>
-                    Realised: {sign(realisedPnl)}{fmt(Math.abs(realisedPnl))}
+                    Realised: {sign(totalRealised)}{fmt(Math.abs(totalRealised))}
                   </div>
                 </div>
               </div>
 
-              {/* ── ROW 2: Like ByeWind — left=line chart (large), right col = donut + bar ── */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 340px", gap:16 }}>
-
-                {/* Large line chart — "Total Users" equivalent */}
-                <div className="zf-card">
-                  <div className="zf-card-head">
-                    <div>
-                      <span className="zf-card-title">Portfolio Performance</span>
-                      <div style={{ display:"flex", gap:16, marginTop:4 }}>
-                        {(["Portfolio Value","Invested","P&L"] as const).map((label, i) => (
-                          <button key={label} style={{
-                            fontSize:11, fontWeight: i===0 ? 700 : 400,
-                            color: i===0 ? "var(--navy)" : "var(--tx-300)",
-                            background:"none", border:"none", cursor:"pointer", padding:0,
-                            fontFamily:"var(--ff-body)",
-                          }}>{label}</button>
-                        ))}
-                      </div>
-                    </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--tx-400)" }}>
-                        <span style={{ width:16, height:3, borderRadius:2, background:"var(--navy)", display:"inline-block" }} />
-                        This year
-                      </div>
-                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--tx-400)" }}>
-                        <span style={{ width:16, height:3, borderRadius:2, background:"var(--tx-200)", display:"inline-block", borderTop:"2px dashed var(--tx-200)" }} />
-                        Last year
-                      </div>
-                      <button className="zf-card-link" onClick={() => setTab("charts")}>Full view →</button>
-                    </div>
-                  </div>
-                  <div style={{ padding:"8px 20px 16px" }}>
-                    <LineChartWidget stocks={live} />
-                  </div>
-                </div>
-
-                {/* Right column: donut (sector) on top, bar chart (holdings) below */}
-                <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-
-                  {/* Donut chart — sector allocation like "Traffic by Location" */}
-                  <div className="zf-card" style={{ flex:1 }}>
-                    <div className="zf-card-head">
-                      <span className="zf-card-title">Sector Allocation</span>
-                    </div>
-                    <div style={{ padding:"14px 20px" }}>
-                      <DonutWidget stocks={live} />
-                    </div>
-                  </div>
-
-                  {/* Bar chart — top holdings like "Traffic by Device" */}
-                  <div className="zf-card" style={{ flex:1 }}>
-                    <div className="zf-card-head">
-                      <span className="zf-card-title">Holdings Value</span>
-                      <span className="zf-card-badge">{activePos.length} stocks</span>
-                    </div>
-                    <div style={{ padding:"14px 20px" }}>
-                      <BarWidget stocks={live} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── ROW 3: Holdings table + Watchlist side by side ── */}
+              {/* ── ROW 2: Holdings + Watchlist (moved up) ── */}
               <div style={{ display:"grid", gridTemplateColumns:"1.5fr 1fr", gap:16 }}>
 
                 {/* Holdings table */}
@@ -1471,7 +1560,11 @@ export default function Index() {
                       <span className="zf-th r">CMP</span>
                       <span className="zf-th r">P&L</span>
                     </div>
-                    {activePos.slice(0, 5).map(s => {
+                    {activePos.length === 0 ? (
+                      <div style={{ padding:"28px 20px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
+                        No active holdings
+                      </div>
+                    ) : activePos.slice(0, 5).map(s => {
                       const pl    = s.entryPrice > 0 ? (s.cmp - s.entryPrice) / s.entryPrice * 100 : 0;
                       const plAmt = (s.cmp - s.entryPrice) * s.quantity;
                       const pos   = pl >= 0;
@@ -1515,7 +1608,11 @@ export default function Index() {
                       <span className="zf-th" style={{ textAlign:"center" }}>Trend</span>
                       <span className="zf-th" style={{ textAlign:"right" }}>Price</span>
                     </div>
-                    {watchlist.slice(0,6).map((w,wi) => {
+                    {watchlist.length === 0 ? (
+                      <div style={{ padding:"28px 20px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
+                        No watchlist stocks yet
+                      </div>
+                    ) : watchlist.slice(0,6).map((w,wi) => {
                       const cmp=w.cmp??0; const t1=w.target1??cmp; const sl=w.stopLoss??cmp;
                       const pos=cmp>=(w.entryZoneLow??cmp); const seed=w.stockName.charCodeAt(0)+wi*7;
                       return (
@@ -1537,6 +1634,178 @@ export default function Index() {
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── ROW 3: F&O Positions mini-table ── */}
+              <div className="zf-card">
+                <div className="zf-card-head">
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <span className="zf-card-title">F&O Positions</span>
+                    <span className="zf-card-badge">{fnoOpen.length} open</span>
+                    {fnoOpen.length > 0 && (
+                      <span style={{
+                        fontSize:9.5, fontWeight:700, padding:"2px 8px", borderRadius:20,
+                        background: fnoUnrealised>=0 ? "var(--green-bg)" : "var(--red-bg)",
+                        color: fnoUnrealised>=0 ? "var(--green)" : "var(--red)",
+                        border: `1px solid ${fnoUnrealised>=0 ? "var(--green-bd)" : "var(--red-bd)"}`,
+                      }}>
+                        {sign(fnoUnrealised)}{fmt(Math.abs(fnoUnrealised))} unrealised
+                      </span>
+                    )}
+                  </div>
+                  <div className="zf-card-meta">
+                    <button className="zf-card-link" onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}>
+                      View all F&O →
+                    </button>
+                  </div>
+                </div>
+                <div className="zf-card-body">
+                  {fnoTrades.filter(t => t.status === "Open").length === 0 ? (
+                    <div style={{ padding:"28px 20px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
+                      No open F&O positions · <button onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}
+                        style={{ background:"none", border:"none", color:"var(--navy)", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                        Add one →
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ overflowX:"auto" }}>
+                      <table style={{ width:"100%", borderCollapse:"separate", borderSpacing:0 }}>
+                        <thead>
+                          <tr>
+                            {["Instrument","Type","Strike","Expiry","Lots×Size","Entry","LTP","P&L","Status"].map(h => (
+                              <th key={h} style={{
+                                padding:"10px 14px", fontSize:"9.5px", fontWeight:700,
+                                textTransform:"uppercase", letterSpacing:".09em", color:"var(--tx-300)",
+                                background:"var(--bg-surface)", borderBottom:"1.5px solid var(--bd-200)",
+                                textAlign: ["Entry","LTP","P&L"].includes(h) ? "right" : ["Type","Status"].includes(h) ? "center" : "left",
+                                whiteSpace:"nowrap",
+                              }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {fnoTrades.filter(t => t.status === "Open").slice(0,4).map(t => {
+                            const ltp  = t.ltp ?? t.entryPrice;
+                            const pnl  = t.instrumentType === "PE"
+                              ? (t.entryPrice - ltp) * t.lots * t.lotSize
+                              : (ltp - t.entryPrice) * t.lots * t.lotSize;
+                            const pct  = t.entryPrice > 0 ? pnl / (t.entryPrice * t.lots * t.lotSize) * 100 : 0;
+                            const pos  = pnl >= 0;
+                            const typeCfgMap: Record<string, { bg:string; color:string; bd:string }> = {
+                              CE:  { bg:"var(--green-bg)", color:"var(--green)",  bd:"var(--green-bd)" },
+                              PE:  { bg:"var(--red-bg)",   color:"var(--red)",    bd:"var(--red-bd)"   },
+                              FUT: { bg:"var(--navy-50)",  color:"var(--navy)",   bd:"var(--navy-100)" },
+                            };
+                            const typeCfg = typeCfgMap[t.instrumentType] ?? typeCfgMap["FUT"];
+                            const expParts = t.expiry.split("-");
+                            const months = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                            const expDisplay = expParts.length===3
+                              ? `${parseInt(expParts[0])} ${months[parseInt(expParts[1])]} '${expParts[2].slice(-2)}`
+                              : t.expiry;
+                            return (
+                              <tr key={t.id} style={{ transition:"background .12s" }}
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="var(--bg-hover)"}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background=""}>
+                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)" }}>
+                                  <div style={{ fontSize:13, fontWeight:700, color:"var(--tx-900)" }}>{t.symbol}</div>
+                                  {t.notes && <div style={{ fontSize:10, color:"var(--tx-400)", marginTop:1, maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.notes}</div>}
+                                </td>
+                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"center" }}>
+                                  <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:5, background:typeCfg.bg, color:typeCfg.color, border:`1px solid ${typeCfg.bd}`, letterSpacing:".04em" }}>
+                                    {t.instrumentType}
+                                  </span>
+                                </td>
+                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>
+                                  {t.strike ? `₹${t.strike.toLocaleString("en-IN")}` : "—"}
+                                </td>
+                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontSize:12, fontWeight:600, color:"var(--tx-700)", whiteSpace:"nowrap" }}>
+                                  {expDisplay}
+                                </td>
+                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>
+                                  {t.lots} × {t.lotSize.toLocaleString("en-IN")}
+                                </td>
+                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)", textAlign:"right" }}>
+                                  ₹{t.entryPrice.toFixed(2)}
+                                </td>
+                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"right" }}>
+                                  <div style={{ fontFamily:"var(--ff-mono)", fontSize:12, fontWeight:600, color:"var(--navy)", display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4 }}>
+                                    {t.ltp && <span style={{ width:5, height:5, borderRadius:"50%", background:"var(--green)", display:"inline-block" }} />}
+                                    ₹{ltp.toFixed(2)}
+                                  </div>
+                                </td>
+                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"right" }}>
+                                  <div style={{ fontFamily:"var(--ff-mono)", fontSize:12.5, fontWeight:700, color: pos?"var(--green)":"var(--red)" }}>
+                                    {sign(pnl)}{fmt(Math.abs(pnl))}
+                                  </div>
+                                  <div style={{ fontFamily:"var(--ff-mono)", fontSize:10, color: pos?"var(--green)":"var(--red)" }}>
+                                    {sign(pct)}{Math.abs(pct).toFixed(1)}%
+                                  </div>
+                                </td>
+                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"center" }}>
+                                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10.5, fontWeight:700, padding:"3px 10px", borderRadius:20, background:"var(--navy-50)", color:"var(--navy)", border:"1px solid var(--navy-100)" }}>
+                                    Open
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── ROW 4: Charts moved to bottom ── */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 340px", gap:16 }}>
+
+                {/* Large line chart */}
+                <div className="zf-card">
+                  <div className="zf-card-head">
+                    <div>
+                      <span className="zf-card-title">Portfolio Performance</span>
+                      <div style={{ display:"flex", gap:16, marginTop:4 }}>
+                        {(["Portfolio Value","Invested","P&L"] as const).map((label, i) => (
+                          <button key={label} style={{
+                            fontSize:11, fontWeight: i===0 ? 700 : 400,
+                            color: i===0 ? "var(--navy)" : "var(--tx-300)",
+                            background:"none", border:"none", cursor:"pointer", padding:0,
+                            fontFamily:"var(--ff-body)",
+                          }}>{label}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--tx-400)" }}>
+                        <span style={{ width:16, height:3, borderRadius:2, background:"var(--navy)", display:"inline-block" }} />
+                        This year
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--tx-400)" }}>
+                        <span style={{ width:16, height:3, borderRadius:2, background:"var(--tx-200)", display:"inline-block" }} />
+                        Last year
+                      </div>
+                      <button className="zf-card-link" onClick={() => setTab("charts")}>Full view →</button>
+                    </div>
+                  </div>
+                  <div style={{ padding:"8px 20px 16px" }}>
+                    <LineChartWidget stocks={live} />
+                  </div>
+                </div>
+
+                {/* Right: donut + bar */}
+                <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+                  <div className="zf-card" style={{ flex:1 }}>
+                    <div className="zf-card-head"><span className="zf-card-title">Sector Allocation</span></div>
+                    <div style={{ padding:"14px 20px" }}><DonutWidget stocks={live} /></div>
+                  </div>
+                  <div className="zf-card" style={{ flex:1 }}>
+                    <div className="zf-card-head">
+                      <span className="zf-card-title">Holdings Value</span>
+                      <span className="zf-card-badge">{activePos.length} stocks</span>
+                    </div>
+                    <div style={{ padding:"14px 20px" }}><BarWidget stocks={live} /></div>
                   </div>
                 </div>
               </div>
