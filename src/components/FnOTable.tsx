@@ -285,79 +285,102 @@ const CSS = `
 }
 
 /* ── Dark mode overrides for F&O Table ── */
-.dark .fno-wrap { background:#1a1f2e; }
-.dark .fno-toolbar { background:#1a1f2e; border-bottom-color:#1e2a3f; }
-.dark .fno-title { color:#f0f4ff; }
-.dark .fno-sub-text { color:#5c6e8a; }
-.dark .fno-filter-row { background:#161b27; border-bottom-color:#1e2a3f; }
-.dark .fno-chip { background:#1a1f2e; border-color:#1e2a3f; color:#8899bb; }
-.dark .fno-chip:hover { border-color:#4d9de0; color:#4d9de0; }
-.dark .fno-chip.on { background:#4d9de0; border-color:#4d9de0; color:#fff; }
-.dark .fno-chip.ce  { background:rgba(52,211,153,.10); border-color:rgba(52,211,153,.25); color:#34d399; }
-.dark .fno-chip.pe  { background:rgba(248,113,113,.10); border-color:rgba(248,113,113,.25); color:#f87171; }
-.dark .fno-chip.fut { background:rgba(77,157,224,.10); border-color:rgba(77,157,224,.25); color:#4d9de0; }
-.dark .fno-summary { background:#1a1f2e; border-bottom-color:#1e2a3f; }
-.dark .fno-sum-card { background:#161b27; border-color:#1e2a3f; }
-.dark .fno-sum-lbl { color:#5c6e8a; }
-.dark .fno-sum-val { color:#f0f4ff; }
-.dark .fno-sum-sub { color:#8899bb; }
-.dark .fno-sum-card.green { background:rgba(52,211,153,.08); border-color:rgba(52,211,153,.2); }
-.dark .fno-sum-card.green .fno-sum-val { color:#34d399; }
-.dark .fno-sum-card.red   { background:rgba(248,113,113,.08); border-color:rgba(248,113,113,.2); }
-.dark .fno-sum-card.red   .fno-sum-val { color:#f87171; }
-.dark .fno-table-wrap { background:#1a1f2e; }
-.dark .fno-table thead th { background:#161b27; color:#5c6e8a; border-bottom-color:#1e2a3f; }
-.dark .fno-table tbody tr:hover { background:#1e2538; }
-.dark .fno-table tbody td { color:#8899bb; border-bottom-color:#192035; }
-.dark .fno-badge-CE  { background:rgba(52,211,153,.10); color:#34d399; border-color:rgba(52,211,153,.25); }
-.dark .fno-badge-PE  { background:rgba(248,113,113,.10); color:#f87171; border-color:rgba(248,113,113,.25); }
-.dark .fno-badge-FUT { background:rgba(77,157,224,.10); color:#4d9de0; border-color:rgba(77,157,224,.25); }
-.dark .fno-status-open   { background:rgba(77,157,224,.10); color:#4d9de0; border-color:rgba(77,157,224,.25); }
-.dark .fno-status-profit { background:rgba(52,211,153,.10); color:#34d399; border-color:rgba(52,211,153,.25); }
-.dark .fno-status-loss   { background:rgba(248,113,113,.10); color:#f87171; border-color:rgba(248,113,113,.25); }
-.dark .fno-status-exp    { background:#161b27; color:#8899bb; border-color:#1e2a3f; }
-.dark .fno-symbol { color:#f0f4ff; }
-.dark .fno-expiry { color:#5c6e8a; }
-.dark .fno-price  { color:#c8d3e8; }
-.dark .fno-ltp    { color:#4d9de0; }
-.dark .fno-pnl.pos { color:#34d399; }
-.dark .fno-pnl.neg { color:#f87171; }
-.dark .fno-pnl-sub.pos { color:#34d399; }
-.dark .fno-pnl-sub.neg { color:#f87171; }
-.dark .fno-act-btn { background:transparent; border-color:#1e2a3f; color:#5c6e8a; }
-.dark .fno-act-btn:hover { background:rgba(248,113,113,.10); border-color:rgba(248,113,113,.25); color:#f87171; }
-.dark .fno-add-btn { background:#4d9de0; box-shadow:0 2px 8px rgba(77,157,224,.3); }
-.dark .fno-add-btn:hover { background:#5baae8; }
-.dark .fno-refresh-btn { background:#161b27; border-color:#1e2a3f; color:#4d9de0; }
-.dark .fno-refresh-btn:hover { background:rgba(77,157,224,.10); border-color:rgba(77,157,224,.25); }
-.dark .fno-lot-hint { background:rgba(77,157,224,.10); border-color:rgba(77,157,224,.2); color:#4d9de0; }
-.dark .fno-preview { background:#161b27; border-color:#1e2a3f; }
-.dark .fno-preview-lbl { color:#5c6e8a; }
-.dark .fno-preview-val { color:#f0f4ff; }
-.dark .fno-stab-badge { background:rgba(77,157,224,.12); color:#4d9de0; }
-.dark .fno-empty-icon { background:rgba(77,157,224,.10); border-color:rgba(77,157,224,.2); }
-.dark .fno-empty-title { color:#f0f4ff; }
-.dark .fno-empty-sub { color:#8899bb; }
-/* Dark modal */
-.dark .fno-modal { background:#1a1f2e; }
-.dark .fno-modal-head { background:#161b27; border-bottom-color:#1e2a3f; }
-.dark .fno-modal-title { color:#f0f4ff; }
-.dark .fno-modal-close { background:#1a1f2e; border-color:#1e2a3f; color:#8899bb; }
-.dark .fno-modal-footer { background:#161b27; border-top-color:#1e2a3f; }
-.dark .fno-label { color:#c8d3e8; }
-.dark .fno-input, .dark .fno-select { background:#161b27; border-color:#1e2a3f; color:#f0f4ff; }
-.dark .fno-input:focus, .dark .fno-select:focus { border-color:#4d9de0; background:#13161f; box-shadow:0 0 0 3px rgba(77,157,224,.12); }
-.dark .fno-hint { color:#5c6e8a; }
-.dark .fno-seg-btn { background:#161b27; border-color:#1e2a3f; color:#8899bb; }
-.dark .fno-seg-btn:hover { border-color:#4d9de0; color:#4d9de0; }
-.dark .fno-seg-btn.CE.on  { background:rgba(52,211,153,.12); border-color:rgba(52,211,153,.3); color:#34d399; }
-.dark .fno-seg-btn.PE.on  { background:rgba(248,113,113,.12); border-color:rgba(248,113,113,.3); color:#f87171; }
-.dark .fno-seg-btn.FUT.on { background:rgba(77,157,224,.12); border-color:rgba(77,157,224,.3); color:#4d9de0; }
-.dark .fno-btn-primary { background:#4d9de0; }
-.dark .fno-btn-primary:hover { background:#5baae8; }
-.dark .fno-btn-ghost { background:transparent; border-color:#1e2a3f; color:#8899bb; }
-.dark .fno-btn-ghost:hover { background:#1e2538; color:#c8d3e8; }
-.dark .fno-modal-overlay { background:rgba(0,0,0,.6); }
+.dark .fno-wrap        { background:#1c2128; }
+.dark .fno-toolbar     { background:#1c2128; border-bottom-color:#30363d; }
+.dark .fno-title       { color:#f0f6fc; }
+.dark .fno-sub-text    { color:#6e7681; }
+/* Filter row */
+.dark .fno-filter-row  { background:#161b22; border-bottom-color:#30363d; }
+.dark .fno-chip        { background:#21262d; border-color:#30363d; color:#8b949e; }
+.dark .fno-chip:hover  { border-color:#58a6ff; color:#f0f6fc; }
+.dark .fno-chip.on     { background:#58a6ff; border-color:#58a6ff; color:#fff; }
+.dark .fno-chip.ce     { background:rgba(63,185,80,.12); border-color:rgba(63,185,80,.3); color:#3fb950; }
+.dark .fno-chip.pe     { background:rgba(248,81,73,.12); border-color:rgba(248,81,73,.3); color:#f85149; }
+.dark .fno-chip.fut    { background:rgba(88,166,255,.12); border-color:rgba(88,166,255,.25); color:#58a6ff; }
+/* Summary cards */
+.dark .fno-summary     { background:#1c2128; border-bottom-color:#30363d; }
+.dark .fno-sum-card    { background:#161b22; border-color:#30363d; }
+.dark .fno-sum-lbl     { color:#484f58; }
+.dark .fno-sum-val     { color:#f0f6fc; }
+.dark .fno-sum-sub     { color:#6e7681; }
+.dark .fno-sum-card.green { background:rgba(63,185,80,.08); border-color:rgba(63,185,80,.2); }
+.dark .fno-sum-card.green .fno-sum-val { color:#3fb950; }
+.dark .fno-sum-card.red   { background:rgba(248,81,73,.08); border-color:rgba(248,81,73,.2); }
+.dark .fno-sum-card.red   .fno-sum-val { color:#f85149; }
+/* Table */
+.dark .fno-table-wrap  { background:#1c2128; }
+.dark .fno-table thead th { background:#161b22; color:#484f58; border-bottom-color:#30363d; }
+.dark .fno-table tbody tr:hover { background:#21262d; }
+.dark .fno-table tbody td { color:#8b949e; border-bottom-color:#21262d; }
+/* Type badges */
+.dark .fno-badge-CE    { background:rgba(63,185,80,.12); color:#3fb950; border-color:rgba(63,185,80,.3); }
+.dark .fno-badge-PE    { background:rgba(248,81,73,.12); color:#f85149; border-color:rgba(248,81,73,.3); }
+.dark .fno-badge-FUT   { background:rgba(88,166,255,.12); color:#58a6ff; border-color:rgba(88,166,255,.25); }
+/* Status badges */
+.dark .fno-status-open   { background:rgba(88,166,255,.12); color:#58a6ff; border-color:rgba(88,166,255,.25); }
+.dark .fno-status-profit { background:rgba(63,185,80,.12); color:#3fb950; border-color:rgba(63,185,80,.3); }
+.dark .fno-status-loss   { background:rgba(248,81,73,.12); color:#f85149; border-color:rgba(248,81,73,.3); }
+.dark .fno-status-exp    { background:#21262d; color:#6e7681; border-color:#30363d; }
+/* Text cells */
+.dark .fno-symbol  { color:#f0f6fc; }
+.dark .fno-expiry  { color:#6e7681; }
+.dark .fno-price   { color:#c9d1d9; }
+.dark .fno-ltp     { color:#c9d1d9; }
+.dark .fno-ltp.live::before { background:#3fb950; }
+.dark .fno-pnl.pos     { color:#3fb950; }
+.dark .fno-pnl.neg     { color:#f85149; }
+.dark .fno-pnl-sub.pos { color:#3fb950; }
+.dark .fno-pnl-sub.neg { color:#f85149; }
+/* Action buttons */
+.dark .fno-act-btn { background:transparent; border-color:#30363d; color:#484f58; }
+.dark .fno-act-btn:hover { background:rgba(248,81,73,.12); border-color:rgba(248,81,73,.3); color:#f85149; }
+/* Top buttons */
+.dark .fno-add-btn     { background:#58a6ff; box-shadow:0 2px 8px rgba(88,166,255,.3); color:#fff; }
+.dark .fno-add-btn:hover { background:#79b8ff; }
+.dark .fno-refresh-btn { background:#21262d; border-color:#30363d; color:#c9d1d9; }
+.dark .fno-refresh-btn:hover { background:#30363d; color:#f0f6fc; }
+/* Lot hint */
+.dark .fno-lot-hint { background:rgba(88,166,255,.10); border-color:rgba(88,166,255,.2); color:#58a6ff; }
+/* Calc preview */
+.dark .fno-preview     { background:#161b22; border-color:#30363d; }
+.dark .fno-preview-lbl { color:#484f58; }
+.dark .fno-preview-val { color:#f0f6fc; }
+/* Tab badges */
+.dark .fno-stab-badge  { background:rgba(88,166,255,.12); color:#58a6ff; }
+/* Empty state */
+.dark .fno-empty-icon  { background:rgba(88,166,255,.10); border-color:rgba(88,166,255,.2); }
+.dark .fno-empty-title { color:#f0f6fc; }
+.dark .fno-empty-sub   { color:#8b949e; }
+/* Modal */
+.dark .fno-modal           { background:#1c2128; }
+.dark .fno-modal-head      { background:#161b22; border-bottom-color:#30363d; }
+.dark .fno-modal-title     { color:#f0f6fc; }
+.dark .fno-modal-close     { background:#21262d; border-color:#30363d; color:#8b949e; }
+.dark .fno-modal-close:hover { background:rgba(248,81,73,.12); color:#f85149; border-color:rgba(248,81,73,.3); }
+.dark .fno-modal-body      { background:#1c2128; }
+.dark .fno-modal-footer    { background:#161b22; border-top-color:#30363d; }
+/* Form fields */
+.dark .fno-label           { color:#c9d1d9; }
+.dark .fno-label span      { color:#f85149; }
+.dark .fno-input,
+.dark .fno-select          { background:#0d1117; border-color:#30363d; color:#f0f6fc; }
+.dark .fno-input:focus,
+.dark .fno-select:focus    { border-color:#58a6ff; background:#0d1117; box-shadow:0 0 0 3px rgba(88,166,255,.15); }
+.dark .fno-input::placeholder { color:#484f58; }
+.dark .fno-hint            { color:#484f58; }
+/* Segment buttons */
+.dark .fno-seg-btn         { background:#21262d; border-color:#30363d; color:#8b949e; }
+.dark .fno-seg-btn:hover   { border-color:#58a6ff; color:#f0f6fc; }
+.dark .fno-seg-btn.CE.on   { background:rgba(63,185,80,.14); border-color:rgba(63,185,80,.35); color:#3fb950; }
+.dark .fno-seg-btn.PE.on   { background:rgba(248,81,73,.14); border-color:rgba(248,81,73,.35); color:#f85149; }
+.dark .fno-seg-btn.FUT.on  { background:rgba(88,166,255,.14); border-color:rgba(88,166,255,.35); color:#58a6ff; }
+/* Buttons */
+.dark .fno-btn-primary     { background:#58a6ff; color:#fff; }
+.dark .fno-btn-primary:hover { background:#79b8ff; }
+.dark .fno-btn-ghost       { background:transparent; border-color:#30363d; color:#8b949e; }
+.dark .fno-btn-ghost:hover { background:#21262d; color:#c9d1d9; }
+/* Overlay */
+.dark .fno-modal-overlay   { background:rgba(0,0,0,.7); }
 `;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
