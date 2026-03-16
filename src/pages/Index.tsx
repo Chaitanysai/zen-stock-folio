@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard, TrendingUp, ScrollText, Eye,
   Brain, History, BarChart3, Bell, RefreshCw,
   LogOut, Settings, PieChart, Zap, ChevronLeft,
   ChevronRight, Search, TrendingDown,
-  Activity, Wallet, Award
+  Activity, Wallet, Award, Newspaper, CalendarDays, ArrowUpRight, ArrowDownRight
 } from "lucide-react";
 import {
   portfolioData as initialData, PortfolioStock,
@@ -26,6 +26,7 @@ import TradeJournal          from "@/components/TradeJournal";
 import SectorDiversification from "@/components/SectorDiversification";
 import PriceAlerts           from "@/components/PriceAlerts";
 import AIInsights            from "@/components/AIInsights";
+import StockNewsFeed         from "@/components/StockNewsFeed";
 import ExportPortfolio       from "@/components/ExportPortfolio";
 import AuthModal             from "@/components/AuthModal";
 import { useToast }          from "@/hooks/use-toast";
@@ -37,7 +38,7 @@ import { useAuth }           from "@/contexts/AuthContext";
 type ActiveTab =
   | "overview" | "holdings" | "trades" | "watchlist" | "ai"
   | "charts" | "analytics" | "history" | "journal"
-  | "sector" | "alerts" | "export";
+  | "sector" | "alerts" | "export" | "news";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 const NAV_GROUPS = [
@@ -62,6 +63,7 @@ const NAV_GROUPS = [
     label: "TOOLS",
     items: [
       { id: "watchlist",  label: "Watchlist",   icon: Eye },
+      { id: "news",       label: "News Feed",   icon: Newspaper },
       { id: "ai",         label: "AI Insights", icon: Brain },
       { id: "alerts",     label: "Alerts",      icon: Bell },
       { id: "export",     label: "Export",      icon: Zap },
@@ -79,6 +81,18 @@ function fmtNum(n: number) {
   return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 }
 function sign(n: number) { return n >= 0 ? "+" : "−"; }
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+function fmtFullDate(): string {
+  return new Date().toLocaleDateString("en-IN", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric"
+  });
+}
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
@@ -864,310 +878,223 @@ const CSS = `
 .zf-spin { animation: zf-spin .9s linear infinite; }
 
 /* ══════════════════════════════════════════════════
-   FLUID PAGE TRANSITIONS
-══════════════════════════════════════════════════ */
-
-/* Page enter — content flows up from slightly below, fades in, scales from 98% */
-@keyframes zf-page-in {
-  0%   { opacity: 0; transform: translateY(18px) scale(0.982); filter: blur(4px); }
-  60%  { opacity: 1; filter: blur(0px); }
-  100% { opacity: 1; transform: translateY(0px) scale(1); filter: blur(0px); }
-}
-
-/* Page exit — content vanishes upward, fades out, scales up slightly (feels like it recedes) */
-@keyframes zf-page-out {
-  0%   { opacity: 1; transform: translateY(0px) scale(1); filter: blur(0px); }
-  100% { opacity: 0; transform: translateY(-10px) scale(1.012); filter: blur(3px); }
-}
-
-/* The animated wrapper */
-.zf-page-wrap {
-  animation: zf-page-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
-  will-change: transform, opacity, filter;
-  width: 100%;
-  display: contents;
-}
-.zf-page-wrap.exiting {
-  animation: zf-page-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
-  pointer-events: none;
-}
-
-/* Staggered children — each direct child gets a slight cascade delay */
-.zf-page-wrap > * { animation: zf-page-in 0.44s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.zf-page-wrap > *:nth-child(1) { animation-delay: 0ms; }
-.zf-page-wrap > *:nth-child(2) { animation-delay: 40ms; }
-.zf-page-wrap > *:nth-child(3) { animation-delay: 80ms; }
-.zf-page-wrap > *:nth-child(4) { animation-delay: 110ms; }
-.zf-page-wrap > *:nth-child(5) { animation-delay: 135ms; }
-.zf-page-wrap > *:nth-child(n+6) { animation-delay: 155ms; }
-
-/* KPI cards stagger inside overview */
-.zf-kpi-row .zf-kpi { animation: zf-page-in 0.46s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.zf-kpi-row .zf-kpi:nth-child(1) { animation-delay: 30ms; }
-.zf-kpi-row .zf-kpi:nth-child(2) { animation-delay: 70ms; }
-.zf-kpi-row .zf-kpi:nth-child(3) { animation-delay: 105ms; }
-.zf-kpi-row .zf-kpi:nth-child(4) { animation-delay: 135ms; }
-
-/* Cards in mid/bot rows cascade slightly */
-.zf-mid-row > *, .zf-bot-row > * {
-  animation: zf-page-in 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-.zf-mid-row > *:nth-child(1), .zf-bot-row > *:nth-child(1) { animation-delay: 80ms; }
-.zf-mid-row > *:nth-child(2), .zf-bot-row > *:nth-child(2) { animation-delay: 130ms; }
-
-/* Tab panel (non-overview) enters as one piece */
-.zf-tab-panel {
-  animation: zf-page-in 0.40s cubic-bezier(0.22, 1, 0.36, 1) both;
-  animation-delay: 20ms;
-}
-
-/* Sidebar nav item active state — smooth slide */
-.zf-nav-item {
-  transition: background .16s ease, color .16s ease, border-color .16s ease, transform .14s cubic-bezier(0.22,1,0.36,1);
-}
-.zf-nav-item:active { transform: scale(0.96); }
-
-/* Header title — smooth crossfade on tab change */
-.zf-page-title {
-  transition: opacity .18s ease, transform .22s cubic-bezier(0.22,1,0.36,1);
-}
-.zf-page-title.changing {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-
-/* KPI card hover — spring lift */
-.zf-kpi {
-  transition: box-shadow .22s cubic-bezier(0.22,1,0.36,1), transform .22s cubic-bezier(0.22,1,0.36,1), border-color .18s ease !important;
-}
-.zf-kpi:hover {
-  transform: translateY(-3px) scale(1.012) !important;
-  box-shadow: var(--sh-3) !important;
-}
-.zf-kpi:active {
-  transform: translateY(0px) scale(0.99) !important;
-  transition-duration: 0.08s !important;
-}
-
-/* zf-card hover spring */
-.zf-card {
-  transition: box-shadow .22s cubic-bezier(0.22,1,0.36,1), transform .22s cubic-bezier(0.22,1,0.36,1) !important;
-}
-.zf-card:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: var(--sh-2) !important;
-}
-
-/* Watchlist / holdings rows — smooth hover */
-.zf-trow, .zf-wl-row {
-  transition: background .12s ease !important;
-}
-
-/* Content scroll area — smoother scroll */
-.zf-content {
-  scroll-behavior: smooth;
-}
-
-/* Remove default transition override that was slowing things down */
-.zf-nav-item svg {
-  transition: color .16s ease;
-}
-
-/* ══════════════════════════════════════════════════
-   DARK MODE — complete, white text everywhere
-   Rule: --navy accent stays blue for UI elements
-         ALL body text = white/light, NOT blue
+   DARK MODE — shadcn/zinc-900 style
+   Surfaces: zinc-950/900/800, accent: indigo-400
+   Green: lime-400, Red: rose-400, Amber: amber-400
 ══════════════════════════════════════════════════ */
 .dark .zf {
-  /* Backgrounds */
-  --bg-app:      #0d1117;
-  --bg-sidebar:  #161b22;
-  --bg-card:     #1c2128;
-  --bg-surface:  #1c2128;
-  --bg-hover:    #21262d;
-  --bg-input:    #0d1117;
-  /* Accent — blue stays blue for buttons/icons only */
-  --navy:        #58a6ff;
-  --navy-700:    #79b8ff;
-  --navy-600:    #9ecaff;
-  --navy-100:    rgba(88,166,255,.18);
-  --navy-50:     rgba(88,166,255,.10);
-  /* Text — WHITE hierarchy, not blue */
-  --tx-900:      #f0f6fc;
-  --tx-700:      #c9d1d9;
-  --tx-500:      #8b949e;
-  --tx-400:      #6e7681;
-  --tx-300:      #484f58;
-  --tx-200:      #30363d;
+  --bg-app:      #09090b;   /* zinc-950 */
+  --bg-sidebar:  #0f0f13;   /* slightly lighter */
+  --bg-card:     #18181b;   /* zinc-900 */
+  --bg-surface:  #1c1c21;   /* zinc-900 mid */
+  --bg-hover:    #27272a;   /* zinc-800 */
+  --bg-input:    #09090b;
+  /* Accent — soft indigo, not harsh blue */
+  --navy:        #818cf8;
+  --navy-700:    #a5b4fc;
+  --navy-600:    #c7d2fe;
+  --navy-100:    rgba(129,140,248,.16);
+  --navy-50:     rgba(129,140,248,.08);
+  /* Text — zinc hierarchy */
+  --tx-900:      #fafafa;   /* zinc-50 */
+  --tx-700:      #e4e4e7;   /* zinc-200 */
+  --tx-500:      #a1a1aa;   /* zinc-400 */
+  --tx-400:      #71717a;   /* zinc-500 */
+  --tx-300:      #52525b;   /* zinc-600 */
+  --tx-200:      #3f3f46;   /* zinc-700 */
   /* Borders */
-  --bd-200:      #30363d;
-  --bd-100:      #21262d;
-  --bd-50:       #161b22;
-  /* Semantic */
-  --green:       #3fb950;
-  --green-bg:    rgba(63,185,80,.12);
-  --green-bd:    rgba(63,185,80,.3);
-  --red:         #f85149;
-  --red-bg:      rgba(248,81,73,.12);
-  --red-bd:      rgba(248,81,73,.3);
-  --amber:       #e3b341;
-  --amber-bg:    rgba(227,179,65,.12);
-  --amber-bd:    rgba(227,179,65,.3);
-  /* Shadows */
-  --sh-1: 0 1px 3px rgba(0,0,0,.5);
-  --sh-2: 0 4px 12px rgba(0,0,0,.6);
-  --sh-3: 0 8px 24px rgba(0,0,0,.7);
-  color: #f0f6fc;
+  --bd-200:      #3f3f46;
+  --bd-100:      #27272a;
+  --bd-50:       #18181b;
+  /* Semantic — vivid on dark */
+  --green:       #4ade80;
+  --green-bg:    rgba(74,222,128,.10);
+  --green-bd:    rgba(74,222,128,.20);
+  --red:         #f87171;
+  --red-bg:      rgba(248,113,113,.10);
+  --red-bd:      rgba(248,113,113,.20);
+  --amber:       #fbbf24;
+  --amber-bg:    rgba(251,191,36,.10);
+  --amber-bd:    rgba(251,191,36,.20);
+  --sh-1: 0 1px 3px rgba(0,0,0,.6);
+  --sh-2: 0 4px 16px rgba(0,0,0,.7);
+  --sh-3: 0 8px 30px rgba(0,0,0,.8);
+  color: #fafafa;
 }
 
 /* ── Sidebar ── */
-.dark .zf-sidebar         { background: #161b22; border-right-color: #30363d; box-shadow: 1px 0 0 #30363d; }
-.dark .zf-brand-name      { color: #f0f6fc; }
-.dark .zf-brand-sub       { color: #6e7681; }
-.dark .zf-nav-grp         { color: #484f58; }
-.dark .zf-nav-item        { color: #8b949e; }
-.dark .zf-nav-item:hover  { background: #21262d; color: #f0f6fc; }
-.dark .zf-nav-item.active { background: rgba(88,166,255,.12); border-color: rgba(88,166,255,.2); color: #f0f6fc; font-weight: 600; }
-.dark .zf-nav-item.active::before { background: #58a6ff; }
-.dark .zf-nav-item.active svg { color: #58a6ff; }
-.dark .zf-sidebar-foot    { border-top-color: #30363d; }
-.dark .zf-user-row        { background: #0d1117; border-color: #30363d; }
-.dark .zf-user-avatar     { background: #58a6ff; color: #fff; }
-.dark .zf-user-name       { color: #c9d1d9; }
-.dark .zf-user-role       { color: #6e7681; }
-.dark .zf-collapse-btn    { background: #1c2128; border-color: #30363d; color: #6e7681; }
-.dark .zf-collapse-btn:hover { background: #21262d; color: #f0f6fc; }
+.dark .zf-sidebar         { background: #0f0f13; border-right: 1px solid #27272a; box-shadow: none; }
+.dark .zf-brand-name      { color: #fafafa; }
+.dark .zf-brand-sub       { color: #71717a; }
+.dark .zf-nav-grp         { color: #52525b; }
+.dark .zf-nav-item        { color: #a1a1aa; }
+.dark .zf-nav-item:hover  { background: #27272a; color: #fafafa; }
+.dark .zf-nav-item.active { background: rgba(129,140,248,.10); border-color: rgba(129,140,248,.18); color: #e0e7ff; font-weight: 600; }
+.dark .zf-nav-item.active::before { background: #818cf8; }
+.dark .zf-nav-item.active svg { color: #818cf8; }
+.dark .zf-sidebar-foot    { border-top-color: #27272a; }
+.dark .zf-user-row        { background: #09090b; border-color: #27272a; }
+.dark .zf-user-avatar     { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; }
+.dark .zf-user-name       { color: #e4e4e7; }
+.dark .zf-user-role       { color: #71717a; }
+.dark .zf-collapse-btn    { background: #18181b; border-color: #3f3f46; color: #71717a; }
+.dark .zf-collapse-btn:hover { background: #27272a; color: #fafafa; }
 
 /* ── Header ── */
-.dark .zf-header          { background: #161b22; border-bottom-color: #30363d; box-shadow: 0 1px 0 #30363d; }
-.dark .zf-page-title      { color: #f0f6fc; }
-.dark .zf-search          { background: #0d1117; border-color: #30363d; }
-.dark .zf-search input    { color: #c9d1d9; }
-.dark .zf-search input::placeholder { color: #484f58; }
-.dark .zf-search:focus-within { border-color: #58a6ff; box-shadow: 0 0 0 3px rgba(88,166,255,.15); }
-.dark .zf-hbtn            { background: #21262d; border-color: #30363d; color: #8b949e; }
-.dark .zf-hbtn:hover      { background: #30363d; border-color: #484f58; color: #f0f6fc; }
-.dark .zf-live            { background: rgba(63,185,80,.12); border-color: rgba(63,185,80,.3); color: #3fb950; }
-.dark .zf-live.cached     { background: rgba(227,179,65,.12); border-color: rgba(227,179,65,.3); color: #e3b341; }
-.dark .zf-umenu           { background: #1c2128; border-color: #30363d; }
-.dark .zf-umenu-head      { background: #161b22; border-bottom-color: #30363d; }
-.dark .zf-umenu-lbl       { color: #6e7681; }
-.dark .zf-umenu-email     { color: #f0f6fc; }
-.dark .zf-umenu-btn       { color: #c9d1d9; }
-.dark .zf-umenu-btn:hover { background: #21262d; color: #f0f6fc; }
-.dark .zf-umenu-btn.danger { color: #f85149; }
-.dark .zf-umenu-btn.primary { color: #58a6ff; }
+.dark .zf-header          { background: #0f0f13; border-bottom: 1px solid #27272a; box-shadow: none; }
+.dark .zf-page-title      { color: #fafafa; }
+.dark .zf-search          { background: #18181b; border-color: #3f3f46; }
+.dark .zf-search input    { color: #e4e4e7; }
+.dark .zf-search input::placeholder { color: #52525b; }
+.dark .zf-search:focus-within { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,.12); }
+.dark .zf-hbtn            { background: #18181b; border-color: #3f3f46; color: #a1a1aa; }
+.dark .zf-hbtn:hover      { background: #27272a; border-color: #52525b; color: #fafafa; }
+.dark .zf-live            { background: rgba(74,222,128,.10); border-color: rgba(74,222,128,.20); color: #4ade80; }
+.dark .zf-live.cached     { background: rgba(251,191,36,.10); border-color: rgba(251,191,36,.20); color: #fbbf24; }
+.dark .zf-umenu           { background: #18181b; border-color: #3f3f46; box-shadow: 0 8px 30px rgba(0,0,0,.8); }
+.dark .zf-umenu-head      { background: #0f0f13; border-bottom-color: #27272a; }
+.dark .zf-umenu-lbl       { color: #71717a; }
+.dark .zf-umenu-email     { color: #fafafa; }
+.dark .zf-umenu-btn       { color: #e4e4e7; }
+.dark .zf-umenu-btn:hover { background: #27272a; color: #fafafa; }
+.dark .zf-umenu-btn.danger  { color: #f87171; }
+.dark .zf-umenu-btn.primary { color: #818cf8; }
 
 /* ── KPI cards ── */
-.dark .zf-kpi             { background: #1c2128; border-color: #30363d; }
-.dark .zf-kpi-lbl         { color: #6e7681; }
-.dark .zf-kpi-val         { color: #f0f6fc; }
-.dark .zf-kpi-sub         { color: #8b949e; }
-.dark .zf-kpi-divider     { color: #484f58; border-top-color: #21262d; }
-.dark .zf-kpi.kpi-navy    { background: rgba(88,166,255,.08); border-color: rgba(88,166,255,.18); }
-.dark .zf-kpi.kpi-navy .zf-kpi-val  { color: #f0f6fc; }
-.dark .zf-kpi.kpi-green   { background: rgba(63,185,80,.08); border-color: rgba(63,185,80,.2); }
-.dark .zf-kpi.kpi-green .zf-kpi-val { color: #3fb950; }
-.dark .zf-kpi.kpi-red     { background: rgba(248,81,73,.08); border-color: rgba(248,81,73,.2); }
-.dark .zf-kpi.kpi-red .zf-kpi-val   { color: #f85149; }
-.dark .zf-kpi-icon        { opacity: .9; }
-.dark .zf-chip-green { background: rgba(63,185,80,.12) !important; color: #3fb950 !important; border-color: rgba(63,185,80,.3) !important; }
-.dark .zf-chip-red   { background: rgba(248,81,73,.12) !important; color: #f85149 !important; border-color: rgba(248,81,73,.3) !important; }
-.dark .zf-chip-navy  { background: rgba(88,166,255,.12) !important; color: #58a6ff !important; border-color: rgba(88,166,255,.25) !important; }
+.dark .zf-kpi             { background: #18181b; border-color: #27272a; }
+.dark .zf-kpi-lbl         { color: #71717a; }
+.dark .zf-kpi-val         { color: #fafafa; }
+.dark .zf-kpi-sub         { color: #a1a1aa; }
+.dark .zf-kpi-divider     { color: #52525b; border-top-color: #27272a; }
+.dark .zf-kpi.kpi-navy    { background: rgba(129,140,248,.08); border-color: rgba(129,140,248,.16); }
+.dark .zf-kpi.kpi-navy .zf-kpi-val  { color: #fafafa; }
+.dark .zf-kpi.kpi-green   { background: rgba(74,222,128,.08); border-color: rgba(74,222,128,.18); }
+.dark .zf-kpi.kpi-green .zf-kpi-val { color: #4ade80; }
+.dark .zf-kpi.kpi-red     { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.18); }
+.dark .zf-kpi.kpi-red .zf-kpi-val   { color: #f87171; }
+.dark .zf-kpi-icon        { opacity: .85; }
+.dark .zf-chip-green { background: rgba(74,222,128,.12) !important; color: #4ade80 !important; border-color: rgba(74,222,128,.22) !important; }
+.dark .zf-chip-red   { background: rgba(248,113,113,.12) !important; color: #f87171 !important; border-color: rgba(248,113,113,.22) !important; }
+.dark .zf-chip-navy  { background: rgba(129,140,248,.12) !important; color: #818cf8 !important; border-color: rgba(129,140,248,.22) !important; }
 
 /* ── Cards ── */
-.dark .zf-card            { background: #1c2128; border-color: #30363d; }
-.dark .zf-card-head       { background: #161b22; border-bottom-color: #30363d; }
-.dark .zf-card-title      { color: #f0f6fc; }
-.dark .zf-card-badge      { background: rgba(88,166,255,.12); border-color: rgba(88,166,255,.2); color: #58a6ff; }
-.dark .zf-card-link       { background: rgba(88,166,255,.10); border-color: rgba(88,166,255,.2); color: #58a6ff; }
-.dark .zf-card-link:hover { background: #58a6ff; color: #fff; }
+.dark .zf-card            { background: #18181b; border: 1px solid #27272a; }
+.dark .zf-card-head       { background: #18181b; border-bottom: 1px solid #27272a; }
+.dark .zf-card-title      { color: #fafafa; }
+.dark .zf-card-badge      { background: rgba(129,140,248,.12); border-color: rgba(129,140,248,.20); color: #818cf8; }
+.dark .zf-card-link       { background: rgba(129,140,248,.10); border-color: rgba(129,140,248,.18); color: #818cf8; }
+.dark .zf-card-link:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
+
+/* ── Content area ── */
+.dark .zf-content         { background: #09090b; }
 
 /* ── Holdings table ── */
-.dark .zf-tbl-head        { background: #161b22; border-bottom-color: #30363d; }
-.dark .zf-th              { color: #484f58; }
-.dark .zf-trow            { border-bottom-color: #21262d; }
-.dark .zf-trow:hover      { background: #21262d; }
-.dark .zf-ticker-name     { color: #f0f6fc; }
-.dark .zf-sector-tag      { background: #21262d; border-color: #30363d; color: #6e7681; }
-.dark .zf-logo-wrap       { background: rgba(88,166,255,.1); border-color: rgba(88,166,255,.2); color: #58a6ff; }
-.dark .zf-td              { color: #8b949e; }
-.dark .zf-pl              { }
-.dark .zf-pl-sub          { }
+.dark .zf-tbl-head        { background: #18181b; border-bottom-color: #27272a; }
+.dark .zf-th              { color: #52525b; }
+.dark .zf-trow            { border-bottom-color: #27272a; }
+.dark .zf-trow:hover      { background: #27272a; }
+.dark .zf-ticker-name     { color: #fafafa; }
+.dark .zf-sector-tag      { background: #27272a; border-color: #3f3f46; color: #71717a; }
+.dark .zf-logo-wrap       { background: rgba(129,140,248,.10); border-color: rgba(129,140,248,.18); color: #818cf8; }
+.dark .zf-td              { color: #a1a1aa; }
 
 /* ── Watchlist ── */
-.dark .zf-wl-head         { background: #161b22; border-bottom-color: #30363d; }
-.dark .zf-wl-row          { border-bottom-color: #21262d; }
-.dark .zf-wl-row:hover    { background: #21262d; }
-.dark .zf-wl-name         { color: #f0f6fc; }
-.dark .zf-wl-sub          { color: #6e7681; }
-.dark .zf-wl-price        { color: #c9d1d9; }
+.dark .zf-wl-head         { background: #18181b; border-bottom-color: #27272a; }
+.dark .zf-wl-row          { border-bottom-color: #27272a; }
+.dark .zf-wl-row:hover    { background: #27272a; }
+.dark .zf-wl-name         { color: #fafafa; }
+.dark .zf-wl-sub          { color: #71717a; }
+.dark .zf-wl-price        { color: #e4e4e7; }
 
-/* ── Sector section ── */
-.dark .zf-sector-name     { color: #c9d1d9; }
-.dark .zf-sector-pct      { color: #58a6ff; }
-.dark .zf-sector-bar      { background: #21262d; }
+/* ── Sector ── */
+.dark .zf-sector-name     { color: #e4e4e7; }
+.dark .zf-sector-pct      { color: #818cf8; }
+.dark .zf-sector-bar      { background: #27272a; }
 
-/* ── F&O inline table on overview ── */
-.dark table th { background: #161b22 !important; color: #484f58 !important; border-bottom-color: #30363d !important; }
-.dark table td { color: #8b949e !important; border-bottom-color: #21262d !important; }
-.dark table tbody tr:hover td { background: #21262d !important; }
+/* ── F&O inline table ── */
+.dark table th { background: #18181b !important; color: #52525b !important; border-bottom-color: #27272a !important; }
+.dark table td { color: #a1a1aa !important; border-bottom-color: #27272a !important; }
+.dark table tbody tr:hover td { background: #27272a !important; }
 .dark table tbody td .zf-ticker-name,
 .dark table tbody td div[style*="font-weight:700"],
-.dark table tbody td div[style*="fontWeight:700"] { color: #f0f6fc !important; }
+.dark table tbody td div[style*="fontWeight:700"] { color: #fafafa !important; }
 
-/* ── Tab panel — child components ── */
-.dark .zf-tab-panel { background: #1c2128; border-color: #30363d; }
-.dark .zf-tab-panel th { background: #161b22 !important; color: #484f58 !important; border-bottom-color: #30363d !important; }
-.dark .zf-tab-panel td { color: #8b949e !important; border-bottom-color: #21262d !important; }
-.dark .zf-tab-panel tr:hover td { background: #21262d !important; }
+/* ── Tab panel ── */
+.dark .zf-tab-panel { background: #18181b; border-color: #27272a; }
+.dark .zf-tab-panel th { background: #18181b !important; color: #52525b !important; border-bottom-color: #27272a !important; }
+.dark .zf-tab-panel td { color: #a1a1aa !important; border-bottom-color: #27272a !important; }
+.dark .zf-tab-panel tr:hover td { background: #27272a !important; }
 .dark .zf-tab-panel tbody tr:last-child td { border-bottom: none !important; }
-/* Force white on bold/semibold text in tables */
 .dark .zf-tab-panel .font-semibold,
 .dark .zf-tab-panel .font-bold,
 .dark .zf-tab-panel [class*="font-bold"],
-.dark .zf-tab-panel [class*="font-semibold"] { color: #f0f6fc !important; }
-.dark .zf-tab-panel h1,
-.dark .zf-tab-panel h2,
-.dark .zf-tab-panel h3,
-.dark .zf-tab-panel h4 { color: #f0f6fc !important; }
-.dark .zf-tab-panel p { color: #8b949e !important; }
+.dark .zf-tab-panel [class*="font-semibold"] { color: #fafafa !important; }
+.dark .zf-tab-panel h1, .dark .zf-tab-panel h2,
+.dark .zf-tab-panel h3, .dark .zf-tab-panel h4 { color: #fafafa !important; }
+.dark .zf-tab-panel p { color: #a1a1aa !important; }
 .dark .zf-tab-panel [class*="text-muted"],
-.dark .zf-tab-panel .text-muted-foreground { color: #6e7681 !important; }
+.dark .zf-tab-panel .text-muted-foreground { color: #71717a !important; }
 .dark .zf-tab-panel [class*="text-foreground"],
-.dark .zf-tab-panel .text-foreground { color: #f0f6fc !important; }
-.dark .zf-tab-panel [class*="text-primary"] { color: #58a6ff !important; }
+.dark .zf-tab-panel .text-foreground { color: #fafafa !important; }
+.dark .zf-tab-panel [class*="text-primary"] { color: #818cf8 !important; }
 .dark .zf-tab-panel button.bg-primary,
-.dark .zf-tab-panel [class*="bg-primary"] { background: #58a6ff !important; color: #fff !important; }
-.dark .zf-tab-panel button[class*="outline"] { background: #1c2128 !important; border-color: #30363d !important; color: #c9d1d9 !important; }
-.dark .zf-tab-panel button[class*="outline"]:hover { background: #21262d !important; color: #f0f6fc !important; }
-.dark .zf-tab-panel button[class*="ghost"] { color: #8b949e !important; }
-.dark .zf-tab-panel button[class*="ghost"]:hover { background: #21262d !important; color: #f0f6fc !important; }
+.dark .zf-tab-panel [class*="bg-primary"] { background: #6366f1 !important; color: #fff !important; }
+.dark .zf-tab-panel button[class*="outline"] { background: #18181b !important; border-color: #3f3f46 !important; color: #e4e4e7 !important; }
+.dark .zf-tab-panel button[class*="outline"]:hover { background: #27272a !important; color: #fafafa !important; }
+.dark .zf-tab-panel button[class*="ghost"] { color: #a1a1aa !important; }
+.dark .zf-tab-panel button[class*="ghost"]:hover { background: #27272a !important; color: #fafafa !important; }
 .dark .zf-tab-panel input:not([type="checkbox"]),
 .dark .zf-tab-panel select,
-.dark .zf-tab-panel textarea { background: #0d1117 !important; border-color: #30363d !important; color: #f0f6fc !important; }
-.dark .zf-tab-panel label { color: #c9d1d9 !important; }
+.dark .zf-tab-panel textarea { background: #09090b !important; border-color: #3f3f46 !important; color: #fafafa !important; }
+.dark .zf-tab-panel label { color: #e4e4e7 !important; }
 .dark .zf-tab-panel input::placeholder,
-.dark .zf-tab-panel textarea::placeholder { color: #484f58 !important; }
-.dark .zf-tab-panel [role="tablist"] { background: #161b22 !important; border-color: #30363d !important; }
-.dark .zf-tab-panel [role="tab"] { color: #6e7681 !important; }
-.dark .zf-tab-panel [role="tab"][data-state="active"] { background: #1c2128 !important; color: #f0f6fc !important; }
-.dark .zf-tab-panel .rounded-xl,
-.dark .zf-tab-panel .rounded-lg,
-.dark .zf-tab-panel [class*="card"],
-.dark .zf-tab-panel [class*="Card"] { background: #1c2128 !important; border-color: #30363d !important; }
+.dark .zf-tab-panel textarea::placeholder { color: #52525b !important; }
+.dark .zf-tab-panel [role="tablist"] { background: #0f0f13 !important; border-color: #27272a !important; }
+.dark .zf-tab-panel [role="tab"] { color: #71717a !important; }
+.dark .zf-tab-panel [role="tab"][data-state="active"] { background: #18181b !important; color: #fafafa !important; }
+.dark .zf-tab-panel .rounded-xl, .dark .zf-tab-panel .rounded-lg,
+.dark .zf-tab-panel [class*="card"], .dark .zf-tab-panel [class*="Card"] { background: #18181b !important; border-color: #27272a !important; }
 .dark .zf-tab-panel [class*="CardHeader"],
-.dark .zf-tab-panel [class*="card-header"] { background: #161b22 !important; border-bottom-color: #30363d !important; }
-/* Trades sub-tab bar */
-.dark .zf-tab-panel > div > div[style*="background"] { background: #161b22 !important; border-bottom-color: #30363d !important; }
-.dark .zf-tab-panel > div > div > button { color: #8b949e !important; }
-/* Recharts */
-.dark .zf-tab-panel .recharts-cartesian-axis-tick-value { fill: #484f58 !important; }
-.dark .zf-tab-panel .recharts-text { fill: #484f58 !important; }
-.dark .zf-tab-panel .recharts-default-tooltip { background: #1c2128 !important; border-color: #30363d !important; color: #f0f6fc !important; }
-/* Progress bars, badges */
+.dark .zf-tab-panel [class*="card-header"] { background: #0f0f13 !important; border-bottom-color: #27272a !important; }
+.dark .zf-tab-panel > div > div[style*="background"] { background: #0f0f13 !important; border-bottom-color: #27272a !important; }
+.dark .zf-tab-panel > div > div > button { color: #a1a1aa !important; }
+.dark .zf-tab-panel .recharts-cartesian-axis-tick-value { fill: #52525b !important; }
+.dark .zf-tab-panel .recharts-text { fill: #52525b !important; }
+.dark .zf-tab-panel .recharts-default-tooltip { background: #18181b !important; border-color: #27272a !important; color: #fafafa !important; }
 .dark .zf-tab-panel [class*="badge"],
-.dark .zf-tab-panel [class*="Badge"] { background: rgba(88,166,255,.12) !important; color: #58a6ff !important; border-color: rgba(88,166,255,.2) !important; }
+.dark .zf-tab-panel [class*="Badge"] { background: rgba(129,140,248,.12) !important; color: #818cf8 !important; border-color: rgba(129,140,248,.20) !important; }
+
+/* ── Greeting bar ── */
+.dark .zf-greeting      { background: #0f0f13 !important; border-bottom: 1px solid #27272a !important; }
+.dark .zf-greeting-name { color: #fafafa !important; }
+.dark .zf-greeting-date { color: #71717a !important; }
+.dark .zf-greeting-pill { background: #18181b !important; border-color: #3f3f46 !important; color: #a1a1aa !important; }
+
+/* ══════════════════════════════════════════════════
+   GREETING BAR (dashboard overview)
+══════════════════════════════════════════════════ */
+.zf-greeting {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--bd-100);
+  padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.zf-greeting-name {
+  font-family: var(--ff-disp);
+  font-size: 20px; color: var(--tx-900); letter-spacing: -.3px; line-height: 1.2;
+}
+.zf-greeting-date { font-size: 11.5px; color: var(--tx-400); font-weight: 500; margin-top: 2px; }
+.zf-greeting-right { display: flex; align-items: center; gap: 8px; }
+.zf-greeting-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 13px; border-radius: 9px;
+  border: 1px solid var(--bd-200); background: var(--bg-surface);
+  font-size: 12px; font-weight: 600; color: var(--tx-700);
+  white-space: nowrap; cursor: pointer; transition: all .13s;
+}
+.zf-greeting-pill:hover { background: var(--bg-hover); }
+
 `;
 
 // ─── Line Chart Widget ────────────────────────────────────────────────────────
@@ -1320,25 +1247,11 @@ function BarWidget({ stocks }: { stocks: PortfolioStock[] }) {
 
 // ════════════════════════════════════════════════════════════════════════════
 export default function Index() {
-  const [tab,            setTab]           = useState<ActiveTab>("overview");
-  const [transitionKey,  setTransitionKey] = useState(0);
-  const [titleChanging,  setTitleChanging] = useState(false);
-  const [collapsed,      setCollapsed]     = useState(false);
-  const [darkMode,       setDarkMode]      = useState(() => {
+  const [tab,       setTab]       = useState<ActiveTab>("overview");
+  const [collapsed, setCollapsed] = useState(false);
+  const [darkMode,  setDarkMode]  = useState(() => {
     try { return localStorage.getItem("zf-dark") === "1"; } catch { return false; }
   });
-
-  // Animated tab switch — exit → swap → enter
-  const switchTab = useCallback((next: ActiveTab) => {
-    if (next === tab) return;
-    // Animate title out
-    setTitleChanging(true);
-    setTimeout(() => {
-      setTab(next);
-      setTransitionKey(k => k + 1);
-      setTitleChanging(false);
-    }, 160);
-  }, [tab]);
 
   // Apply dark mode to <html>
   useEffect(() => {
@@ -1415,8 +1328,17 @@ export default function Index() {
 
   const winners         = closedPos.filter(s => calcProfitLoss(s) > 0);
   const winRate         = closedPos.length > 0 ? winners.length / closedPos.length * 100 : 0;
-  const todayPnl        = activePos.reduce((a, s) => a + (s.cmp - s.entryPrice) * s.quantity * 0.003, 0);
-  const todayPct        = invested > 0 ? Math.abs(todayPnl) / invested * 100 : 0;
+  // Today's P&L — uses prices[ticker].change (absolute day move) when live, else full unrealised
+  const todayPnl = isLive
+    ? activePos.reduce((acc, s) => {
+        const pd = prices[s.ticker];
+        // pd.change = today's absolute ₹ move (positive = up, negative = down)
+        if (pd?.change !== undefined) return acc + pd.change * s.quantity;
+        // fallback: stock-level unrealised if no day-change data from API
+        return acc + (s.cmp - s.entryPrice) * s.quantity;
+      }, 0)
+    : unrealisedPnl; // when cached, show total unrealised
+  const todayPct = activeCurr > 0 ? (todayPnl / activeCurr) * 100 : 0;
 
   const performers = activePos
     .filter(s => s.entryPrice > 0)
@@ -1446,6 +1368,7 @@ export default function Index() {
     watchlist: "Watchlist", ai: "AI Insights", charts: "Charts & Analytics",
     analytics: "Trade Analytics", history: "Trade History", journal: "Trade Journal",
     sector: "Sector Allocation", alerts: "Price Alerts", export: "Export Data",
+    news: "Holdings News Feed",
   };
 
   // ── Auth gate ─────────────────────────────────────────────────────────────
@@ -1581,7 +1504,7 @@ export default function Index() {
                   <div
                     key={id}
                     className={`zf-nav-item${tab === id ? " active" : ""}`}
-                    onClick={() => switchTab(id as ActiveTab)}
+                    onClick={() => setTab(id as ActiveTab)}
                     title={collapsed ? label : undefined}
                   >
                     <Icon strokeWidth={tab === id ? 2.2 : 1.8} size={15} />
@@ -1611,7 +1534,7 @@ export default function Index() {
 
           {/* Header */}
           <header className="zf-header">
-            <div className={`zf-page-title${titleChanging ? " changing" : ""}`}>{PAGE_TITLES[tab]}</div>
+            <div className="zf-page-title">{PAGE_TITLES[tab]}</div>
 
             {/* Search */}
             <div className="zf-search">
@@ -1666,9 +1589,35 @@ export default function Index() {
             </div>
           </header>
 
+          {/* Greeting bar — overview only */}
+          {tab === "overview" && (
+            <div className="zf-greeting">
+              <div>
+                <div className="zf-greeting-name">
+                  {getGreeting()}, {user?.email?.split("@")[0] ?? "Trader"} 👋
+                </div>
+                <div className="zf-greeting-date">{fmtFullDate()}</div>
+              </div>
+              <div className="zf-greeting-right">
+                <div className={`zf-greeting-pill`}>
+                  <span style={{ width:7, height:7, borderRadius:"50%", background:isLive?"var(--green)":"var(--amber)", display:"inline-block" }} />
+                  NSE {isLive ? "Live" : "Cached"} · {now}
+                </div>
+                {activePos.length > 0 && (
+                  <div className="zf-greeting-pill" style={{ color: pnl>=0 ? "var(--green)" : "var(--red)" }}>
+                    {pnl >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+                    {sign(pnl)}{fmt(Math.abs(pnl))} unrealised
+                  </div>
+                )}
+                <div className="zf-greeting-pill" onClick={refresh} style={{ cursor:"pointer" }}>
+                  <RefreshCw size={12} /> Refresh prices
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Content */}
           <div className="zf-content">
-            <div key={transitionKey} className="zf-page-wrap">
 
             {/* ══════════ OVERVIEW — ByeWind reference layout ══════════ */}
             {tab === "overview" && (<>
@@ -1750,7 +1699,7 @@ export default function Index() {
                     <span className="zf-card-title">Holdings</span>
                     <div className="zf-card-meta">
                       <span className="zf-card-badge">{activePos.length} active</span>
-                      <button className="zf-card-link" onClick={() => switchTab("holdings")}>View all →</button>
+                      <button className="zf-card-link" onClick={() => setTab("holdings")}>View all →</button>
                     </div>
                   </div>
                   <div className="zf-card-body">
@@ -1800,7 +1749,7 @@ export default function Index() {
                     <span className="zf-card-title">Watchlist</span>
                     <div className="zf-card-meta">
                       <span className="zf-card-badge">{watchlist.length}</span>
-                      <button className="zf-card-link" onClick={() => switchTab("watchlist")}>+ Add</button>
+                      <button className="zf-card-link" onClick={() => setTab("watchlist")}>+ Add</button>
                     </div>
                   </div>
                   <div className="zf-card-body">
@@ -1839,38 +1788,57 @@ export default function Index() {
                 </div>
               </div>
 
-              {/* ── ROW 3: F&O Positions mini-table ── */}
+              {/* ── ROW 3: F&O Positions — always visible KPI strip ── */}
               <div className="zf-card">
                 <div className="zf-card-head">
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                     <span className="zf-card-title">F&O Positions</span>
                     <span className="zf-card-badge">{fnoOpen.length} open</span>
-                    {fnoOpen.length > 0 && (
-                      <span style={{
-                        fontSize:9.5, fontWeight:700, padding:"2px 8px", borderRadius:20,
-                        background: fnoUnrealised>=0 ? "var(--green-bg)" : "var(--red-bg)",
-                        color: fnoUnrealised>=0 ? "var(--green)" : "var(--red)",
-                        border: `1px solid ${fnoUnrealised>=0 ? "var(--green-bd)" : "var(--red-bd)"}`,
-                      }}>
-                        {sign(fnoUnrealised)}{fmt(Math.abs(fnoUnrealised))} unrealised
-                      </span>
-                    )}
+                    {fnoClosed.length > 0 && <span style={{ fontSize:11, color:"var(--tx-400)" }}>· {fnoClosed.length} closed</span>}
                   </div>
                   <div className="zf-card-meta">
-                    <button className="zf-card-link" onClick={() => { switchTab("trades"); setTradesSubTab("fno"); }}>
-                      View all F&O →
+                    <button className="zf-card-link" onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}>
+                      {fnoOpen.length > 0 ? "Manage F&O →" : "+ Add F&O Trade"}
                     </button>
                   </div>
                 </div>
-                <div className="zf-card-body">
-                  {fnoTrades.filter(t => t.status === "Open").length === 0 ? (
-                    <div style={{ padding:"28px 20px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
-                      No open F&O positions · <button onClick={() => { switchTab("trades"); setTradesSubTab("fno"); }}
-                        style={{ background:"none", border:"none", color:"var(--navy)", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                        Add one →
-                      </button>
+
+                {/* Always-visible 4-metric strip */}
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", borderBottom:"1px solid var(--bd-100)" }}>
+                  {[
+                    { lbl:"Open Positions",  val:String(fnoOpen.length),  sub:`Premium: ${fmt(fnoInvested)}`,  clr:"var(--navy)" },
+                    { lbl:"Unrealised P&L",  val:`${sign(fnoUnrealised)}${fmt(Math.abs(fnoUnrealised))}`, sub:`${fnoOpen.length} position${fnoOpen.length!==1?"s":""}`, clr:fnoUnrealised>=0?"var(--green)":"var(--red)" },
+                    { lbl:"Realised P&L",    val:`${sign(fnoRealised)}${fmt(Math.abs(fnoRealised))}`, sub:`${fnoClosed.length} closed`, clr:fnoRealised>=0?"var(--green)":"var(--red)" },
+                    { lbl:"F&O Win Rate",    val:(() => { const w=fnoClosed.filter(t=>calcFnOPnL(t)>0).length; return fnoClosed.length>0?`${Math.round(w/fnoClosed.length*100)}%`:"—"; })(), sub:`${fnoClosed.filter(t=>calcFnOPnL(t)>0).length}/${fnoClosed.length} profitable`, clr:"var(--amber)" },
+                  ].map((m,i) => (
+                    <div key={m.lbl} style={{ padding:"14px 20px", borderRight:i<3?"1px solid var(--bd-100)":"none" }}>
+                      <div style={{ fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:".09em", color:"var(--tx-300)", marginBottom:5 }}>{m.lbl}</div>
+                      <div style={{ fontFamily:"var(--ff-mono)", fontSize:20, fontWeight:700, color:m.clr, letterSpacing:"-.5px" }}>{m.val}</div>
+                      <div style={{ fontSize:10.5, color:"var(--tx-400)", marginTop:3 }}>{m.sub}</div>
                     </div>
-                  ) : (
+                  ))}
+                </div>
+
+                {/* Table or CTA */}
+                {fnoOpen.length === 0 ? (
+                  <div style={{ padding:"22px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:600, color:"var(--tx-700)", marginBottom:3 }}>No open F&O positions</div>
+                      <div style={{ fontSize:12, color:"var(--tx-300)" }}>
+                        Go to{" "}
+                        <button onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}
+                          style={{ background:"none", border:"none", color:"var(--navy)", fontSize:12, fontWeight:700, cursor:"pointer", padding:0 }}>
+                          Trades → F&O
+                        </button>
+                        {" "}to add futures or options.
+                      </div>
+                    </div>
+                    <button onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}
+                      style={{ background:"var(--navy)", color:"#fff", border:"none", padding:"8px 18px", borderRadius:9, fontSize:12.5, fontWeight:600, cursor:"pointer", fontFamily:"var(--ff-body)", flexShrink:0 }}>
+                      + Add F&O Trade
+                    </button>
+                  </div>
+                ) : (
                     <div style={{ overflowX:"auto" }}>
                       <table style={{ width:"100%", borderCollapse:"separate", borderSpacing:0 }}>
                         <thead>
@@ -1987,7 +1955,7 @@ export default function Index() {
                         <span style={{ width:16, height:3, borderRadius:2, background:"var(--tx-200)", display:"inline-block" }} />
                         Last year
                       </div>
-                      <button className="zf-card-link" onClick={() => switchTab("charts")}>Full view →</button>
+                      <button className="zf-card-link" onClick={() => setTab("charts")}>Full view →</button>
                     </div>
                   </div>
                   <div style={{ padding:"8px 20px 16px" }}>
@@ -2077,7 +2045,6 @@ export default function Index() {
               </div>
             )}
 
-            </div>{/* end zf-page-wrap */}
           </div>
         </div>
       </div>
