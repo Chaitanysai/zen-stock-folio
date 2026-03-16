@@ -289,9 +289,9 @@ export const LOT_SIZES: Record<string, number> = {
   ICICIGI:       375,
   // ── Auto & EV ──
   HEROMOTOCO:    300,
-  BAJAJ-AUTO:    250,
+  BAJAJAUTO:     250,
   EICHERMOT:     175,
-  M&M:           700,
+  MM:            700,
   TVSMOTOR:      700,
   // ── Energy & Infra ──
   POWERGRID:     3850,
