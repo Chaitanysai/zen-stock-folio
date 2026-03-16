@@ -875,7 +875,7 @@ const CSS = `
 .zf-spin { animation: zf-spin .9s linear infinite; }
 
 /* ══════════════════════════════════════════════════
-   DARK MODE — shadcn/zinc-900 style
+   DARK MODE — shadcn/zinc-900
 ══════════════════════════════════════════════════ */
 .dark .zf {
   --bg-app:      #09090b;
@@ -1039,7 +1039,6 @@ const CSS = `
 .dark .zf-greeting-name { color: #fafafa !important; }
 .dark .zf-greeting-date { color: #71717a !important; }
 .dark .zf-greeting-pill { background: #18181b !important; border-color: #3f3f46 !important; color: #a1a1aa !important; }
-
 /* ── Greeting bar ── */
 .zf-greeting {
   background: var(--bg-card); border-bottom: 1px solid var(--bd-100);
@@ -1242,7 +1241,9 @@ export default function Index() {
   const { toast }         = useToast();
   const { user, signOut, loading: _authLoading } = useAuth();
   const tickers = stocks.map(s => s.ticker);
-  const { prices, isLive, refresh } = useLivePrices(tickers);
+  const { prices, source, marketOpen, refresh } = useLivePrices(tickers);
+  // isLive = fresh data from any real source (not memory-cache)
+  const isLive = source !== null && source !== "memory-cache";
   usePortfolioSync({ stocks, trades, watchlist, alerts, setStocks, setTrades, setWatchlist, setAlerts });
 
   const live = stocks.map(s =>
@@ -1289,14 +1290,14 @@ export default function Index() {
 
   const winners         = closedPos.filter(s => calcProfitLoss(s) > 0);
   const winRate         = closedPos.length > 0 ? winners.length / closedPos.length * 100 : 0;
-  // Today's P&L: use live price day-change when available, else total unrealised
-  const todayPnl = isLive
-    ? activePos.reduce((acc, s) => {
-        const pd = prices[s.ticker];
-        if (pd?.change !== undefined) return acc + pd.change * s.quantity;
-        return acc + (s.cmp - s.entryPrice) * s.quantity;
-      }, 0)
-    : unrealisedPnl;
+  // Today's P&L — use prices[ticker].change (absolute ₹ day move) when available.
+  // change is populated by the API from Yahoo/Upstox for ALL sources, not just live.
+  const todayPnl = activePos.reduce((acc, s) => {
+    const pd = prices[s.ticker];
+    if (pd?.change !== undefined && pd.change !== 0) return acc + pd.change * s.quantity;
+    // fallback only if API returned no day-change at all
+    return acc;
+  }, 0);
   const todayPct = activeCurr > 0 ? (todayPnl / activeCurr) * 100 : 0;
 
   const performers = activePos
@@ -1561,7 +1562,7 @@ export default function Index() {
                   NSE {isLive ? "Live" : "Cached"} · {now}
                 </div>
                 {activePos.length > 0 && (
-                  <div className="zf-greeting-pill" style={{ color: pnl>=0 ? "var(--green)" : "var(--red)" }}>
+                  <div className="zf-greeting-pill" style={{ color: pnl>=0?"var(--green)":"var(--red)" }}>
                     {pnl >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
                     {sign(pnl)}{fmt(Math.abs(pnl))} unrealised
                   </div>
@@ -1759,13 +1760,12 @@ export default function Index() {
                     </button>
                   </div>
                 </div>
-
                 {/* Always-visible KPI strip */}
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", borderBottom:"1px solid var(--bd-100)" }}>
                   {([
-                    { lbl:"Open Positions", val:String(fnoOpen.length),  sub:`Premium: ${fmt(fnoInvested)}`,  clr:"var(--navy)" },
+                    { lbl:"Open Positions", val:String(fnoOpen.length), sub:`Premium: ${fmt(fnoInvested)}`, clr:"var(--navy)" },
                     { lbl:"Unrealised P&L", val:`${sign(fnoUnrealised)}${fmt(Math.abs(fnoUnrealised))}`, sub:`${fnoOpen.length} position${fnoOpen.length!==1?"s":""}`, clr:fnoUnrealised>=0?"var(--green)":"var(--red)" },
-                    { lbl:"Realised P&L",   val:`${sign(fnoRealised)}${fmt(Math.abs(fnoRealised))}`,     sub:`${fnoClosed.length} closed`, clr:fnoRealised>=0?"var(--green)":"var(--red)" },
+                    { lbl:"Realised P&L",   val:`${sign(fnoRealised)}${fmt(Math.abs(fnoRealised))}`, sub:`${fnoClosed.length} closed`, clr:fnoRealised>=0?"var(--green)":"var(--red)" },
                     { lbl:"Win Rate",       val:fnoClosed.length>0?`${Math.round(fnoClosed.filter(t=>calcFnOPnL(t)>0).length/fnoClosed.length*100)}%`:"—", sub:`${fnoClosed.filter(t=>calcFnOPnL(t)>0).length}/${fnoClosed.length} profitable`, clr:"var(--amber)" },
                   ] as const).map((m,i) => (
                     <div key={m.lbl} style={{ padding:"14px 20px", borderRight:i<3?"1px solid var(--bd-100)":"none" }}>
@@ -1775,8 +1775,7 @@ export default function Index() {
                     </div>
                   ))}
                 </div>
-
-                {/* Open positions table or CTA */}
+                {/* Table or CTA */}
                 {fnoOpen.length === 0 ? (
                   <div style={{ padding:"22px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
                     <div>
@@ -1805,7 +1804,7 @@ export default function Index() {
                               padding:"10px 14px", fontSize:"9.5px", fontWeight:700,
                               textTransform:"uppercase", letterSpacing:".09em", color:"var(--tx-300)",
                               background:"var(--bg-surface)", borderBottom:"1.5px solid var(--bd-200)",
-                              textAlign: (["Entry","LTP","P&L"] as const).includes(h as any) ? "right" : (["Type","Status"] as const).includes(h as any) ? "center" : "left",
+                              textAlign: (["Entry","LTP","P&L"] as string[]).includes(h) ? "right" : (["Type","Status"] as string[]).includes(h) ? "center" : "left",
                               whiteSpace:"nowrap",
                             }}>{h}</th>
                           ))}
@@ -1814,10 +1813,8 @@ export default function Index() {
                       <tbody>
                         {fnoOpen.map(t => {
                           const ltp = t.ltp ?? t.entryPrice;
-                          const pnl = t.instrumentType === "PE"
-                            ? (t.entryPrice - ltp) * t.lots * t.lotSize
-                            : (ltp - t.entryPrice) * t.lots * t.lotSize;
-                          const pct = t.entryPrice > 0 ? pnl / (t.entryPrice * t.lots * t.lotSize) * 100 : 0;
+                          const pnl = t.instrumentType === "PE" ? (t.entryPrice-ltp)*t.lots*t.lotSize : (ltp-t.entryPrice)*t.lots*t.lotSize;
+                          const pct = t.entryPrice > 0 ? pnl/(t.entryPrice*t.lots*t.lotSize)*100 : 0;
                           const pos = pnl >= 0;
                           const tcMap: Record<string,{bg:string;color:string;bd:string}> = {
                             CE:  { bg:"var(--green-bg)", color:"var(--green)", bd:"var(--green-bd)" },
@@ -1827,10 +1824,9 @@ export default function Index() {
                           const tc = tcMap[t.instrumentType] ?? tcMap["FUT"];
                           const ep = t.expiry.split("-");
                           const mo = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-                          const ed = ep.length===3 ? `${parseInt(ep[0])} ${mo[parseInt(ep[1])]} \u2019${ep[2].slice(-2)}` : t.expiry;
+                          const ed = ep.length===3 ? `${parseInt(ep[0])} ${mo[parseInt(ep[1])]} ’${ep[2].slice(-2)}` : t.expiry;
                           return (
-                            <tr key={t.id}
-                              style={{ cursor:"pointer", transition:"background .12s" }}
+                            <tr key={t.id} style={{ cursor:"pointer", transition:"background .12s" }}
                               onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}
                               onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="var(--bg-hover)"}
                               onMouseLeave={e => (e.currentTarget as HTMLElement).style.background=""}>
@@ -1839,20 +1835,12 @@ export default function Index() {
                                 {t.notes && <div style={{ fontSize:10, color:"var(--tx-400)", marginTop:1, maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.notes}</div>}
                               </td>
                               <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"center" }}>
-                                <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:5, background:tc.bg, color:tc.color, border:`1px solid ${tc.bd}`, letterSpacing:".04em" }}>
-                                  {t.instrumentType}
-                                </span>
+                                <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:5, background:tc.bg, color:tc.color, border:`1px solid ${tc.bd}` }}>{t.instrumentType}</span>
                               </td>
-                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>
-                                {t.strike ? `₹${t.strike.toLocaleString("en-IN")}` : "—"}
-                              </td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>{t.strike ? `₹${t.strike.toLocaleString("en-IN")}` : "—"}</td>
                               <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontSize:12, fontWeight:600, color:"var(--tx-700)", whiteSpace:"nowrap" }}>{ed}</td>
-                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>
-                                {t.lots} × {t.lotSize.toLocaleString("en-IN")}
-                              </td>
-                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)", textAlign:"right" }}>
-                                ₹{t.entryPrice.toFixed(2)}
-                              </td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>{t.lots} × {t.lotSize.toLocaleString("en-IN")}</td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)", textAlign:"right" }}>₹{t.entryPrice.toFixed(2)}</td>
                               <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"right" }}>
                                 <div style={{ fontFamily:"var(--ff-mono)", fontSize:12, fontWeight:600, color:"var(--navy)", display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4 }}>
                                   {t.ltp && <span style={{ width:5, height:5, borderRadius:"50%", background:"var(--green)", display:"inline-block" }} />}
@@ -1860,17 +1848,11 @@ export default function Index() {
                                 </div>
                               </td>
                               <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"right" }}>
-                                <div style={{ fontFamily:"var(--ff-mono)", fontSize:12.5, fontWeight:700, color:pos?"var(--green)":"var(--red)" }}>
-                                  {sign(pnl)}{fmt(Math.abs(pnl))}
-                                </div>
-                                <div style={{ fontFamily:"var(--ff-mono)", fontSize:10, color:pos?"var(--green)":"var(--red)" }}>
-                                  {sign(pct)}{Math.abs(pct).toFixed(1)}%
-                                </div>
+                                <div style={{ fontFamily:"var(--ff-mono)", fontSize:12.5, fontWeight:700, color:pos?"var(--green)":"var(--red)" }}>{sign(pnl)}{fmt(Math.abs(pnl))}</div>
+                                <div style={{ fontFamily:"var(--ff-mono)", fontSize:10, color:pos?"var(--green)":"var(--red)" }}>{sign(pct)}{Math.abs(pct).toFixed(1)}%</div>
                               </td>
                               <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"center" }}>
-                                <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10.5, fontWeight:700, padding:"3px 10px", borderRadius:20, background:"var(--navy-50)", color:"var(--navy)", border:"1px solid var(--navy-100)" }}>
-                                  Open
-                                </span>
+                                <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10.5, fontWeight:700, padding:"3px 10px", borderRadius:20, background:"var(--navy-50)", color:"var(--navy)", border:"1px solid var(--navy-100)" }}>Open</span>
                               </td>
                             </tr>
                           );
