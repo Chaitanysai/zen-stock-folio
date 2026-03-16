@@ -656,34 +656,57 @@ export default function FnOTable({ trades, onUpdate }: Props) {
   const [showModal, setShowModal] = useState(false);
   const [editTrade, setEditTrade] = useState<FnOTrade | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [ltpMap, setLtpMap]   = useState<Record<string, number>>({});
+  // ltpMap: tradeId → live LTP (option premium for CE/PE, futures price for FUT)
+  const [ltpMap, setLtpMap] = useState<Record<string, number>>({});
+  // sourceLabel: shown in Refresh button to tell user which data source fired
+  const [ltpSource, setLtpSource] = useState<string>("");
 
-  // ── Fetch live prices via Upstox ──────────────────────────────────────────
+  // ── Fetch live F&O prices ─────────────────────────────────────────────────
+  // Calls /api/fno-prices which uses Upstox NFO instrument keys to fetch:
+  //   • CE/PE: actual option premium (NOT the underlying spot price)
+  //   • FUT:   futures price (falls back to Yahoo spot if Upstox unavailable)
   const fetchLivePrices = useCallback(async () => {
     const openTrades = trades.filter(t => t.status === "Open");
     if (openTrades.length === 0) return;
     setRefreshing(true);
     try {
-      const symbols = [...new Set(openTrades.map(t => t.symbol))];
-      // Use existing prices API — futures trade at slight premium/discount to spot
-      const res = await fetch("/api/prices", {
+      const payload = openTrades.map(t => ({
+        id:             t.id,
+        symbol:         t.symbol,
+        instrumentType: t.instrumentType,
+        strike:         t.strike,
+        expiry:         t.expiry,
+        lotSize:        t.lotSize,
+        lots:           t.lots,
+      }));
+      const res = await fetch("/api/fno-prices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tickers: symbols }),
+        body: JSON.stringify({ trades: payload }),
       });
+      if (!res.ok) return;
       const data = await res.json();
-      if (data.prices) {
+      if (data.ltpMap) {
+        // Build id-keyed map for quick lookup in render
         const newMap: Record<string, number> = {};
-        symbols.forEach(sym => {
-          if (data.prices[sym]?.price) newMap[sym] = data.prices[sym].price;
-        });
+        for (const [id, priceObj] of Object.entries(data.ltpMap as Record<string, any>)) {
+          if (priceObj?.ltp > 0) newMap[id] = priceObj.ltp;
+        }
         setLtpMap(newMap);
-        // Update ltp on open trades
-        onUpdate(trades.map(t =>
-          t.status === "Open" && newMap[t.symbol]
-            ? { ...t, ltp: newMap[t.symbol] }
-            : t
-        ));
+        setLtpSource(data.source ?? "");
+        // Update trades with fresh LTP and greeks
+        onUpdate(trades.map(t => {
+          const p = (data.ltpMap as Record<string, any>)[t.id];
+          if (t.status === "Open" && p?.ltp > 0) {
+            return {
+              ...t,
+              ltp:   p.ltp,
+              iv:    p.iv    ?? t.iv,
+              delta: p.delta ?? t.delta,
+            };
+          }
+          return t;
+        }));
       }
     } catch { /* silently fail */ }
     finally { setRefreshing(false); }
@@ -739,9 +762,10 @@ export default function FnOTable({ trades, onUpdate }: Props) {
             </div>
           </div>
           <div className="fno-toolbar-right">
-            <button className="fno-refresh-btn" onClick={fetchLivePrices} disabled={refreshing}>
+            <button className="fno-refresh-btn" onClick={fetchLivePrices} disabled={refreshing}
+              title={ltpSource ? "Last source: " + ltpSource + ". Fetches live option premiums via Upstox NFO keys, futures via Upstox/Yahoo." : "Fetches live option premiums (CE/PE) via Upstox and futures prices via Upstox/Yahoo."}>
               <RefreshCw size={13} className={refreshing ? "fno-spinning" : ""} />
-              {refreshing ? "Updating…" : "Refresh LTP"}
+              {refreshing ? "Updating…" : ltpSource ? "Live ✓" : "Refresh LTP"}
             </button>
             <button className="fno-add-btn" onClick={() => setShowModal(true)}>
               <Plus size={14} /> Add Trade
@@ -825,7 +849,7 @@ export default function FnOTable({ trades, onUpdate }: Props) {
                   const pnl    = calcFnOPnL(t);
                   const pnlPct = t.entryPrice > 0 ? pnl / (t.entryPrice * t.lots * t.lotSize) * 100 : 0;
                   const pos    = pnl >= 0;
-                  const hasLive = t.status === "Open" && !!ltpMap[t.symbol];
+                  const hasLive = t.status === "Open" && !!ltpMap[t.id];
 
                   return (
                     <tr key={t.id}>
