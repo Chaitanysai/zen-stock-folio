@@ -4,7 +4,7 @@ import {
   Brain, History, BarChart3, Bell, RefreshCw,
   LogOut, Settings, PieChart, Zap, ChevronLeft,
   ChevronRight, Search, TrendingDown,
-  Activity, Wallet, Award, Newspaper, CalendarDays, ArrowUpRight, ArrowDownRight
+  Activity, Wallet, Award, Newspaper, ArrowUpRight, ArrowDownRight
 } from "lucide-react";
 import {
   portfolioData as initialData, PortfolioStock,
@@ -81,7 +81,6 @@ function fmtNum(n: number) {
   return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
 }
 function sign(n: number) { return n >= 0 ? "+" : "−"; }
-
 function getGreeting(): string {
   const h = new Date().getHours();
   if (h < 12) return "Good morning";
@@ -89,9 +88,7 @@ function getGreeting(): string {
   return "Good evening";
 }
 function fmtFullDate(): string {
-  return new Date().toLocaleDateString("en-IN", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric"
-  });
+  return new Date().toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long", year:"numeric" });
 }
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -879,34 +876,28 @@ const CSS = `
 
 /* ══════════════════════════════════════════════════
    DARK MODE — shadcn/zinc-900 style
-   Surfaces: zinc-950/900/800, accent: indigo-400
-   Green: lime-400, Red: rose-400, Amber: amber-400
 ══════════════════════════════════════════════════ */
 .dark .zf {
-  --bg-app:      #09090b;   /* zinc-950 */
-  --bg-sidebar:  #0f0f13;   /* slightly lighter */
-  --bg-card:     #18181b;   /* zinc-900 */
-  --bg-surface:  #1c1c21;   /* zinc-900 mid */
-  --bg-hover:    #27272a;   /* zinc-800 */
+  --bg-app:      #09090b;
+  --bg-sidebar:  #0f0f13;
+  --bg-card:     #18181b;
+  --bg-surface:  #1c1c21;
+  --bg-hover:    #27272a;
   --bg-input:    #09090b;
-  /* Accent — soft indigo, not harsh blue */
   --navy:        #818cf8;
   --navy-700:    #a5b4fc;
   --navy-600:    #c7d2fe;
   --navy-100:    rgba(129,140,248,.16);
   --navy-50:     rgba(129,140,248,.08);
-  /* Text — zinc hierarchy */
-  --tx-900:      #fafafa;   /* zinc-50 */
-  --tx-700:      #e4e4e7;   /* zinc-200 */
-  --tx-500:      #a1a1aa;   /* zinc-400 */
-  --tx-400:      #71717a;   /* zinc-500 */
-  --tx-300:      #52525b;   /* zinc-600 */
-  --tx-200:      #3f3f46;   /* zinc-700 */
-  /* Borders */
+  --tx-900:      #fafafa;
+  --tx-700:      #e4e4e7;
+  --tx-500:      #a1a1aa;
+  --tx-400:      #71717a;
+  --tx-300:      #52525b;
+  --tx-200:      #3f3f46;
   --bd-200:      #3f3f46;
   --bd-100:      #27272a;
   --bd-50:       #18181b;
-  /* Semantic — vivid on dark */
   --green:       #4ade80;
   --green-bg:    rgba(74,222,128,.10);
   --green-bd:    rgba(74,222,128,.20);
@@ -921,8 +912,6 @@ const CSS = `
   --sh-3: 0 8px 30px rgba(0,0,0,.8);
   color: #fafafa;
 }
-
-/* ── Sidebar ── */
 .dark .zf-sidebar         { background: #0f0f13; border-right: 1px solid #27272a; box-shadow: none; }
 .dark .zf-brand-name      { color: #fafafa; }
 .dark .zf-brand-sub       { color: #71717a; }
@@ -939,8 +928,6 @@ const CSS = `
 .dark .zf-user-role       { color: #71717a; }
 .dark .zf-collapse-btn    { background: #18181b; border-color: #3f3f46; color: #71717a; }
 .dark .zf-collapse-btn:hover { background: #27272a; color: #fafafa; }
-
-/* ── Header ── */
 .dark .zf-header          { background: #0f0f13; border-bottom: 1px solid #27272a; box-shadow: none; }
 .dark .zf-page-title      { color: #fafafa; }
 .dark .zf-search          { background: #18181b; border-color: #3f3f46; }
@@ -959,8 +946,6 @@ const CSS = `
 .dark .zf-umenu-btn:hover { background: #27272a; color: #fafafa; }
 .dark .zf-umenu-btn.danger  { color: #f87171; }
 .dark .zf-umenu-btn.primary { color: #818cf8; }
-
-/* ── KPI cards ── */
 .dark .zf-kpi             { background: #18181b; border-color: #27272a; }
 .dark .zf-kpi-lbl         { color: #71717a; }
 .dark .zf-kpi-val         { color: #fafafa; }
@@ -976,19 +961,13 @@ const CSS = `
 .dark .zf-chip-green { background: rgba(74,222,128,.12) !important; color: #4ade80 !important; border-color: rgba(74,222,128,.22) !important; }
 .dark .zf-chip-red   { background: rgba(248,113,113,.12) !important; color: #f87171 !important; border-color: rgba(248,113,113,.22) !important; }
 .dark .zf-chip-navy  { background: rgba(129,140,248,.12) !important; color: #818cf8 !important; border-color: rgba(129,140,248,.22) !important; }
-
-/* ── Cards ── */
 .dark .zf-card            { background: #18181b; border: 1px solid #27272a; }
 .dark .zf-card-head       { background: #18181b; border-bottom: 1px solid #27272a; }
 .dark .zf-card-title      { color: #fafafa; }
 .dark .zf-card-badge      { background: rgba(129,140,248,.12); border-color: rgba(129,140,248,.20); color: #818cf8; }
 .dark .zf-card-link       { background: rgba(129,140,248,.10); border-color: rgba(129,140,248,.18); color: #818cf8; }
 .dark .zf-card-link:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
-
-/* ── Content area ── */
 .dark .zf-content         { background: #09090b; }
-
-/* ── Holdings table ── */
 .dark .zf-tbl-head        { background: #18181b; border-bottom-color: #27272a; }
 .dark .zf-th              { color: #52525b; }
 .dark .zf-trow            { border-bottom-color: #27272a; }
@@ -997,29 +976,21 @@ const CSS = `
 .dark .zf-sector-tag      { background: #27272a; border-color: #3f3f46; color: #71717a; }
 .dark .zf-logo-wrap       { background: rgba(129,140,248,.10); border-color: rgba(129,140,248,.18); color: #818cf8; }
 .dark .zf-td              { color: #a1a1aa; }
-
-/* ── Watchlist ── */
 .dark .zf-wl-head         { background: #18181b; border-bottom-color: #27272a; }
 .dark .zf-wl-row          { border-bottom-color: #27272a; }
 .dark .zf-wl-row:hover    { background: #27272a; }
 .dark .zf-wl-name         { color: #fafafa; }
 .dark .zf-wl-sub          { color: #71717a; }
 .dark .zf-wl-price        { color: #e4e4e7; }
-
-/* ── Sector ── */
 .dark .zf-sector-name     { color: #e4e4e7; }
 .dark .zf-sector-pct      { color: #818cf8; }
 .dark .zf-sector-bar      { background: #27272a; }
-
-/* ── F&O inline table ── */
 .dark table th { background: #18181b !important; color: #52525b !important; border-bottom-color: #27272a !important; }
 .dark table td { color: #a1a1aa !important; border-bottom-color: #27272a !important; }
 .dark table tbody tr:hover td { background: #27272a !important; }
 .dark table tbody td .zf-ticker-name,
 .dark table tbody td div[style*="font-weight:700"],
 .dark table tbody td div[style*="fontWeight:700"] { color: #fafafa !important; }
-
-/* ── Tab panel ── */
 .dark .zf-tab-panel { background: #18181b; border-color: #27272a; }
 .dark .zf-tab-panel th { background: #18181b !important; color: #52525b !important; border-bottom-color: #27272a !important; }
 .dark .zf-tab-panel td { color: #a1a1aa !important; border-bottom-color: #27272a !important; }
@@ -1063,38 +1034,28 @@ const CSS = `
 .dark .zf-tab-panel .recharts-default-tooltip { background: #18181b !important; border-color: #27272a !important; color: #fafafa !important; }
 .dark .zf-tab-panel [class*="badge"],
 .dark .zf-tab-panel [class*="Badge"] { background: rgba(129,140,248,.12) !important; color: #818cf8 !important; border-color: rgba(129,140,248,.20) !important; }
-
-/* ── Greeting bar ── */
+/* ── Greeting bar dark ── */
 .dark .zf-greeting      { background: #0f0f13 !important; border-bottom: 1px solid #27272a !important; }
 .dark .zf-greeting-name { color: #fafafa !important; }
 .dark .zf-greeting-date { color: #71717a !important; }
 .dark .zf-greeting-pill { background: #18181b !important; border-color: #3f3f46 !important; color: #a1a1aa !important; }
 
-/* ══════════════════════════════════════════════════
-   GREETING BAR (dashboard overview)
-══════════════════════════════════════════════════ */
+/* ── Greeting bar ── */
 .zf-greeting {
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--bd-100);
-  padding: 14px 24px;
-  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-card); border-bottom: 1px solid var(--bd-100);
+  padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0;
 }
-.zf-greeting-name {
-  font-family: var(--ff-disp);
-  font-size: 20px; color: var(--tx-900); letter-spacing: -.3px; line-height: 1.2;
-}
+.zf-greeting-name { font-family: var(--ff-disp); font-size: 20px; color: var(--tx-900); letter-spacing: -.3px; }
 .zf-greeting-date { font-size: 11.5px; color: var(--tx-400); font-weight: 500; margin-top: 2px; }
 .zf-greeting-right { display: flex; align-items: center; gap: 8px; }
 .zf-greeting-pill {
-  display: flex; align-items: center; gap: 7px;
-  padding: 6px 13px; border-radius: 9px;
-  border: 1px solid var(--bd-200); background: var(--bg-surface);
-  font-size: 12px; font-weight: 600; color: var(--tx-700);
-  white-space: nowrap; cursor: pointer; transition: all .13s;
+  display: flex; align-items: center; gap: 6px; padding: 6px 13px;
+  border-radius: 9px; border: 1px solid var(--bd-200); background: var(--bg-surface);
+  font-size: 12px; font-weight: 600; color: var(--tx-700); white-space: nowrap;
+  cursor: pointer; transition: all .13s;
 }
 .zf-greeting-pill:hover { background: var(--bg-hover); }
-
 `;
 
 // ─── Line Chart Widget ────────────────────────────────────────────────────────
@@ -1328,16 +1289,14 @@ export default function Index() {
 
   const winners         = closedPos.filter(s => calcProfitLoss(s) > 0);
   const winRate         = closedPos.length > 0 ? winners.length / closedPos.length * 100 : 0;
-  // Today's P&L — uses prices[ticker].change (absolute day move) when live, else full unrealised
+  // Today's P&L: use live price day-change when available, else total unrealised
   const todayPnl = isLive
     ? activePos.reduce((acc, s) => {
         const pd = prices[s.ticker];
-        // pd.change = today's absolute ₹ move (positive = up, negative = down)
         if (pd?.change !== undefined) return acc + pd.change * s.quantity;
-        // fallback: stock-level unrealised if no day-change data from API
         return acc + (s.cmp - s.entryPrice) * s.quantity;
       }, 0)
-    : unrealisedPnl; // when cached, show total unrealised
+    : unrealisedPnl;
   const todayPct = activeCurr > 0 ? (todayPnl / activeCurr) * 100 : 0;
 
   const performers = activePos
@@ -1593,13 +1552,11 @@ export default function Index() {
           {tab === "overview" && (
             <div className="zf-greeting">
               <div>
-                <div className="zf-greeting-name">
-                  {getGreeting()}, {user?.email?.split("@")[0] ?? "Trader"} 👋
-                </div>
+                <div className="zf-greeting-name">{getGreeting()}, {user?.email?.split("@")[0] ?? "Trader"} 👋</div>
                 <div className="zf-greeting-date">{fmtFullDate()}</div>
               </div>
               <div className="zf-greeting-right">
-                <div className={`zf-greeting-pill`}>
+                <div className="zf-greeting-pill">
                   <span style={{ width:7, height:7, borderRadius:"50%", background:isLive?"var(--green)":"var(--amber)", display:"inline-block" }} />
                   NSE {isLive ? "Live" : "Cached"} · {now}
                 </div>
@@ -1609,8 +1566,8 @@ export default function Index() {
                     {sign(pnl)}{fmt(Math.abs(pnl))} unrealised
                   </div>
                 )}
-                <div className="zf-greeting-pill" onClick={refresh} style={{ cursor:"pointer" }}>
-                  <RefreshCw size={12} /> Refresh prices
+                <div className="zf-greeting-pill" onClick={refresh}>
+                  <RefreshCw size={12} /> Refresh
                 </div>
               </div>
             </div>
@@ -1788,7 +1745,7 @@ export default function Index() {
                 </div>
               </div>
 
-              {/* ── ROW 3: F&O Positions — always visible KPI strip ── */}
+              {/* ── ROW 3: F&O Positions ── */}
               <div className="zf-card">
                 <div className="zf-card-head">
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -1803,14 +1760,14 @@ export default function Index() {
                   </div>
                 </div>
 
-                {/* Always-visible 4-metric strip */}
+                {/* Always-visible KPI strip */}
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", borderBottom:"1px solid var(--bd-100)" }}>
-                  {[
-                    { lbl:"Open Positions",  val:String(fnoOpen.length),  sub:`Premium: ${fmt(fnoInvested)}`,  clr:"var(--navy)" },
-                    { lbl:"Unrealised P&L",  val:`${sign(fnoUnrealised)}${fmt(Math.abs(fnoUnrealised))}`, sub:`${fnoOpen.length} position${fnoOpen.length!==1?"s":""}`, clr:fnoUnrealised>=0?"var(--green)":"var(--red)" },
-                    { lbl:"Realised P&L",    val:`${sign(fnoRealised)}${fmt(Math.abs(fnoRealised))}`, sub:`${fnoClosed.length} closed`, clr:fnoRealised>=0?"var(--green)":"var(--red)" },
-                    { lbl:"F&O Win Rate",    val:(() => { const w=fnoClosed.filter(t=>calcFnOPnL(t)>0).length; return fnoClosed.length>0?`${Math.round(w/fnoClosed.length*100)}%`:"—"; })(), sub:`${fnoClosed.filter(t=>calcFnOPnL(t)>0).length}/${fnoClosed.length} profitable`, clr:"var(--amber)" },
-                  ].map((m,i) => (
+                  {([
+                    { lbl:"Open Positions", val:String(fnoOpen.length),  sub:`Premium: ${fmt(fnoInvested)}`,  clr:"var(--navy)" },
+                    { lbl:"Unrealised P&L", val:`${sign(fnoUnrealised)}${fmt(Math.abs(fnoUnrealised))}`, sub:`${fnoOpen.length} position${fnoOpen.length!==1?"s":""}`, clr:fnoUnrealised>=0?"var(--green)":"var(--red)" },
+                    { lbl:"Realised P&L",   val:`${sign(fnoRealised)}${fmt(Math.abs(fnoRealised))}`,     sub:`${fnoClosed.length} closed`, clr:fnoRealised>=0?"var(--green)":"var(--red)" },
+                    { lbl:"Win Rate",       val:fnoClosed.length>0?`${Math.round(fnoClosed.filter(t=>calcFnOPnL(t)>0).length/fnoClosed.length*100)}%`:"—", sub:`${fnoClosed.filter(t=>calcFnOPnL(t)>0).length}/${fnoClosed.length} profitable`, clr:"var(--amber)" },
+                  ] as const).map((m,i) => (
                     <div key={m.lbl} style={{ padding:"14px 20px", borderRight:i<3?"1px solid var(--bd-100)":"none" }}>
                       <div style={{ fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:".09em", color:"var(--tx-300)", marginBottom:5 }}>{m.lbl}</div>
                       <div style={{ fontFamily:"var(--ff-mono)", fontSize:20, fontWeight:700, color:m.clr, letterSpacing:"-.5px" }}>{m.val}</div>
@@ -1819,7 +1776,7 @@ export default function Index() {
                   ))}
                 </div>
 
-                {/* Table or CTA */}
+                {/* Open positions table or CTA */}
                 {fnoOpen.length === 0 ? (
                   <div style={{ padding:"22px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:16 }}>
                     <div>
@@ -1839,92 +1796,89 @@ export default function Index() {
                     </button>
                   </div>
                 ) : (
-                    <div style={{ overflowX:"auto" }}>
-                      <table style={{ width:"100%", borderCollapse:"separate", borderSpacing:0 }}>
-                        <thead>
-                          <tr>
-                            {["Instrument","Type","Strike","Expiry","Lots×Size","Entry","LTP","P&L","Status"].map(h => (
-                              <th key={h} style={{
-                                padding:"10px 14px", fontSize:"9.5px", fontWeight:700,
-                                textTransform:"uppercase", letterSpacing:".09em", color:"var(--tx-300)",
-                                background:"var(--bg-surface)", borderBottom:"1.5px solid var(--bd-200)",
-                                textAlign: ["Entry","LTP","P&L"].includes(h) ? "right" : ["Type","Status"].includes(h) ? "center" : "left",
-                                whiteSpace:"nowrap",
-                              }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {fnoTrades.filter(t => t.status === "Open").slice(0,4).map(t => {
-                            const ltp  = t.ltp ?? t.entryPrice;
-                            const pnl  = t.instrumentType === "PE"
-                              ? (t.entryPrice - ltp) * t.lots * t.lotSize
-                              : (ltp - t.entryPrice) * t.lots * t.lotSize;
-                            const pct  = t.entryPrice > 0 ? pnl / (t.entryPrice * t.lots * t.lotSize) * 100 : 0;
-                            const pos  = pnl >= 0;
-                            const typeCfgMap: Record<string, { bg:string; color:string; bd:string }> = {
-                              CE:  { bg:"var(--green-bg)", color:"var(--green)",  bd:"var(--green-bd)" },
-                              PE:  { bg:"var(--red-bg)",   color:"var(--red)",    bd:"var(--red-bd)"   },
-                              FUT: { bg:"var(--navy-50)",  color:"var(--navy)",   bd:"var(--navy-100)" },
-                            };
-                            const typeCfg = typeCfgMap[t.instrumentType] ?? typeCfgMap["FUT"];
-                            const expParts = t.expiry.split("-");
-                            const months = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-                            const expDisplay = expParts.length===3
-                              ? `${parseInt(expParts[0])} ${months[parseInt(expParts[1])]} '${expParts[2].slice(-2)}`
-                              : t.expiry;
-                            return (
-                              <tr key={t.id} style={{ transition:"background .12s" }}
-                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="var(--bg-hover)"}
-                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.background=""}>
-                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)" }}>
-                                  <div style={{ fontSize:13, fontWeight:700, color:"var(--tx-900)" }}>{t.symbol}</div>
-                                  {t.notes && <div style={{ fontSize:10, color:"var(--tx-400)", marginTop:1, maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.notes}</div>}
-                                </td>
-                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"center" }}>
-                                  <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:5, background:typeCfg.bg, color:typeCfg.color, border:`1px solid ${typeCfg.bd}`, letterSpacing:".04em" }}>
-                                    {t.instrumentType}
-                                  </span>
-                                </td>
-                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>
-                                  {t.strike ? `₹${t.strike.toLocaleString("en-IN")}` : "—"}
-                                </td>
-                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontSize:12, fontWeight:600, color:"var(--tx-700)", whiteSpace:"nowrap" }}>
-                                  {expDisplay}
-                                </td>
-                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>
-                                  {t.lots} × {t.lotSize.toLocaleString("en-IN")}
-                                </td>
-                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)", textAlign:"right" }}>
-                                  ₹{t.entryPrice.toFixed(2)}
-                                </td>
-                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"right" }}>
-                                  <div style={{ fontFamily:"var(--ff-mono)", fontSize:12, fontWeight:600, color:"var(--navy)", display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4 }}>
-                                    {t.ltp && <span style={{ width:5, height:5, borderRadius:"50%", background:"var(--green)", display:"inline-block" }} />}
-                                    ₹{ltp.toFixed(2)}
-                                  </div>
-                                </td>
-                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"right" }}>
-                                  <div style={{ fontFamily:"var(--ff-mono)", fontSize:12.5, fontWeight:700, color: pos?"var(--green)":"var(--red)" }}>
-                                    {sign(pnl)}{fmt(Math.abs(pnl))}
-                                  </div>
-                                  <div style={{ fontFamily:"var(--ff-mono)", fontSize:10, color: pos?"var(--green)":"var(--red)" }}>
-                                    {sign(pct)}{Math.abs(pct).toFixed(1)}%
-                                  </div>
-                                </td>
-                                <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"center" }}>
-                                  <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10.5, fontWeight:700, padding:"3px 10px", borderRadius:20, background:"var(--navy-50)", color:"var(--navy)", border:"1px solid var(--navy-100)" }}>
-                                    Open
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
+                  <div style={{ overflowX:"auto" }}>
+                    <table style={{ width:"100%", borderCollapse:"separate", borderSpacing:0 }}>
+                      <thead>
+                        <tr>
+                          {(["Instrument","Type","Strike","Expiry","Lots×Size","Entry","LTP","P&L","Status"] as const).map(h => (
+                            <th key={h} style={{
+                              padding:"10px 14px", fontSize:"9.5px", fontWeight:700,
+                              textTransform:"uppercase", letterSpacing:".09em", color:"var(--tx-300)",
+                              background:"var(--bg-surface)", borderBottom:"1.5px solid var(--bd-200)",
+                              textAlign: (["Entry","LTP","P&L"] as const).includes(h as any) ? "right" : (["Type","Status"] as const).includes(h as any) ? "center" : "left",
+                              whiteSpace:"nowrap",
+                            }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fnoOpen.map(t => {
+                          const ltp = t.ltp ?? t.entryPrice;
+                          const pnl = t.instrumentType === "PE"
+                            ? (t.entryPrice - ltp) * t.lots * t.lotSize
+                            : (ltp - t.entryPrice) * t.lots * t.lotSize;
+                          const pct = t.entryPrice > 0 ? pnl / (t.entryPrice * t.lots * t.lotSize) * 100 : 0;
+                          const pos = pnl >= 0;
+                          const tcMap: Record<string,{bg:string;color:string;bd:string}> = {
+                            CE:  { bg:"var(--green-bg)", color:"var(--green)", bd:"var(--green-bd)" },
+                            PE:  { bg:"var(--red-bg)",   color:"var(--red)",   bd:"var(--red-bd)"   },
+                            FUT: { bg:"var(--navy-50)",  color:"var(--navy)",  bd:"var(--navy-100)" },
+                          };
+                          const tc = tcMap[t.instrumentType] ?? tcMap["FUT"];
+                          const ep = t.expiry.split("-");
+                          const mo = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                          const ed = ep.length===3 ? `${parseInt(ep[0])} ${mo[parseInt(ep[1])]} \u2019${ep[2].slice(-2)}` : t.expiry;
+                          return (
+                            <tr key={t.id}
+                              style={{ cursor:"pointer", transition:"background .12s" }}
+                              onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}
+                              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background="var(--bg-hover)"}
+                              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background=""}>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)" }}>
+                                <div style={{ fontSize:13, fontWeight:700, color:"var(--tx-900)" }}>{t.symbol}</div>
+                                {t.notes && <div style={{ fontSize:10, color:"var(--tx-400)", marginTop:1, maxWidth:160, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{t.notes}</div>}
+                              </td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"center" }}>
+                                <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:800, padding:"2px 8px", borderRadius:5, background:tc.bg, color:tc.color, border:`1px solid ${tc.bd}`, letterSpacing:".04em" }}>
+                                  {t.instrumentType}
+                                </span>
+                              </td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>
+                                {t.strike ? `₹${t.strike.toLocaleString("en-IN")}` : "—"}
+                              </td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontSize:12, fontWeight:600, color:"var(--tx-700)", whiteSpace:"nowrap" }}>{ed}</td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>
+                                {t.lots} × {t.lotSize.toLocaleString("en-IN")}
+                              </td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)", textAlign:"right" }}>
+                                ₹{t.entryPrice.toFixed(2)}
+                              </td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"right" }}>
+                                <div style={{ fontFamily:"var(--ff-mono)", fontSize:12, fontWeight:600, color:"var(--navy)", display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4 }}>
+                                  {t.ltp && <span style={{ width:5, height:5, borderRadius:"50%", background:"var(--green)", display:"inline-block" }} />}
+                                  ₹{ltp.toFixed(2)}
+                                </div>
+                              </td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"right" }}>
+                                <div style={{ fontFamily:"var(--ff-mono)", fontSize:12.5, fontWeight:700, color:pos?"var(--green)":"var(--red)" }}>
+                                  {sign(pnl)}{fmt(Math.abs(pnl))}
+                                </div>
+                                <div style={{ fontFamily:"var(--ff-mono)", fontSize:10, color:pos?"var(--green)":"var(--red)" }}>
+                                  {sign(pct)}{Math.abs(pct).toFixed(1)}%
+                                </div>
+                              </td>
+                              <td style={{ padding:"12px 14px", borderBottom:"1px solid var(--bd-50)", textAlign:"center" }}>
+                                <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:10.5, fontWeight:700, padding:"3px 10px", borderRadius:20, background:"var(--navy-50)", color:"var(--navy)", border:"1px solid var(--navy-100)" }}>
+                                  Open
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               {/* ── ROW 4: Charts moved to bottom ── */}
