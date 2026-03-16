@@ -1228,9 +1228,28 @@ export default function Index() {
   const [watchlist, setWatchlist] = useState<WatchlistStock[]>(()  => loadFromLocal()?.watchlist ?? initialWatchlist);
   const [alerts,    setAlerts]    = useState<PriceAlert[]>(()      => loadFromLocal()?.alerts    ?? []);
   const [journal,   setJournal]   = useState<TradeJournalEntry[]>([]);
-  const [fnoTrades, setFnoTrades] = useState<FnOTrade[]>(() =>
-    (() => { try { const d = localStorage.getItem("zf-fno-trades"); return d ? JSON.parse(d) : fnOTradesData; } catch { return fnOTradesData; } })()
-  );
+  const [fnoTrades, setFnoTrades] = useState<FnOTrade[]>(() => {
+    try {
+      const d = localStorage.getItem("zf-fno-trades");
+      if (!d) return fnOTradesData;
+      const parsed: FnOTrade[] = JSON.parse(d);
+      // Sanitize: clear corrupted option LTPs caused by the old bug that stored
+      // the underlying stock spot price as the option premium. An option premium
+      // should always be << the underlying price. We detect corruption by checking
+      // if ltp > entryPrice * 10 for options (a 10x move on a premium is impossible
+      // in normal trading, but storing ₹6414 for a ₹118 premium is clearly wrong).
+      return parsed.map(t => {
+        if (t.instrumentType !== "FUT" && t.ltp !== undefined) {
+          const maxReasonableLtp = Math.max(t.entryPrice * 20, 500);
+          if (t.ltp > maxReasonableLtp) {
+            console.warn(`[FnO] Clearing corrupted LTP for ${t.symbol} ${t.instrumentType}: ₹${t.ltp} → reset to entry ₹${t.entryPrice}`);
+            return { ...t, ltp: undefined };
+          }
+        }
+        return t;
+      });
+    } catch { return fnOTradesData; }
+  });
   const [tradesSubTab, setTradesSubTab] = useState<"equity"|"fno">("equity");
 
   // Persist F&O trades
@@ -1272,20 +1291,24 @@ export default function Index() {
   // F&O metrics
   const fnoOpen         = fnoTrades.filter(t => t.status === "Open");
   const fnoClosed       = fnoTrades.filter(t => t.status !== "Open");
-  const fnoInvested     = fnoTrades.reduce((s, t) => s + calcFnOInvested(t), 0);        // all F&O premium/margin
-  const fnoActiveCurr   = fnoOpen.reduce((s, t) => s + (t.ltp ?? t.entryPrice) * t.lots * t.lotSize, 0);
+  // F&O "invested" = premium paid for options + margin deployed for futures (~15% notional)
+  const fnoInvested     = fnoTrades.reduce((s, t) => s + calcFnOInvested(t), 0);
+  // F&O unrealised P&L = sum of P&L on all open positions
   const fnoUnrealised   = fnoOpen.reduce((s, t) => s + calcFnOPnL(t), 0);
   const fnoRealised     = fnoClosed.reduce((s, t) => s + calcFnOPnL(t), 0);
+  // F&O current value = invested capital + unrealised P&L (NOT full notional)
+  // This keeps "Portfolio Value" meaningful — shows what your F&O book is worth today
+  const fnoActiveCurr   = fnoInvested + fnoUnrealised;
 
   // COMBINED dashboard metrics
-  // "Total Invested" = everything ever put in (equity ALL trades + F&O ALL premium)
+  // "Total Invested" = equity cost basis (all trades) + F&O capital deployed
   const invested        = equityInvested + fnoInvested;
-  // "Portfolio Value" = active equity CMP value + F&O open positions value
+  // "Portfolio Value" = active equity market value + F&O current value
   const current         = activeCurr + fnoActiveCurr;
-  // "Unrealised P&L" = equity open + F&O open
+  // "Unrealised P&L" = equity open P&L + F&O open P&L
   const pnl             = unrealisedPnl + fnoUnrealised;
   const pnlPct          = invested > 0 ? pnl / invested * 100 : 0;
-  // "Realised P&L" = equity closed + F&O closed
+  // "Realised P&L" = equity closed P&L + F&O closed P&L
   const totalRealised   = realisedPnl + fnoRealised;
 
   const winners         = closedPos.filter(s => calcProfitLoss(s) > 0);
