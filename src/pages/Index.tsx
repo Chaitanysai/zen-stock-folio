@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw, History, BookOpen, Bell, PieChart, Save, CloudUpload, CloudDownload } from "lucide-react";
+import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw, History, BookOpen, Bell, Brain, PieChart, Save, CloudUpload, CloudDownload } from "lucide-react";
 import { portfolioData as initialData, PortfolioStock, tradeStrategies as initialTrades, TradeStrategy, watchlistData as initialWatchlist, WatchlistStock, PriceAlert, TradeJournalEntry } from "@/data/sampleData";
 import DashboardStats from "@/components/DashboardStats";
 import PortfolioTable from "@/components/PortfolioTable";
@@ -13,6 +13,7 @@ import TradeHistory from "@/components/TradeHistory";
 import TradeJournal from "@/components/TradeJournal";
 import SectorDiversification from "@/components/SectorDiversification";
 import PriceAlerts from "@/components/PriceAlerts";
+import AIInsights from "@/components/AIInsights";
 import ExportPortfolio from "@/components/ExportPortfolio";
 import { useToast } from "@/hooks/use-toast";
 import { useLivePrices } from "@/hooks/useLivePrices";
@@ -301,11 +302,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-50 flex-shrink-0 w-full">
+      <header className="border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-50">
         <div className="absolute inset-x-0 top-0 h-[1px] gradient-primary opacity-60" />
-        <div className="container flex items-center justify-between h-14 min-h-[56px] px-4 gap-3 flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center shadow-lg flex-shrink-0">
+        <div className="container flex items-center justify-between h-14 px-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center shadow-lg">
               <BarChart3 className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
@@ -313,7 +314,7 @@ const Index = () => {
               <p className="text-[10px] text-muted-foreground">Portfolio & Trade Dashboard · ₹ INR</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-3">
             <ExportPortfolio stocks={stocks} />
             <Button variant="secondary" size="sm" onClick={handleSavePortfolio} className="gap-1.5 text-xs">
               <Save className="h-3.5 w-3.5" />
@@ -329,8 +330,8 @@ const Index = () => {
             </Button>
             <ThemeToggle />
             <div className="flex items-center gap-2">
-              <div className={`h-2 w-2 rounded-full flex-shrink-0 ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
+              <div className={`h-2 w-2 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
+              <span className="text-xs text-muted-foreground">
                 {lastUpdated ? `Updated ${formatTime(lastUpdated)}` : "Live Prices"}
               </span>
             </div>
@@ -376,20 +377,16 @@ const Index = () => {
               <TabsTrigger value="risk" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
                 <Shield className="h-3.5 w-3.5" /> Risk
               </TabsTrigger>
+              <TabsTrigger value="ai" className="text-xs gap-1.5 rounded-lg data-[state=active]:gradient-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
+                <Brain className="h-3.5 w-3.5" /> AI Insights
+              </TabsTrigger>
             </TabsList>
           </div>
 
           <TabsContent value="dashboard" className="mt-4 space-y-4">
             <PortfolioCharts stocks={stocks} />
             <TradeAnalytics stocks={stocks} />
-            <div className="rounded-xl border border-border bg-card/60 backdrop-blur-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-border">
-                <h3 className="text-sm font-semibold">F&amp;O / Active Trades</h3>
-              </div>
-              <div className="p-2">
-                <TradeStrategyTable trades={trades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} />
-              </div>
-            </div>
+            <TradeStrategyTable trades={trades} onEdit={handleEditTrade} onDelete={handleDeleteTrade} />
             <PortfolioTable stocks={stocks} onAdd={handleAddStock} onImport={handleImportStocks} onEdit={handleEditStock} onDelete={handleDeleteStock} />
           </TabsContent>
 
@@ -425,6 +422,10 @@ const Index = () => {
 
           <TabsContent value="risk" className="mt-4">
             <RiskAnalysis stocks={stocks} trades={trades} onEditTrade={handleEditTrade} />
+          </TabsContent>
+
+          <TabsContent value="ai" className="mt-4">
+            <AIInsights stocks={stocks} trades={trades} />
           </TabsContent>
         </Tabs>
       </main>
