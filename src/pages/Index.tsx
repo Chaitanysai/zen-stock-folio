@@ -634,7 +634,204 @@ const CSS = `
 @media (max-width:900px)  { .zf-kpi-row { grid-template-columns:repeat(2,1fr); } .zf-bot-row { grid-template-columns:1fr; } .zf-search { display:none; } }
 @media (max-width:640px)  { .zf-kpi-row { grid-template-columns:1fr 1fr; } .zf-content { padding:14px; gap:14px; } }
 
-/* Light mode override — keep dark always for this design */
+/* ══════════════════════════════════════════════════
+   LIGHT MODE — clean institutional white
+   Mirrors the Stitch design with inverted palette
+══════════════════════════════════════════════════ */
+:not(.dark) .zf {
+  --bg-app:       #f0f2f5;
+  --bg-sidebar:   #ffffff;
+  --bg-card:      #ffffff;
+  --bg-surface:   #f6f8fb;
+  --bg-hover:     #eef1f6;
+  --bg-input:     #f6f8fb;
+
+  /* Indigo primary — slightly deeper for light bg readability */
+  --navy:         #4f52d4;
+  --navy-700:     #3d40c0;
+  --navy-600:     #6063ee;
+  --navy-100:     rgba(79,82,212,.12);
+  --navy-50:      rgba(79,82,212,.07);
+
+  /* Text */
+  --tx-900:       #0d1117;
+  --tx-700:       #1f2533;
+  --tx-500:       #4b5268;
+  --tx-400:       #72767c;
+  --tx-300:       #a8abb2;
+  --tx-200:       #d4d7de;
+
+  /* Borders */
+  --bd-200:       #d4d7de;
+  --bd-100:       #e8ebf0;
+  --bd-50:        #f0f2f5;
+
+  /* Semantic — richer on white */
+  --green:        #059669;
+  --green-bg:     #ecfdf5;
+  --green-bd:     #a7f3d0;
+  --red:          #dc2626;
+  --red-bg:       #fef2f2;
+  --red-bd:       #fecaca;
+  --amber:        #d97706;
+  --amber-bg:     #fffbeb;
+  --amber-bd:     #fcd34d;
+
+  /* Shadows — softer on light */
+  --sh-1: 0 1px 4px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --sh-2: 0 4px 16px rgba(0,0,0,.08), 0 2px 6px rgba(0,0,0,.04);
+  --sh-3: 0 12px 40px rgba(0,0,0,.12), 0 4px 12px rgba(0,0,0,.06);
+
+  color: var(--tx-900);
+}
+
+/* Light sidebar */
+:not(.dark) .zf-sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e8ebf0;
+  box-shadow: 2px 0 12px rgba(0,0,0,.04);
+}
+:not(.dark) .zf-brand-name { color: #0d1117; }
+:not(.dark) .zf-brand-sub  { color: var(--navy); }
+:not(.dark) .zf-logo {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-600) 100%);
+  box-shadow: 0 4px 14px rgba(79,82,212,.2);
+  animation: none;
+}
+:not(.dark) .zf-logo svg { color: #fff; }
+:not(.dark) .zf-nav-grp   { color: #a8abb2; }
+:not(.dark) .zf-nav-item  { color: #4b5268; }
+:not(.dark) .zf-nav-item:hover { background: #eef1f6; color: #0d1117; }
+:not(.dark) .zf-nav-item.active {
+  background: linear-gradient(90deg, rgba(79,82,212,.1) 0%, transparent 100%);
+  border-right: 2px solid var(--navy);
+  color: var(--navy);
+}
+:not(.dark) .zf-nav-item.active svg { color: var(--navy); }
+:not(.dark) .zf-collapse-btn { background: #fff; border-color: #e8ebf0; color: #72767c; }
+:not(.dark) .zf-collapse-btn:hover { background: rgba(79,82,212,.07); color: var(--navy); }
+:not(.dark) .zf-user-row  { background: #f6f8fb; border-color: #e8ebf0; }
+:not(.dark) .zf-user-row:hover { background: #eef1f6; }
+:not(.dark) .zf-user-avatar { background: linear-gradient(135deg, var(--navy), var(--navy-600)); color: #fff; }
+:not(.dark) .zf-user-name { color: #1f2533; }
+:not(.dark) .zf-user-role { color: #72767c; }
+
+/* Light header */
+:not(.dark) .zf-header {
+  background: rgba(255,255,255,.9);
+  border-bottom: 1px solid #e8ebf0;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05);
+}
+:not(.dark) .zf-page-title { color: #0d1117; }
+:not(.dark) .zf-search { background: #f6f8fb; border-color: #e8ebf0; }
+:not(.dark) .zf-search:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(79,82,212,.1); }
+:not(.dark) .zf-search input { color: #1f2533; }
+:not(.dark) .zf-search input::placeholder { color: #a8abb2; }
+:not(.dark) .zf-hbtn { background: #f6f8fb; border-color: #e8ebf0; color: #72767c; }
+:not(.dark) .zf-hbtn:hover { background: rgba(79,82,212,.07); border-color: rgba(79,82,212,.2); color: var(--navy); }
+:not(.dark) .zf-live { background: #ecfdf5; border-color: #a7f3d0; color: #059669; }
+:not(.dark) .zf-live.cached { background: #fffbeb; border-color: #fcd34d; color: #d97706; }
+
+/* Light greeting */
+:not(.dark) .zf-greeting-name { color: #0d1117; }
+:not(.dark) .zf-greeting-pill { background: #fff; border-color: #e8ebf0; color: #4b5268; }
+:not(.dark) .zf-greeting-pill:hover { background: #f0f2f5; }
+
+/* Light KPI cards */
+:not(.dark) .zf-kpi {
+  background: #ffffff;
+  border-color: #e8ebf0;
+  box-shadow: var(--sh-1);
+}
+:not(.dark) .zf-kpi:hover { box-shadow: 0 8px 28px rgba(0,0,0,.1); border-color: rgba(79,82,212,.15); }
+:not(.dark) .zf-kpi-lbl { color: #72767c; }
+:not(.dark) .zf-kpi-val { color: #0d1117; }
+:not(.dark) .zf-kpi-sub { color: #72767c; }
+:not(.dark) .zf-kpi.kpi-green { border-bottom-color: #a7f3d0; }
+:not(.dark) .zf-kpi.kpi-red   { border-bottom-color: #fecaca; }
+:not(.dark) .zf-chip-green { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
+:not(.dark) .zf-chip-red   { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+:not(.dark) .zf-chip-navy  { background: rgba(79,82,212,.08); color: var(--navy); border-color: rgba(79,82,212,.18); }
+
+/* Light cards */
+:not(.dark) .zf-card { background: #ffffff; border-color: #e8ebf0; box-shadow: var(--sh-1); }
+:not(.dark) .zf-card:hover { box-shadow: var(--sh-2); }
+:not(.dark) .zf-card-head { background: #f6f8fb; border-bottom-color: #e8ebf0; }
+:not(.dark) .zf-card-title { color: #0d1117; }
+:not(.dark) .zf-card-badge { background: rgba(79,82,212,.07); border-color: rgba(79,82,212,.15); color: var(--navy); }
+:not(.dark) .zf-card-link  { background: rgba(79,82,212,.07); border-color: rgba(79,82,212,.15); color: var(--navy); }
+:not(.dark) .zf-card-link:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+/* Light table */
+:not(.dark) .zf-tbl-head { background: #f6f8fb; border-bottom-color: #e8ebf0; }
+:not(.dark) .zf-th { color: #a8abb2; }
+:not(.dark) .zf-trow { border-bottom-color: #f0f2f5; }
+:not(.dark) .zf-trow:hover { background: #f6f8fb; }
+:not(.dark) .zf-ticker-name { color: #0d1117; }
+:not(.dark) .zf-sector-tag { background: #f0f2f5; border-color: #e8ebf0; color: #72767c; }
+:not(.dark) .zf-logo-wrap { background: rgba(79,82,212,.07); border-color: rgba(79,82,212,.15); color: var(--navy); }
+:not(.dark) .zf-td { color: #4b5268; }
+:not(.dark) .zf-wl-head { background: #f6f8fb; border-bottom-color: #e8ebf0; }
+:not(.dark) .zf-wl-row { border-bottom-color: #f0f2f5; }
+:not(.dark) .zf-wl-row:hover { background: #f6f8fb; }
+:not(.dark) .zf-wl-name  { color: #0d1117; }
+:not(.dark) .zf-wl-sub   { color: #a8abb2; }
+:not(.dark) .zf-wl-price { color: #0d1117; }
+:not(.dark) .zf-sector-name { color: #1f2533; }
+:not(.dark) .zf-sector-pct  { color: var(--navy); }
+:not(.dark) .zf-sector-bar  { background: #e8ebf0; }
+
+/* Light sector fill gradient */
+:not(.dark) .zf-sector-fill {
+  background: linear-gradient(90deg, var(--navy) 0%, var(--navy-600) 100%);
+}
+
+/* Light umenu */
+:not(.dark) .zf-umenu { background: #fff; border-color: #e8ebf0; }
+:not(.dark) .zf-umenu-head { background: #f6f8fb; border-bottom-color: #e8ebf0; }
+:not(.dark) .zf-umenu-lbl  { color: #a8abb2; }
+:not(.dark) .zf-umenu-email { color: #0d1117; }
+:not(.dark) .zf-umenu-btn  { color: #1f2533; }
+:not(.dark) .zf-umenu-btn:hover { background: #f0f2f5; }
+:not(.dark) .zf-umenu-btn.danger  { color: #dc2626; }
+:not(.dark) .zf-umenu-btn.primary { color: var(--navy); }
+
+/* Light glow — softer on light bg */
+:not(.dark) .zf-logo { animation: none; box-shadow: 0 4px 14px rgba(79,82,212,.22); }
+
+/* Light AI teaser */
+:not(.dark) .zf-ai-teaser {
+  background: linear-gradient(135deg, rgba(79,82,212,.06) 0%, rgba(220,38,38,.04) 100%);
+  border-color: rgba(79,82,212,.12);
+}
+:not(.dark) .zf-ai-teaser:hover {
+  background: linear-gradient(135deg, rgba(79,82,212,.1) 0%, rgba(220,38,38,.07) 100%);
+}
+
+/* Light tab panel overrides */
+:not(.dark) .zf-tab-panel { background: #fff; border-color: #e8ebf0; }
+:not(.dark) .zf-tab-panel th { background: #f6f8fb !important; color: #a8abb2 !important; border-bottom-color: #e8ebf0 !important; }
+:not(.dark) .zf-tab-panel td { color: #4b5268 !important; border-bottom-color: #f0f2f5 !important; }
+:not(.dark) .zf-tab-panel tr:hover td { background: #f6f8fb !important; }
+:not(.dark) .zf-tab-panel .font-semibold,
+:not(.dark) .zf-tab-panel .font-bold { color: #0d1117 !important; }
+:not(.dark) .zf-tab-panel h2,
+:not(.dark) .zf-tab-panel h3 { color: var(--navy) !important; }
+:not(.dark) .zf-tab-panel [role="tablist"] { background: #f6f8fb !important; }
+:not(.dark) .zf-tab-panel [role="tab"] { color: #72767c !important; }
+:not(.dark) .zf-tab-panel [role="tab"][data-state="active"] { background: #fff !important; color: var(--navy) !important; }
+:not(.dark) .zf-tab-panel input:not([type="checkbox"]),
+:not(.dark) .zf-tab-panel select,
+:not(.dark) .zf-tab-panel textarea { background: #f6f8fb !important; border-color: #e8ebf0 !important; color: #0d1117 !important; }
+:not(.dark) .zf-tab-panel input:focus,
+:not(.dark) .zf-tab-panel select:focus { border-color: var(--navy) !important; box-shadow: 0 0 0 3px rgba(79,82,212,.1) !important; }
+:not(.dark) .zf-tab-panel .rounded-xl,
+:not(.dark) .zf-tab-panel .rounded-lg { background: #fff !important; border-color: #e8ebf0 !important; }
+:not(.dark) .zf-tab-panel button.bg-primary { background: var(--navy) !important; color: #fff !important; }
+:not(.dark) .zf-tab-panel button[class*="outline"] { background: #fff !important; border-color: #e8ebf0 !important; color: var(--navy) !important; }
+:not(.dark) .zf-tab-panel button[class*="outline"]:hover { background: rgba(79,82,212,.07) !important; }
+
+/* Dark mode stays as-is */
 .dark .zf { color-scheme: dark; }
 `;
 
@@ -791,7 +988,7 @@ export default function Index() {
   const [tab,       setTab]       = useState<ActiveTab>("overview");
   const [collapsed, setCollapsed] = useState(false);
   const [darkMode,  setDarkMode]  = useState(() => {
-    try { return localStorage.getItem("zf-dark") !== "0"; } catch { return true; } /* default: dark */
+    try { return localStorage.getItem("zf-dark") === "1"; } catch { return false; } /* default: light */
   });
 
   // Apply dark mode to <html>
@@ -1123,9 +1320,8 @@ export default function Index() {
 
             {/* Dark mode toggle */}
             <button className="zf-hbtn" onClick={() => setDarkMode(d => !d)}
-              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}
-              style={{ fontSize:14 }}>
-              {darkMode ? "☀️" : "🌙"}
+              title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
+              {darkMode ? <span style={{ fontSize:15 }}>☀️</span> : <span style={{ fontSize:15 }}>🌙</span>}
             </button>
 
             {/* User menu */}
