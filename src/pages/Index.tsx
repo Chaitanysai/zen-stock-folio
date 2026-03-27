@@ -791,7 +791,7 @@ export default function Index() {
   const [tab,       setTab]       = useState<ActiveTab>("overview");
   const [collapsed, setCollapsed] = useState(false);
   const [darkMode,  setDarkMode]  = useState(() => {
-    try { return localStorage.getItem("zf-dark") !== "0"  // default dark; } catch { return false; }
+    try { return localStorage.getItem("zf-dark") !== "0"; } catch { return true; } /* default: dark */
   });
 
   // Apply dark mode to <html>
