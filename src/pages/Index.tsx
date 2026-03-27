@@ -93,59 +93,59 @@ function fmtFullDate(): string {
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Mono:wght@400;500;600&display=swap');
 
 /* ══════════════════════════════════════════════════
-   DESIGN TOKENS
+   LEDGER PRO — Dark Institutional Design System
+   Based on Stitch "Digital Ledger" reference
 ══════════════════════════════════════════════════ */
 .zf {
-  /* Backgrounds — pure white like reference */
-  --bg-app:       #f4f6f9;
-  --bg-sidebar:   #ffffff;
-  --bg-card:      #ffffff;
-  --bg-surface:   #f8f9fc;
-  --bg-hover:     #f0f4f8;
-  --bg-input:     #f8f9fc;
+  --bg-app:       #0a0e13;
+  --bg-sidebar:   #0f1419;
+  --bg-card:      #151a20;
+  --bg-surface:   #1b2027;
+  --bg-hover:     #21262e;
+  --bg-input:     #0a0e13;
 
-  /* Navy brand */
-  --navy:         #1c3557;
-  --navy-700:     #224168;
-  --navy-600:     #2a5080;
-  --navy-100:     #ddeaf8;
-  --navy-50:      #eef4fc;
+  /* Indigo primary (from Stitch) */
+  --navy:         #a3a6ff;
+  --navy-700:     #8387ff;
+  --navy-600:     #6063ee;
+  --navy-100:     rgba(163,166,255,.15);
+  --navy-50:      rgba(163,166,255,.08);
 
   /* Text */
-  --tx-900:       #111827;
-  --tx-700:       #1f2d3d;
-  --tx-500:       #4b5563;
-  --tx-400:       #6b7280;
-  --tx-300:       #9ca3af;
-  --tx-200:       #d1d5db;
+  --tx-900:       #f4f6fe;
+  --tx-700:       #d0d3dc;
+  --tx-500:       #a8abb2;
+  --tx-400:       #72767c;
+  --tx-300:       #44484e;
+  --tx-200:       #2a2e35;
 
-  /* Borders — clean grey like reference */
-  --bd-200:       #e5e7eb;
-  --bd-100:       #f0f2f5;
-  --bd-50:        #f9fafb;
+  /* Borders */
+  --bd-200:       #44484e;
+  --bd-100:       #2a2e35;
+  --bd-50:        #1b2027;
 
   /* Semantic */
-  --green:        #059669;
-  --green-bg:     #ecfdf5;
-  --green-bd:     #a7f3d0;
-  --red:          #dc2626;
-  --red-bg:       #fef2f2;
-  --red-bd:       #fecaca;
-  --amber:        #d97706;
-  --amber-bg:     #fffbeb;
-  --amber-bd:     #fcd34d;
+  --green:        #6bff8f;
+  --green-bg:     rgba(107,255,143,.08);
+  --green-bd:     rgba(107,255,143,.18);
+  --red:          #ff716a;
+  --red-bg:       rgba(255,113,106,.08);
+  --red-bd:       rgba(255,113,106,.18);
+  --amber:        #fbbf24;
+  --amber-bg:     rgba(251,191,36,.08);
+  --amber-bd:     rgba(251,191,36,.18);
 
-  /* Shadows — crisp like reference */
-  --sh-1: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-  --sh-2: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
-  --sh-3: 0 8px 24px rgba(0,0,0,.10), 0 3px 8px rgba(0,0,0,.05);
+  /* Shadows */
+  --sh-1: 0 1px 3px rgba(0,0,0,.4);
+  --sh-2: 0 4px 16px rgba(0,0,0,.5);
+  --sh-3: 0 12px 40px rgba(0,0,0,.7);
 
   /* Typography */
-  --ff-body: 'DM Sans', -apple-system, sans-serif;
-  --ff-disp: 'DM Serif Display', Georgia, serif;
+  --ff-body: 'Inter', -apple-system, sans-serif;
+  --ff-disp: 'Inter', -apple-system, sans-serif;
   --ff-mono: 'DM Mono', 'SF Mono', monospace;
 
   font-family: var(--ff-body);
@@ -158,903 +158,484 @@ const CSS = `
 }
 
 /* ══════════════════════════════════════════════════
-   SIDEBAR  — like DashStack reference
+   ANIMATIONS
+══════════════════════════════════════════════════ */
+@keyframes zf-pulse    { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes zf-spin     { to { transform:rotate(360deg); } }
+@keyframes zf-fadein   { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes zf-slidein  { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+@keyframes zf-scalein  { from{opacity:0;transform:scale(.97)} to{opacity:1;transform:scale(1)} }
+@keyframes zf-shimmer  { 0%{background-position:200% center} 100%{background-position:-200% center} }
+@keyframes zf-glow     { 0%,100%{box-shadow:0 0 20px rgba(163,166,255,.15)} 50%{box-shadow:0 0 35px rgba(163,166,255,.3)} }
+
+.zf-anim-1 { animation: zf-fadein .45s cubic-bezier(.22,1,.36,1) both; }
+.zf-anim-2 { animation: zf-fadein .45s .06s cubic-bezier(.22,1,.36,1) both; }
+.zf-anim-3 { animation: zf-fadein .45s .12s cubic-bezier(.22,1,.36,1) both; }
+.zf-anim-4 { animation: zf-fadein .45s .18s cubic-bezier(.22,1,.36,1) both; }
+.zf-anim-5 { animation: zf-fadein .45s .24s cubic-bezier(.22,1,.36,1) both; }
+.zf-anim-6 { animation: zf-fadein .45s .30s cubic-bezier(.22,1,.36,1) both; }
+.zf-spin   { animation: zf-spin .9s linear infinite; }
+
+/* ══════════════════════════════════════════════════
+   SIDEBAR
 ══════════════════════════════════════════════════ */
 .zf-sidebar {
-  width: 220px;
-  min-width: 220px;
+  width: 280px;
+  min-width: 280px;
   flex-shrink: 0;
   background: var(--bg-sidebar);
-  border-right: 1px solid var(--bd-200);
+  border-right: 1px solid rgba(68,72,78,.15);
   height: 100vh;
   display: flex;
   flex-direction: column;
-  transition: width .2s ease, min-width .2s ease;
+  transition: width .3s cubic-bezier(.22,1,.36,1), min-width .3s cubic-bezier(.22,1,.36,1);
   overflow: hidden;
-  box-shadow: 2px 0 8px rgba(28,53,87,.05);
   z-index: 30;
+  backdrop-filter: blur(12px);
 }
-.zf-sidebar.collapsed {
-  width: 64px;
-  min-width: 64px;
-}
+.zf-sidebar.collapsed { width: 72px; min-width: 72px; }
 
-/* Brand row */
 .zf-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 20px 16px 16px;
-  border-bottom: 1px solid var(--bd-100);
+  gap: 12px;
+  padding: 28px 16px 20px;
+  border-bottom: 1px solid rgba(68,72,78,.12);
   flex-shrink: 0;
-  min-height: 64px;
+  min-height: 72px;
 }
 .zf-logo {
-  width: 32px; height: 32px;
-  border-radius: 9px;
-  background: var(--navy);
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-600) 100%);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(28,53,87,.3);
+  box-shadow: 0 4px 16px rgba(163,166,255,.25);
+  animation: zf-glow 4s ease-in-out infinite;
 }
+.zf-logo svg { color: #0f00a4; }
 .zf-brand-text { overflow: hidden; white-space: nowrap; }
 .zf-brand-name {
-  font-family: var(--ff-disp);
-  font-size: 17px;
-  color: var(--navy);
-  line-height: 1.1;
-  letter-spacing: -.2px;
+  font-size: 17px; font-weight: 900;
+  color: #ffffff; letter-spacing: .12em;
+  text-transform: uppercase; line-height: 1.1;
 }
 .zf-brand-sub {
-  font-size: 10px;
-  color: var(--tx-400);
-  font-weight: 500;
-  letter-spacing: .02em;
-  margin-top: 1px;
+  font-size: 9px; font-weight: 800;
+  color: var(--navy); letter-spacing: .2em;
+  text-transform: uppercase; margin-top: 2px;
 }
 
-/* Collapse toggle */
 .zf-collapse-btn {
-  position: absolute;
-  right: -12px;
-  top: 70px;
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  background: var(--bg-card);
-  border: 1px solid var(--bd-200);
+  position: absolute; right: -12px; top: 78px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--bg-surface); border: 1px solid var(--bd-100);
   box-shadow: var(--sh-1);
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  z-index: 40;
-  color: var(--tx-400);
-  transition: all .15s;
+  cursor: pointer; z-index: 40; color: var(--tx-400);
+  transition: all .2s cubic-bezier(.22,1,.36,1);
 }
-.zf-collapse-btn:hover { background: var(--navy-100); color: var(--navy); }
+.zf-collapse-btn:hover { background: var(--navy-50); color: var(--navy); transform: scale(1.1); }
 
-/* Nav scroll area */
 .zf-nav-scroll {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 12px 8px;
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 12px 16px;
 }
 .zf-nav-scroll::-webkit-scrollbar { width: 3px; }
-.zf-nav-scroll::-webkit-scrollbar-thumb { background: var(--bd-200); border-radius: 3px; }
+.zf-nav-scroll::-webkit-scrollbar-thumb { background: var(--bd-100); border-radius: 3px; }
 
-/* Group label */
 .zf-nav-grp {
-  font-size: 9px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  color: var(--tx-300);
-  padding: 12px 10px 4px;
-  white-space: nowrap;
-  overflow: hidden;
+  font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .2em; color: var(--tx-300);
+  padding: 16px 4px 6px; white-space: nowrap; overflow: hidden;
 }
 .zf-sidebar.collapsed .zf-nav-grp { opacity: 0; height: 0; padding: 0; margin: 0; }
 
-/* Nav item */
 .zf-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  font-weight: 400;
-  color: var(--tx-500);
-  cursor: pointer;
-  transition: all .14s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  position: relative;
-  border: 1px solid transparent;
-  margin-bottom: 1px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px; border-radius: 10px;
+  font-size: 13px; font-weight: 500; color: var(--tx-400);
+  cursor: pointer; white-space: nowrap; overflow: hidden;
+  position: relative; margin-bottom: 2px;
+  transition: all .2s cubic-bezier(.22,1,.36,1);
 }
-.zf-nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
-.zf-nav-item:hover {
-  background: var(--bg-hover);
-  color: var(--tx-700);
-}
+.zf-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; transition: transform .2s ease; }
+.zf-nav-item:hover { color: var(--tx-700); background: var(--bg-hover); }
+.zf-nav-item:hover svg { transform: scale(1.1); }
 .zf-nav-item.active {
-  background: var(--navy-50);
-  color: var(--navy);
+  color: #ffffff;
+  background: linear-gradient(90deg, rgba(163,166,255,.18) 0%, transparent 100%);
+  border-right: 2px solid var(--navy);
   font-weight: 600;
-  border-color: var(--navy-100);
 }
-.zf-nav-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 20%; bottom: 20%;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  background: var(--navy);
-}
-.zf-sidebar.collapsed .zf-nav-item {
-  justify-content: center;
-  padding: 10px;
-  gap: 0;
-}
+.zf-nav-item.active svg { color: var(--navy); }
+.zf-sidebar.collapsed .zf-nav-item { justify-content: center; padding: 10px; gap: 0; border-right: none; }
 .zf-sidebar.collapsed .zf-nav-item span { display: none; }
-.zf-sidebar.collapsed .zf-nav-item.active::before { display: none; }
+.zf-sidebar.collapsed .zf-nav-item.active { background: var(--navy-50); border-radius: 10px; border-right: none; }
 .zf-nav-label { overflow: hidden; }
 
-/* Sidebar footer */
-.zf-sidebar-foot {
-  padding: 12px;
-  border-top: 1px solid var(--bd-100);
-  flex-shrink: 0;
-}
+.zf-sidebar-foot { padding: 16px; border-top: 1px solid rgba(68,72,78,.12); flex-shrink: 0; }
 .zf-user-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--bd-100);
-  overflow: hidden;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border-radius: 10px;
+  background: var(--bg-surface); border: 1px solid var(--bd-100);
+  overflow: hidden; transition: all .2s ease; cursor: pointer;
 }
+.zf-user-row:hover { background: var(--bg-hover); }
 .zf-user-avatar {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: var(--navy);
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--navy-600), var(--navy));
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700; color: white;
-  flex-shrink: 0;
+  font-size: 11px; font-weight: 800; color: #0f00a4; flex-shrink: 0;
 }
 .zf-user-info { overflow: hidden; flex: 1; }
 .zf-user-name { font-size: 12px; font-weight: 600; color: var(--tx-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.zf-user-role { font-size: 10px; color: var(--tx-400); margin-top: 0; }
-.zf-sidebar.collapsed .zf-user-info,
-.zf-sidebar.collapsed .zf-brand-text { display: none; }
+.zf-user-role { font-size: 10px; color: var(--tx-400); font-weight: 500; }
+.zf-sidebar.collapsed .zf-user-info, .zf-sidebar.collapsed .zf-brand-text { display: none; }
 
 /* ══════════════════════════════════════════════════
    MAIN AREA
 ══════════════════════════════════════════════════ */
-.zf-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow: hidden;
-  min-width: 0;
-}
+.zf-main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; min-width: 0; }
 
-/* ── Header ── */
+/* Header */
 .zf-header {
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--bd-200);
-  height: 64px;
-  min-height: 64px;
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
-  gap: 16px;
-  flex-shrink: 0;
-  box-shadow: 0 1px 4px rgba(28,53,87,.05);
+  background: rgba(10,14,19,.85); backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(68,72,78,.12);
+  height: 64px; min-height: 64px;
+  display: flex; align-items: center; padding: 0 28px; gap: 14px; flex-shrink: 0;
 }
-
-/* Page title in header */
 .zf-page-title {
-  font-family: var(--ff-disp);
-  font-size: 18px;
-  color: var(--navy);
-  letter-spacing: -.2px;
-  flex: 1;
-  white-space: nowrap;
+  font-size: 19px; font-weight: 800; color: #ffffff;
+  letter-spacing: -.3px; flex: 1; white-space: nowrap;
 }
-
-/* Search bar */
 .zf-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--bd-200);
-  border-radius: 9px;
-  padding: 7px 13px;
-  width: 220px;
-  transition: all .14s;
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-surface); border: 1px solid rgba(68,72,78,.15);
+  border-radius: 99px; padding: 7px 16px; width: 260px;
+  transition: all .2s ease;
 }
 .zf-search:focus-within {
-  border-color: var(--navy);
-  background: var(--bg-card);
-  box-shadow: 0 0 0 3px rgba(28,53,87,.08);
+  border-color: rgba(163,166,255,.4); background: var(--bg-card);
+  box-shadow: 0 0 0 3px rgba(163,166,255,.1);
 }
 .zf-search input {
-  background: none;
-  border: none;
-  outline: none;
-  font-size: 12.5px;
-  color: var(--tx-700);
-  font-family: var(--ff-body);
-  width: 100%;
+  background: none; border: none; outline: none;
+  font-size: 13px; color: var(--tx-700); font-family: var(--ff-body); width: 100%;
 }
 .zf-search input::placeholder { color: var(--tx-300); }
 
-/* Live badge */
 .zf-live {
   display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 20px;
-  white-space: nowrap;
-  background: var(--green-bg);
-  border: 1px solid var(--green-bd);
-  color: var(--green);
+  font-size: 10px; font-weight: 800;
+  padding: 5px 12px; border-radius: 99px; white-space: nowrap;
+  letter-spacing: .05em; text-transform: uppercase;
+  background: var(--green-bg); border: 1px solid var(--green-bd); color: var(--green);
+  transition: all .3s ease;
 }
-.zf-live.cached {
-  background: var(--amber-bg);
-  border-color: var(--amber-bd);
-  color: var(--amber);
-}
-.zf-ldot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  animation: zf-pulse 2s infinite;
-}
-@keyframes zf-pulse {
-  0%,100% { opacity: 1; }
-  50%      { opacity: .45; }
-}
+.zf-live.cached { background: var(--amber-bg); border-color: var(--amber-bd); color: var(--amber); }
+.zf-ldot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: zf-pulse 2s infinite; }
 
-/* Icon button */
 .zf-hbtn {
-  width: 34px; height: 34px;
-  border-radius: 9px;
-  background: var(--bg-surface);
-  border: 1px solid var(--bd-200);
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--bg-surface); border: 1px solid rgba(68,72,78,.15);
   color: var(--tx-400);
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  transition: all .13s;
-  flex-shrink: 0;
-  position: relative;
+  cursor: pointer; transition: all .2s cubic-bezier(.22,1,.36,1); flex-shrink: 0; position: relative;
 }
-.zf-hbtn:hover { background: var(--navy-50); border-color: var(--navy-100); color: var(--navy); }
+.zf-hbtn:hover { background: var(--bg-hover); border-color: var(--bd-100); color: var(--tx-700); transform: scale(1.05); }
 
-/* User menu dropdown */
 .zf-umenu {
-  position: absolute;
-  right: 0; top: calc(100% + 8px);
-  background: var(--bg-card);
-  border: 1px solid var(--bd-200);
-  border-radius: 10px;
-  box-shadow: var(--sh-3);
-  min-width: 180px;
-  z-index: 100;
-  overflow: hidden;
+  position: absolute; right: 0; top: calc(100% + 8px);
+  background: var(--bg-card); border: 1px solid var(--bd-100);
+  border-radius: 12px; box-shadow: var(--sh-3); min-width: 190px; z-index: 100;
+  overflow: hidden; animation: zf-scalein .15s ease both;
 }
-.zf-umenu-head { padding: 12px 14px; border-bottom: 1px solid var(--bd-100); background: var(--bg-surface); }
-.zf-umenu-email { font-size: 12px; font-weight: 600; color: var(--tx-700); }
-.zf-umenu-lbl { font-size: 9.5px; color: var(--tx-400); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+.zf-umenu-head { padding: 14px 16px; border-bottom: 1px solid var(--bd-50); background: var(--bg-surface); }
+.zf-umenu-lbl { font-size: 9px; color: var(--tx-400); font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 3px; }
+.zf-umenu-email { font-size: 12.5px; font-weight: 600; color: var(--tx-900); }
 .zf-umenu-btn {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 10px 14px;
-  font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 11px 16px; font-size: 12.5px; font-weight: 500;
   cursor: pointer; border: none; background: transparent;
-  transition: background .12s; font-family: var(--ff-body);
+  transition: background .15s; font-family: var(--ff-body); color: var(--tx-700);
 }
 .zf-umenu-btn:hover { background: var(--bg-hover); }
 .zf-umenu-btn.danger { color: var(--red); }
 .zf-umenu-btn.primary { color: var(--navy); }
 
-/* ── Content scroll area ── */
+/* Content scroll */
 .zf-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: var(--bg-app);
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  min-height: 0;
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  background: var(--bg-app); padding: 28px;
+  display: flex; flex-direction: column; gap: 22px; min-height: 0;
 }
-.zf-content::-webkit-scrollbar { width: 5px; }
-.zf-content::-webkit-scrollbar-thumb { background: var(--bd-200); border-radius: 5px; }
-.zf-content::-webkit-scrollbar-track { background: transparent; }
+.zf-content::-webkit-scrollbar { width: 4px; }
+.zf-content::-webkit-scrollbar-thumb { background: var(--bd-100); border-radius: 4px; }
 
 /* ══════════════════════════════════════════════════
-   KPI STAT CARDS  — 4 across, F-pattern top row
+   GREETING
 ══════════════════════════════════════════════════ */
-.zf-kpi-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+.zf-greeting {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 0 4px; flex-shrink: 0;
 }
+.zf-greeting-name {
+  font-size: 28px; font-weight: 800; color: #ffffff;
+  letter-spacing: -.5px; line-height: 1.1;
+}
+.zf-greeting-date { font-size: 13px; color: var(--tx-500); font-weight: 500; margin-top: 4px; }
+.zf-greeting-right { display: flex; align-items: center; gap: 8px; }
+.zf-greeting-pill {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 600; color: var(--tx-500);
+  background: var(--bg-surface); border: 1px solid var(--bd-100);
+  border-radius: 99px; padding: 6px 14px; cursor: pointer;
+  transition: all .2s ease;
+}
+.zf-greeting-pill:hover { background: var(--bg-hover); color: var(--tx-700); }
+
+/* ══════════════════════════════════════════════════
+   KPI STAT CARDS
+══════════════════════════════════════════════════ */
+.zf-kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 18px; }
 .zf-kpi {
-  background: var(--bg-card);
-  border: 1px solid var(--bd-100);
-  border-radius: 12px;
-  padding: 18px 20px;
-  box-shadow: var(--sh-1);
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  transition: box-shadow .18s, transform .18s;
-  position: relative;
-  overflow: hidden;
+  background: var(--bg-card); border: 1px solid var(--bd-50);
+  border-radius: 16px; padding: 22px 22px 20px;
+  display: flex; flex-direction: column; gap: 0;
+  transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease, border-color .25s ease;
+  position: relative; overflow: hidden; cursor: default;
 }
-.zf-kpi:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
-
-/* Left accent bar */
-.zf-kpi::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  border-radius: 12px 0 0 12px;
-  background: var(--navy-100);
+.zf-kpi::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.02) 0%, transparent 60%);
+  pointer-events: none;
 }
-.zf-kpi.kpi-green::before { background: var(--green-bg); border-left: 4px solid var(--green); left: 0; width: 0; }
-.zf-kpi.kpi-red::before   { background: var(--red-bg);   border-left: 4px solid var(--red);   left: 0; width: 0; }
-.zf-kpi.kpi-green { background: var(--green-bg); border-color: var(--green-bd); }
-.zf-kpi.kpi-red   { background: var(--red-bg);   border-color: var(--red-bd); }
-.zf-kpi.kpi-navy  { background: var(--navy-50);  border-color: var(--navy-100); }
-.zf-kpi.kpi-navy::before { background: var(--navy); }
+.zf-kpi:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,.5); border-color: rgba(163,166,255,.12); }
 
-/* Icon circle */
+.zf-kpi.kpi-navy  { background: var(--bg-card); border-color: var(--bd-50); }
+.zf-kpi.kpi-green { background: var(--bg-card); border-bottom: 2px solid rgba(107,255,143,.3); }
+.zf-kpi.kpi-red   { background: var(--bg-card); border-bottom: 2px solid rgba(255,113,106,.3); }
+
 .zf-kpi-icon {
-  width: 38px; height: 38px;
-  border-radius: 10px;
+  width: 40px; height: 40px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  margin-bottom: 14px;
-  flex-shrink: 0;
+  margin-bottom: 18px; flex-shrink: 0; transition: transform .2s ease;
 }
+.zf-kpi:hover .zf-kpi-icon { transform: scale(1.08); }
 .zf-kpi-lbl {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .09em;
-  color: var(--tx-400);
-  margin-bottom: 5px;
+  font-size: 9.5px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .15em; color: var(--tx-400); margin-bottom: 6px;
 }
 .zf-kpi-val {
-  font-family: var(--ff-mono);
-  font-size: 26px;
-  font-weight: 600;
-  color: var(--tx-900);
-  line-height: 1;
-  letter-spacing: -.6px;
+  font-family: var(--ff-mono); font-size: 26px; font-weight: 600;
+  color: var(--tx-900); line-height: 1; letter-spacing: -.6px;
 }
 .zf-kpi.kpi-green .zf-kpi-val { color: var(--green); }
 .zf-kpi.kpi-red   .zf-kpi-val { color: var(--red); }
-.zf-kpi-sub {
-  font-size: 11px;
-  color: var(--tx-400);
-  margin-top: 6px;
-  font-weight: 500;
-}
+.zf-kpi-sub { font-size: 11px; color: var(--tx-500); margin-top: 8px; font-weight: 500; }
 .zf-kpi-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 20px;
-  margin-top: 8px;
-  align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 800; padding: 3px 9px;
+  border-radius: 99px; margin-top: 10px; align-self: flex-start; letter-spacing: .02em;
 }
 .zf-chip-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
 .zf-chip-red   { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-bd); }
 .zf-chip-navy  { background: var(--navy-50);  color: var(--navy);  border: 1px solid var(--navy-100); }
-.zf-kpi-divider {
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px solid var(--bd-50);
-  font-size: 10px;
-  color: var(--tx-300);
-  font-weight: 500;
-}
+.zf-kpi-divider { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--bd-50); font-size: 10px; color: var(--tx-300); font-weight: 500; }
 
 /* ══════════════════════════════════════════════════
-   MIDDLE ROW — wide chart + narrow sector panel
-   Grid type B from reference (image 4)
+   LAYOUT GRIDS
 ══════════════════════════════════════════════════ */
-.zf-mid-row {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 16px;
-  min-height: 0;
-}
+.zf-mid-row { display: grid; grid-template-columns: 1fr 300px; gap: 18px; min-height: 0; }
+.zf-bot-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; min-height: 0; }
 
 /* ══════════════════════════════════════════════════
-   BOTTOM ROW — holdings table + watchlist
-   Grid type D from reference (image 4)
-══════════════════════════════════════════════════ */
-.zf-bot-row {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 16px;
-  min-height: 0;
-}
-
-/* ══════════════════════════════════════════════════
-   CARD — shared panel wrapper
+   CARDS
 ══════════════════════════════════════════════════ */
 .zf-card {
-  background: var(--bg-card);
-  border: 1px solid var(--bd-100);
-  border-radius: 12px;
-  box-shadow: var(--sh-1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-height: 0;
+  background: var(--bg-card); border: 1px solid var(--bd-50);
+  border-radius: 16px; display: flex; flex-direction: column;
+  overflow: hidden; min-height: 0;
+  transition: box-shadow .25s ease;
 }
+.zf-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.4); }
 .zf-card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--bd-50);
-  flex-shrink: 0;
-  background: var(--bg-surface);
-  gap: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px; border-bottom: 1px solid var(--bd-50);
+  flex-shrink: 0; gap: 10px;
 }
-.zf-card-title {
-  font-family: var(--ff-disp);
-  font-size: 14.5px;
-  color: var(--navy);
-  letter-spacing: -.1px;
-}
-.zf-card-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.zf-card-title { font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: -.1px; }
+.zf-card-meta { display: flex; align-items: center; gap: 8px; }
 .zf-card-badge {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--navy);
-  background: var(--navy-50);
-  border: 1px solid var(--navy-100);
-  border-radius: 20px;
-  padding: 2px 9px;
+  font-size: 10px; font-weight: 700; color: var(--navy);
+  background: var(--navy-50); border: 1px solid var(--navy-100);
+  border-radius: 99px; padding: 3px 10px;
 }
 .zf-card-link {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--navy);
-  cursor: pointer;
-  padding: 5px 12px;
-  border-radius: 8px;
-  background: var(--navy-50);
-  border: 1px solid var(--navy-100);
-  transition: all .13s;
-  white-space: nowrap;
+  font-size: 11.5px; font-weight: 700; color: var(--navy);
+  cursor: pointer; padding: 5px 13px; border-radius: 8px;
+  background: var(--navy-50); border: 1px solid var(--navy-100);
+  transition: all .2s ease; white-space: nowrap;
 }
-.zf-card-link:hover { background: var(--navy); color: white; }
+.zf-card-link:hover { background: var(--navy-700); color: #fff; border-color: var(--navy-700); transform: translateX(1px); }
 .zf-card-body { padding: 0; overflow-y: auto; flex: 1; }
 .zf-card-body::-webkit-scrollbar { width: 3px; }
-.zf-card-body::-webkit-scrollbar-thumb { background: var(--bd-200); border-radius: 3px; }
+.zf-card-body::-webkit-scrollbar-thumb { background: var(--bd-100); border-radius: 3px; }
 
 /* ══════════════════════════════════════════════════
-   MINI PERFORMANCE CHART inside mid row
+   PERF CHART
 ══════════════════════════════════════════════════ */
-.zf-perf-wrap { padding: 16px 20px; }
-.zf-perf-numbers {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
+.zf-perf-wrap { padding: 18px 22px; }
+.zf-perf-numbers { display: flex; gap: 28px; margin-bottom: 18px; flex-wrap: wrap; }
 .zf-perf-num { display: flex; flex-direction: column; gap: 2px; }
 .zf-perf-num-val { font-family: var(--ff-mono); font-size: 20px; font-weight: 600; color: var(--tx-900); }
-.zf-perf-num-lbl { font-size: 10px; color: var(--tx-400); font-weight: 600; text-transform: uppercase; letter-spacing: .07em; }
-
-/* SVG area chart */
+.zf-perf-num-lbl { font-size: 9.5px; color: var(--tx-400); font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
 .zf-areachart { width: 100%; }
 
 /* ══════════════════════════════════════════════════
-   SECTOR PANEL (right side of mid row)
+   SECTOR PANEL
 ══════════════════════════════════════════════════ */
-.zf-sector-list { padding: 12px 20px; display: flex; flex-direction: column; gap: 10px; }
-.zf-sector-item { display: flex; flex-direction: column; gap: 4px; }
+.zf-sector-list { padding: 14px 22px; display: flex; flex-direction: column; gap: 12px; }
+.zf-sector-item { display: flex; flex-direction: column; gap: 5px; }
 .zf-sector-row { display: flex; align-items: center; justify-content: space-between; }
-.zf-sector-name { font-size: 12px; font-weight: 600; color: var(--tx-700); }
-.zf-sector-pct  { font-family: var(--ff-mono); font-size: 11px; font-weight: 600; color: var(--navy); }
-.zf-sector-bar  { height: 5px; border-radius: 3px; background: var(--bd-100); overflow: hidden; }
-.zf-sector-fill { height: 100%; border-radius: 3px; background: var(--navy); transition: width .4s ease; }
+.zf-sector-name { font-size: 12.5px; font-weight: 600; color: var(--tx-700); }
+.zf-sector-pct  { font-family: var(--ff-mono); font-size: 11px; font-weight: 700; color: var(--navy); }
+.zf-sector-bar  { height: 4px; border-radius: 4px; background: var(--bd-50); overflow: hidden; }
+.zf-sector-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--navy) 0%, var(--navy-600) 100%); transition: width .6s cubic-bezier(.22,1,.36,1); }
 
 /* ══════════════════════════════════════════════════
    HOLDINGS TABLE
 ══════════════════════════════════════════════════ */
 .zf-tbl-head {
-  display: grid;
-  grid-template-columns: 2fr .6fr 1fr 1fr .9fr;
-  gap: 0;
-  padding: 10px 20px;
-  background: var(--bg-surface);
-  border-bottom: 1.5px solid var(--bd-200);
-  position: sticky;
-  top: 0;
-  z-index: 2;
+  display: grid; grid-template-columns: 2fr .6fr 1fr 1fr .9fr; gap: 0;
+  padding: 11px 22px; background: var(--bg-surface);
+  border-bottom: 1px solid var(--bd-100); position: sticky; top: 0; z-index: 2;
 }
-.zf-th {
-  font-size: 9.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .09em;
-  color: var(--tx-300);
-}
+.zf-th { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .15em; color: var(--tx-400); }
 .zf-th.r { text-align: right; }
 .zf-trow {
-  display: grid;
-  grid-template-columns: 2fr .6fr 1fr 1fr .9fr;
-  gap: 0;
-  padding: 12px 20px;
-  align-items: center;
-  border-bottom: 1px solid var(--bd-50);
-  transition: background .12s;
+  display: grid; grid-template-columns: 2fr .6fr 1fr 1fr .9fr; gap: 0;
+  padding: 13px 22px; align-items: center; border-bottom: 1px solid var(--bd-50);
+  transition: background .15s ease;
 }
 .zf-trow:hover { background: var(--bg-hover); }
 .zf-trow:last-child { border-bottom: none; }
-
-.zf-stock-cell { display: flex; align-items: center; gap: 10px; }
+.zf-stock-cell { display: flex; align-items: center; gap: 11px; }
 .zf-logo-wrap {
-  width: 32px; height: 32px;
-  border-radius: 8px;
-  background: var(--navy-50);
-  border: 1px solid var(--navy-100);
+  width: 34px; height: 34px; border-radius: 8px;
+  background: var(--bg-surface); border: 1px solid var(--bd-100);
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 700; color: var(--navy);
-  overflow: hidden;
-  flex-shrink: 0;
+  font-size: 9px; font-weight: 900; color: var(--navy);
+  overflow: hidden; flex-shrink: 0; transition: transform .2s ease;
 }
-.zf-logo-wrap img { width: 100%; height: 100%; object-fit: contain; }
+.zf-trow:hover .zf-logo-wrap { transform: scale(1.05); }
 .zf-ticker-name { font-size: 13px; font-weight: 700; color: var(--tx-900); letter-spacing: -.1px; }
 .zf-sector-tag {
-  display: inline-block;
-  font-size: 9.5px; font-weight: 600;
-  padding: 1px 7px;
-  border-radius: 4px;
-  background: var(--bg-app);
-  border: 1px solid var(--bd-200);
-  color: var(--tx-400);
-  margin-top: 2px;
+  display: inline-block; font-size: 9.5px; font-weight: 600;
+  padding: 1px 7px; border-radius: 4px;
+  background: var(--bg-app); border: 1px solid var(--bd-100); color: var(--tx-400); margin-top: 2px;
 }
-.zf-td { font-family: var(--ff-mono); font-size: 12px; color: var(--tx-500); font-weight: 500; }
+.zf-td { font-family: var(--ff-mono); font-size: 12.5px; color: var(--tx-500); font-weight: 500; }
 .zf-td.r { text-align: right; }
-.zf-pl  { font-family: var(--ff-mono); font-size: 12px; font-weight: 700; text-align: right; }
+.zf-pl  { font-family: var(--ff-mono); font-size: 12.5px; font-weight: 700; text-align: right; }
 .zf-pl-sub { font-family: var(--ff-mono); font-size: 10px; text-align: right; margin-top: 1px; }
 
 /* ══════════════════════════════════════════════════
-   WATCHLIST PANEL
+   WATCHLIST
 ══════════════════════════════════════════════════ */
 .zf-wl-head {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 12px;
-  padding: 10px 20px;
-  background: var(--bg-surface);
-  border-bottom: 1.5px solid var(--bd-200);
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px;
+  padding: 11px 22px; background: var(--bg-surface); border-bottom: 1px solid var(--bd-100);
 }
 .zf-wl-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 11px 20px;
-  border-bottom: 1px solid var(--bd-50);
-  transition: background .12s;
-  gap: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 22px; border-bottom: 1px solid var(--bd-50);
+  transition: background .15s ease; gap: 10px; cursor: pointer;
 }
-.zf-wl-row:hover { background: var(--bg-hover); }
+.zf-wl-row:hover { background: var(--bg-hover); transform: scale(1.005); }
 .zf-wl-row:last-child { border-bottom: none; }
-.zf-wl-name { font-size: 13px; font-weight: 700; color: var(--tx-900); }
-.zf-wl-sub  { font-size: 10px; color: var(--tx-400); margin-top: 2px; font-weight: 500; }
-.zf-wl-spark { width: 56px; height: 26px; flex-shrink: 0; }
-.zf-wl-price { font-family: var(--ff-mono); font-size: 13px; font-weight: 600; color: var(--tx-900); text-align: right; }
+.zf-wl-name  { font-size: 13px; font-weight: 700; color: var(--tx-900); }
+.zf-wl-sub   { font-size: 10px; color: var(--tx-400); margin-top: 2px; font-weight: 500; }
+.zf-wl-spark { width: 58px; height: 28px; flex-shrink: 0; }
+.zf-wl-price { font-family: var(--ff-mono); font-size: 13px; font-weight: 700; color: var(--tx-900); text-align: right; }
 .zf-wl-chg   { font-size: 10.5px; font-weight: 700; text-align: right; margin-top: 2px; }
 
 /* ══════════════════════════════════════════════════
-   TAB CONTENT PANEL (non-overview)
+   AI INSIGHT TEASER CARD
+══════════════════════════════════════════════════ */
+.zf-ai-teaser {
+  margin: 16px; padding: 16px;
+  background: linear-gradient(135deg, rgba(163,166,255,.1) 0%, rgba(255,113,106,.06) 100%);
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 12px; position: relative; overflow: hidden;
+  transition: all .25s ease; cursor: pointer;
+}
+.zf-ai-teaser:hover { background: linear-gradient(135deg, rgba(163,166,255,.16) 0%, rgba(255,113,106,.10) 100%); transform: translateY(-1px); }
+.zf-ai-teaser-bg {
+  position: absolute; right: -8px; bottom: -8px;
+  font-size: 80px; opacity: .06; pointer-events: none;
+  transition: transform .4s ease; line-height: 1;
+}
+.zf-ai-teaser:hover .zf-ai-teaser-bg { transform: scale(1.18) rotate(8deg); opacity: .1; }
+
+/* ══════════════════════════════════════════════════
+   TAB PANEL (non-overview)
 ══════════════════════════════════════════════════ */
 .zf-tab-panel {
-  flex: 1;
-  background: var(--bg-card);
-  border: 1px solid var(--bd-100);
-  border-radius: 12px;
-  box-shadow: var(--sh-1);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+  flex: 1; background: var(--bg-card); border: 1px solid var(--bd-50);
+  border-radius: 16px; overflow: hidden;
+  display: flex; flex-direction: column; min-height: 0;
+  animation: zf-scalein .2s ease both;
 }
-.zf-tab-panel > * {
-  flex: 1;
-  overflow: auto;
-  min-height: 0;
-}
-/* Padded variant for charts/AI etc */
-.zf-tab-panel.padded > * { padding: 0; }
-.zf-tab-panel > *::-webkit-scrollbar { width: 5px; height: 5px; }
-.zf-tab-panel > *::-webkit-scrollbar-thumb { background: var(--bd-200); border-radius: 5px; }
-
-/* Override child component colors to match cream theme */
+.zf-tab-panel > * { flex: 1; overflow: auto; min-height: 0; }
+.zf-tab-panel > *::-webkit-scrollbar { width: 4px; height: 4px; }
+.zf-tab-panel > *::-webkit-scrollbar-thumb { background: var(--bd-100); border-radius: 4px; }
 .zf-tab-panel th {
-  background: var(--bg-surface) !important;
-  color: var(--tx-300) !important;
-  font-size: 9.5px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: .09em !important;
-  border-bottom: 1.5px solid var(--bd-200) !important;
-  padding: 11px 18px !important;
+  background: var(--bg-surface) !important; color: var(--tx-400) !important;
+  font-size: 9px !important; font-weight: 800 !important;
+  text-transform: uppercase !important; letter-spacing: .15em !important;
+  border-bottom: 1px solid var(--bd-100) !important; padding: 11px 18px !important;
 }
 .zf-tab-panel td {
-  padding: 13px 18px !important;
-  font-size: 13px !important;
-  color: var(--tx-500) !important;
-  border-bottom: 1px solid var(--bd-50) !important;
+  padding: 13px 18px !important; font-size: 13px !important;
+  color: var(--tx-500) !important; border-bottom: 1px solid var(--bd-50) !important;
   vertical-align: middle !important;
 }
 .zf-tab-panel tr:hover td { background: var(--bg-hover) !important; }
 .zf-tab-panel tbody tr:last-child td { border-bottom: none !important; }
-.zf-tab-panel .font-semibold,
-.zf-tab-panel .font-bold { color: var(--tx-900) !important; }
-.zf-tab-panel h2, .zf-tab-panel h3 { color: var(--navy) !important; font-family: var(--ff-disp) !important; }
-.zf-tab-panel p.text-muted-foreground,
-.zf-tab-panel [class*="text-muted"] { color: var(--tx-400) !important; }
-.zf-tab-panel button.bg-primary,
-.zf-tab-panel [class*="bg-primary"] { background: var(--navy) !important; color: white !important; }
-.zf-tab-panel button.bg-primary:hover { background: var(--navy-700) !important; }
-.zf-tab-panel button[class*="outline"] {
-  background: var(--bg-card) !important;
-  border-color: var(--bd-200) !important;
-  color: var(--navy) !important;
-}
-.zf-tab-panel button[class*="outline"]:hover { background: var(--navy-50) !important; }
+.zf-tab-panel .font-semibold, .zf-tab-panel .font-bold { color: var(--tx-900) !important; }
+.zf-tab-panel h2, .zf-tab-panel h3 { color: var(--navy) !important; }
+.zf-tab-panel p.text-muted-foreground, .zf-tab-panel [class*="text-muted"] { color: var(--tx-400) !important; }
+.zf-tab-panel button.bg-primary, .zf-tab-panel [class*="bg-primary"] { background: var(--navy) !important; color: #0f00a4 !important; }
+.zf-tab-panel button[class*="outline"] { background: var(--bg-card) !important; border-color: var(--bd-100) !important; color: var(--navy) !important; }
+.zf-tab-panel button[class*="outline"]:hover { background: var(--bg-hover) !important; }
 .zf-tab-panel button[class*="ghost"]:hover { background: var(--bg-hover) !important; color: var(--navy) !important; }
-.zf-tab-panel input:not([type="checkbox"]),
-.zf-tab-panel select, .zf-tab-panel textarea {
-  background: var(--bg-input) !important;
-  border-color: var(--bd-200) !important;
-  color: var(--tx-900) !important;
-  font-size: 13px !important;
+.zf-tab-panel input:not([type="checkbox"]), .zf-tab-panel select, .zf-tab-panel textarea {
+  background: var(--bg-input) !important; border-color: var(--bd-100) !important;
+  color: var(--tx-900) !important; font-size: 13px !important;
 }
 .zf-tab-panel input:focus, .zf-tab-panel select:focus, .zf-tab-panel textarea:focus {
-  border-color: var(--navy) !important;
-  box-shadow: 0 0 0 3px rgba(28,53,87,.1) !important;
+  border-color: var(--navy) !important; box-shadow: 0 0 0 3px rgba(163,166,255,.12) !important;
 }
 .zf-tab-panel label { color: var(--tx-500) !important; font-size: 12px !important; font-weight: 600 !important; }
-.zf-tab-panel input::placeholder, .zf-tab-panel textarea::placeholder { color: var(--tx-200) !important; }
+.zf-tab-panel input::placeholder, .zf-tab-panel textarea::placeholder { color: var(--tx-300) !important; }
 .zf-tab-panel [role="tablist"] { background: var(--bg-surface) !important; border-radius: 8px !important; }
 .zf-tab-panel [role="tab"] { color: var(--tx-400) !important; }
-.zf-tab-panel [role="tab"][data-state="active"] { background: var(--bg-card) !important; color: var(--navy) !important; font-weight: 700 !important; }
+.zf-tab-panel [role="tab"][data-state="active"] { background: var(--bg-hover) !important; color: var(--navy) !important; font-weight: 700 !important; }
 .zf-tab-panel .recharts-text { fill: var(--tx-400) !important; }
-.zf-tab-panel .rounded-xl, .zf-tab-panel .rounded-lg, .zf-tab-panel [class*="card"] {
-  background: var(--bg-card) !important;
-  border-color: var(--bd-100) !important;
-}
+.zf-tab-panel .rounded-xl, .zf-tab-panel .rounded-lg, .zf-tab-panel [class*="card"] { background: var(--bg-card) !important; border-color: var(--bd-50) !important; }
 
 /* ══════════════════════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════════════════════ */
-@media (max-width: 1100px) {
-  .zf-mid-row { grid-template-columns: 1fr; }
-  .zf-mid-row .zf-sector-side { display: none; }
-}
-@media (max-width: 900px) {
-  .zf-kpi-row { grid-template-columns: repeat(2, 1fr); }
-  .zf-bot-row { grid-template-columns: 1fr; }
-  .zf-search { display: none; }
-}
-@media (max-width: 640px) {
-  .zf-kpi-row { grid-template-columns: 1fr 1fr; }
-  .zf-content { padding: 14px; gap: 14px; }
-}
+@media (max-width:1200px) { .zf-sidebar { width:72px; min-width:72px; } .zf-sidebar .zf-brand-text,.zf-sidebar .zf-user-info,.zf-sidebar .zf-nav-label,.zf-sidebar .zf-nav-grp { display:none; } .zf-sidebar .zf-nav-item { justify-content:center; padding:10px; gap:0; } }
+@media (max-width:1100px) { .zf-mid-row { grid-template-columns:1fr; } .zf-mid-row .zf-sector-side { display:none; } }
+@media (max-width:900px)  { .zf-kpi-row { grid-template-columns:repeat(2,1fr); } .zf-bot-row { grid-template-columns:1fr; } .zf-search { display:none; } }
+@media (max-width:640px)  { .zf-kpi-row { grid-template-columns:1fr 1fr; } .zf-content { padding:14px; gap:14px; } }
 
-/* ── Spinner ── */
-@keyframes zf-spin { to { transform: rotate(360deg); } }
-.zf-spin { animation: zf-spin .9s linear infinite; }
-
-/* ══════════════════════════════════════════════════
-   DARK MODE — shadcn/zinc-900
-══════════════════════════════════════════════════ */
-.dark .zf {
-  --bg-app:      #09090b;
-  --bg-sidebar:  #0f0f13;
-  --bg-card:     #18181b;
-  --bg-surface:  #1c1c21;
-  --bg-hover:    #27272a;
-  --bg-input:    #09090b;
-  --navy:        #818cf8;
-  --navy-700:    #a5b4fc;
-  --navy-600:    #c7d2fe;
-  --navy-100:    rgba(129,140,248,.16);
-  --navy-50:     rgba(129,140,248,.08);
-  --tx-900:      #fafafa;
-  --tx-700:      #e4e4e7;
-  --tx-500:      #a1a1aa;
-  --tx-400:      #71717a;
-  --tx-300:      #52525b;
-  --tx-200:      #3f3f46;
-  --bd-200:      #3f3f46;
-  --bd-100:      #27272a;
-  --bd-50:       #18181b;
-  --green:       #4ade80;
-  --green-bg:    rgba(74,222,128,.10);
-  --green-bd:    rgba(74,222,128,.20);
-  --red:         #f87171;
-  --red-bg:      rgba(248,113,113,.10);
-  --red-bd:      rgba(248,113,113,.20);
-  --amber:       #fbbf24;
-  --amber-bg:    rgba(251,191,36,.10);
-  --amber-bd:    rgba(251,191,36,.20);
-  --sh-1: 0 1px 3px rgba(0,0,0,.6);
-  --sh-2: 0 4px 16px rgba(0,0,0,.7);
-  --sh-3: 0 8px 30px rgba(0,0,0,.8);
-  color: #fafafa;
-}
-.dark .zf-sidebar         { background: #0f0f13; border-right: 1px solid #27272a; box-shadow: none; }
-.dark .zf-brand-name      { color: #fafafa; }
-.dark .zf-brand-sub       { color: #71717a; }
-.dark .zf-nav-grp         { color: #52525b; }
-.dark .zf-nav-item        { color: #a1a1aa; }
-.dark .zf-nav-item:hover  { background: #27272a; color: #fafafa; }
-.dark .zf-nav-item.active { background: rgba(129,140,248,.10); border-color: rgba(129,140,248,.18); color: #e0e7ff; font-weight: 600; }
-.dark .zf-nav-item.active::before { background: #818cf8; }
-.dark .zf-nav-item.active svg { color: #818cf8; }
-.dark .zf-sidebar-foot    { border-top-color: #27272a; }
-.dark .zf-user-row        { background: #09090b; border-color: #27272a; }
-.dark .zf-user-avatar     { background: linear-gradient(135deg,#6366f1,#8b5cf6); color: #fff; }
-.dark .zf-user-name       { color: #e4e4e7; }
-.dark .zf-user-role       { color: #71717a; }
-.dark .zf-collapse-btn    { background: #18181b; border-color: #3f3f46; color: #71717a; }
-.dark .zf-collapse-btn:hover { background: #27272a; color: #fafafa; }
-.dark .zf-header          { background: #0f0f13; border-bottom: 1px solid #27272a; box-shadow: none; }
-.dark .zf-page-title      { color: #fafafa; }
-.dark .zf-search          { background: #18181b; border-color: #3f3f46; }
-.dark .zf-search input    { color: #e4e4e7; }
-.dark .zf-search input::placeholder { color: #52525b; }
-.dark .zf-search:focus-within { border-color: #818cf8; box-shadow: 0 0 0 3px rgba(129,140,248,.12); }
-.dark .zf-hbtn            { background: #18181b; border-color: #3f3f46; color: #a1a1aa; }
-.dark .zf-hbtn:hover      { background: #27272a; border-color: #52525b; color: #fafafa; }
-.dark .zf-live            { background: rgba(74,222,128,.10); border-color: rgba(74,222,128,.20); color: #4ade80; }
-.dark .zf-live.cached     { background: rgba(251,191,36,.10); border-color: rgba(251,191,36,.20); color: #fbbf24; }
-.dark .zf-umenu           { background: #18181b; border-color: #3f3f46; box-shadow: 0 8px 30px rgba(0,0,0,.8); }
-.dark .zf-umenu-head      { background: #0f0f13; border-bottom-color: #27272a; }
-.dark .zf-umenu-lbl       { color: #71717a; }
-.dark .zf-umenu-email     { color: #fafafa; }
-.dark .zf-umenu-btn       { color: #e4e4e7; }
-.dark .zf-umenu-btn:hover { background: #27272a; color: #fafafa; }
-.dark .zf-umenu-btn.danger  { color: #f87171; }
-.dark .zf-umenu-btn.primary { color: #818cf8; }
-.dark .zf-kpi             { background: #18181b; border-color: #27272a; }
-.dark .zf-kpi-lbl         { color: #71717a; }
-.dark .zf-kpi-val         { color: #fafafa; }
-.dark .zf-kpi-sub         { color: #a1a1aa; }
-.dark .zf-kpi-divider     { color: #52525b; border-top-color: #27272a; }
-.dark .zf-kpi.kpi-navy    { background: rgba(129,140,248,.08); border-color: rgba(129,140,248,.16); }
-.dark .zf-kpi.kpi-navy .zf-kpi-val  { color: #fafafa; }
-.dark .zf-kpi.kpi-green   { background: rgba(74,222,128,.08); border-color: rgba(74,222,128,.18); }
-.dark .zf-kpi.kpi-green .zf-kpi-val { color: #4ade80; }
-.dark .zf-kpi.kpi-red     { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.18); }
-.dark .zf-kpi.kpi-red .zf-kpi-val   { color: #f87171; }
-.dark .zf-kpi-icon        { opacity: .85; }
-.dark .zf-chip-green { background: rgba(74,222,128,.12) !important; color: #4ade80 !important; border-color: rgba(74,222,128,.22) !important; }
-.dark .zf-chip-red   { background: rgba(248,113,113,.12) !important; color: #f87171 !important; border-color: rgba(248,113,113,.22) !important; }
-.dark .zf-chip-navy  { background: rgba(129,140,248,.12) !important; color: #818cf8 !important; border-color: rgba(129,140,248,.22) !important; }
-.dark .zf-card            { background: #18181b; border: 1px solid #27272a; }
-.dark .zf-card-head       { background: #18181b; border-bottom: 1px solid #27272a; }
-.dark .zf-card-title      { color: #fafafa; }
-.dark .zf-card-badge      { background: rgba(129,140,248,.12); border-color: rgba(129,140,248,.20); color: #818cf8; }
-.dark .zf-card-link       { background: rgba(129,140,248,.10); border-color: rgba(129,140,248,.18); color: #818cf8; }
-.dark .zf-card-link:hover { background: #6366f1; color: #fff; border-color: #6366f1; }
-.dark .zf-content         { background: #09090b; }
-.dark .zf-tbl-head        { background: #18181b; border-bottom-color: #27272a; }
-.dark .zf-th              { color: #52525b; }
-.dark .zf-trow            { border-bottom-color: #27272a; }
-.dark .zf-trow:hover      { background: #27272a; }
-.dark .zf-ticker-name     { color: #fafafa; }
-.dark .zf-sector-tag      { background: #27272a; border-color: #3f3f46; color: #71717a; }
-.dark .zf-logo-wrap       { background: rgba(129,140,248,.10); border-color: rgba(129,140,248,.18); color: #818cf8; }
-.dark .zf-td              { color: #a1a1aa; }
-.dark .zf-wl-head         { background: #18181b; border-bottom-color: #27272a; }
-.dark .zf-wl-row          { border-bottom-color: #27272a; }
-.dark .zf-wl-row:hover    { background: #27272a; }
-.dark .zf-wl-name         { color: #fafafa; }
-.dark .zf-wl-sub          { color: #71717a; }
-.dark .zf-wl-price        { color: #e4e4e7; }
-.dark .zf-sector-name     { color: #e4e4e7; }
-.dark .zf-sector-pct      { color: #818cf8; }
-.dark .zf-sector-bar      { background: #27272a; }
-.dark table th { background: #18181b !important; color: #52525b !important; border-bottom-color: #27272a !important; }
-.dark table td { color: #a1a1aa !important; border-bottom-color: #27272a !important; }
-.dark table tbody tr:hover td { background: #27272a !important; }
-.dark table tbody td .zf-ticker-name,
-.dark table tbody td div[style*="font-weight:700"],
-.dark table tbody td div[style*="fontWeight:700"] { color: #fafafa !important; }
-.dark .zf-tab-panel { background: #18181b; border-color: #27272a; }
-.dark .zf-tab-panel th { background: #18181b !important; color: #52525b !important; border-bottom-color: #27272a !important; }
-.dark .zf-tab-panel td { color: #a1a1aa !important; border-bottom-color: #27272a !important; }
-.dark .zf-tab-panel tr:hover td { background: #27272a !important; }
-.dark .zf-tab-panel tbody tr:last-child td { border-bottom: none !important; }
-.dark .zf-tab-panel .font-semibold,
-.dark .zf-tab-panel .font-bold,
-.dark .zf-tab-panel [class*="font-bold"],
-.dark .zf-tab-panel [class*="font-semibold"] { color: #fafafa !important; }
-.dark .zf-tab-panel h1, .dark .zf-tab-panel h2,
-.dark .zf-tab-panel h3, .dark .zf-tab-panel h4 { color: #fafafa !important; }
-.dark .zf-tab-panel p { color: #a1a1aa !important; }
-.dark .zf-tab-panel [class*="text-muted"],
-.dark .zf-tab-panel .text-muted-foreground { color: #71717a !important; }
-.dark .zf-tab-panel [class*="text-foreground"],
-.dark .zf-tab-panel .text-foreground { color: #fafafa !important; }
-.dark .zf-tab-panel [class*="text-primary"] { color: #818cf8 !important; }
-.dark .zf-tab-panel button.bg-primary,
-.dark .zf-tab-panel [class*="bg-primary"] { background: #6366f1 !important; color: #fff !important; }
-.dark .zf-tab-panel button[class*="outline"] { background: #18181b !important; border-color: #3f3f46 !important; color: #e4e4e7 !important; }
-.dark .zf-tab-panel button[class*="outline"]:hover { background: #27272a !important; color: #fafafa !important; }
-.dark .zf-tab-panel button[class*="ghost"] { color: #a1a1aa !important; }
-.dark .zf-tab-panel button[class*="ghost"]:hover { background: #27272a !important; color: #fafafa !important; }
-.dark .zf-tab-panel input:not([type="checkbox"]),
-.dark .zf-tab-panel select,
-.dark .zf-tab-panel textarea { background: #09090b !important; border-color: #3f3f46 !important; color: #fafafa !important; }
-.dark .zf-tab-panel label { color: #e4e4e7 !important; }
-.dark .zf-tab-panel input::placeholder,
-.dark .zf-tab-panel textarea::placeholder { color: #52525b !important; }
-.dark .zf-tab-panel [role="tablist"] { background: #0f0f13 !important; border-color: #27272a !important; }
-.dark .zf-tab-panel [role="tab"] { color: #71717a !important; }
-.dark .zf-tab-panel [role="tab"][data-state="active"] { background: #18181b !important; color: #fafafa !important; }
-.dark .zf-tab-panel .rounded-xl, .dark .zf-tab-panel .rounded-lg,
-.dark .zf-tab-panel [class*="card"], .dark .zf-tab-panel [class*="Card"] { background: #18181b !important; border-color: #27272a !important; }
-.dark .zf-tab-panel [class*="CardHeader"],
-.dark .zf-tab-panel [class*="card-header"] { background: #0f0f13 !important; border-bottom-color: #27272a !important; }
-.dark .zf-tab-panel > div > div[style*="background"] { background: #0f0f13 !important; border-bottom-color: #27272a !important; }
-.dark .zf-tab-panel > div > div > button { color: #a1a1aa !important; }
-.dark .zf-tab-panel .recharts-cartesian-axis-tick-value { fill: #52525b !important; }
-.dark .zf-tab-panel .recharts-text { fill: #52525b !important; }
-.dark .zf-tab-panel .recharts-default-tooltip { background: #18181b !important; border-color: #27272a !important; color: #fafafa !important; }
-.dark .zf-tab-panel [class*="badge"],
-.dark .zf-tab-panel [class*="Badge"] { background: rgba(129,140,248,.12) !important; color: #818cf8 !important; border-color: rgba(129,140,248,.20) !important; }
-/* ── Greeting bar dark ── */
-.dark .zf-greeting      { background: #0f0f13 !important; border-bottom: 1px solid #27272a !important; }
-.dark .zf-greeting-name { color: #fafafa !important; }
-.dark .zf-greeting-date { color: #71717a !important; }
-.dark .zf-greeting-pill { background: #18181b !important; border-color: #3f3f46 !important; color: #a1a1aa !important; }
-/* ── Greeting bar ── */
-.zf-greeting {
-  background: var(--bg-card); border-bottom: 1px solid var(--bd-100);
-  padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
-}
-.zf-greeting-name { font-family: var(--ff-disp); font-size: 20px; color: var(--tx-900); letter-spacing: -.3px; }
-.zf-greeting-date { font-size: 11.5px; color: var(--tx-400); font-weight: 500; margin-top: 2px; }
-.zf-greeting-right { display: flex; align-items: center; gap: 8px; }
-.zf-greeting-pill {
-  display: flex; align-items: center; gap: 6px; padding: 6px 13px;
-  border-radius: 9px; border: 1px solid var(--bd-200); background: var(--bg-surface);
-  font-size: 12px; font-weight: 600; color: var(--tx-700); white-space: nowrap;
-  cursor: pointer; transition: all .13s;
-}
-.zf-greeting-pill:hover { background: var(--bg-hover); }
+/* Light mode override — keep dark always for this design */
+.dark .zf { color-scheme: dark; }
 `;
 
 // ─── Line Chart Widget ────────────────────────────────────────────────────────
@@ -1210,7 +791,7 @@ export default function Index() {
   const [tab,       setTab]       = useState<ActiveTab>("overview");
   const [collapsed, setCollapsed] = useState(false);
   const [darkMode,  setDarkMode]  = useState(() => {
-    try { return localStorage.getItem("zf-dark") === "1"; } catch { return false; }
+    try { return localStorage.getItem("zf-dark") !== "0"  // default dark; } catch { return false; }
   });
 
   // Apply dark mode to <html>
@@ -1574,10 +1155,16 @@ export default function Index() {
 
           {/* Greeting bar — overview only */}
           {tab === "overview" && (
-            <div className="zf-greeting">
+            <div className="zf-greeting" style={{ animation:"zf-fadein .4s cubic-bezier(.22,1,.36,1) both" }}>
               <div>
                 <div className="zf-greeting-name">{getGreeting()}, {user?.email?.split("@")[0] ?? "Trader"} 👋</div>
-                <div className="zf-greeting-date">{fmtFullDate()}</div>
+                <p style={{ fontSize:13, color:"var(--tx-500)", marginTop:4, fontWeight:500 }}>
+                  Your portfolio is{" "}
+                  <span style={{ color: pnl>=0 ? "var(--green)" : "var(--red)", fontWeight:700 }}>
+                    {pnl >= 0 ? "up" : "down"} {sign(pnl)}{Math.abs(pnlPct).toFixed(1)}%
+                  </span>
+                  {" "}since your last entry.
+                </p>
               </div>
               <div className="zf-greeting-right">
                 <div className="zf-greeting-pill">
@@ -1585,12 +1172,12 @@ export default function Index() {
                   NSE {isLive ? "Live" : "Cached"} · {now}
                 </div>
                 {activePos.length > 0 && (
-                  <div className="zf-greeting-pill" style={{ color: pnl>=0?"var(--green)":"var(--red)" }}>
+                  <div className="zf-greeting-pill" style={{ color: pnl>=0?"var(--green)":"var(--red)", borderColor: pnl>=0?"var(--green-bd)":"var(--red-bd)" }}>
                     {pnl >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
                     {sign(pnl)}{fmt(Math.abs(pnl))} unrealised
                   </div>
                 )}
-                <div className="zf-greeting-pill" onClick={refresh}>
+                <div className="zf-greeting-pill" onClick={refresh} style={{ cursor:"pointer" }}>
                   <RefreshCw size={12} /> Refresh
                 </div>
               </div>
@@ -1600,123 +1187,211 @@ export default function Index() {
           {/* Content */}
           <div className="zf-content">
 
-            {/* ══════════ OVERVIEW — ByeWind reference layout ══════════ */}
+            {/* ══════════ OVERVIEW — Stitch "Digital Ledger" layout ══════════ */}
             {tab === "overview" && (<>
 
-              {/* ── ROW 1: 4 KPI stat cards ── */}
+              {/* ── ROW 1: 4 KPI stat cards — Stitch style with staggered animation ── */}
               <div className="zf-kpi-row">
 
-                <div className="zf-kpi kpi-navy">
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-                    <div className="zf-kpi-icon" style={{ background:"var(--navy-100)", marginBottom:0 }}>
-                      <Wallet size={17} color="var(--navy)" />
+                {/* Card 1 — Total Invested */}
+                <div className="zf-kpi zf-anim-1">
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
+                    <div className="zf-kpi-icon" style={{ background:"rgba(163,166,255,.1)", marginBottom:0 }}>
+                      <Wallet size={18} color="var(--navy)" />
                     </div>
-                    <span className="zf-kpi-chip zf-chip-navy" style={{ margin:0 }}>{activePos.length} active</span>
+                    <span style={{ fontSize:"9px", fontWeight:800, color:"var(--tx-400)", textTransform:"uppercase", letterSpacing:".15em" }}>Invested</span>
                   </div>
                   <div className="zf-kpi-lbl">Total Invested</div>
                   <div className="zf-kpi-val">{fmt(invested)}</div>
-                  <div className="zf-kpi-sub" style={{ marginTop:6 }}>
-                    {closedPos.length} closed · {live.length} total
-                  </div>
+                  <div className="zf-kpi-sub">{closedPos.length} closed · {live.length} total assets</div>
                 </div>
 
-                <div className={`zf-kpi ${pnl>=0?"kpi-green":"kpi-red"}`}>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-                    <div className="zf-kpi-icon" style={{ background: pnl>=0?"#d1fae5":"#fee2e2", marginBottom:0 }}>
-                      {pnl>=0 ? <TrendingUp size={17} color="var(--green)" /> : <TrendingDown size={17} color="var(--red)" />}
+                {/* Card 2 — Portfolio Value (highlighted) */}
+                <div className="zf-kpi zf-anim-2" style={{ borderBottom:"2px solid rgba(163,166,255,.25)" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
+                    <div className="zf-kpi-icon" style={{ background:"rgba(163,166,255,.1)", marginBottom:0 }}>
+                      <TrendingUp size={18} color="var(--navy)" />
                     </div>
-                    <span className={`zf-kpi-chip ${pnl>=0?"zf-chip-green":"zf-chip-red"}`} style={{ margin:0 }}>
-                      {sign(pnlPct)}{Math.abs(pnlPct).toFixed(1)}%
-                    </span>
+                    <span style={{ fontSize:"9px", fontWeight:800, color:"var(--navy)", textTransform:"uppercase", letterSpacing:".15em" }}>Net Worth</span>
                   </div>
                   <div className="zf-kpi-lbl">Portfolio Value</div>
                   <div className="zf-kpi-val">{fmt(current)}</div>
-                  <div className="zf-kpi-sub" style={{ marginTop:6 }}>
-                    P&L: {sign(pnl)}{fmt(Math.abs(pnl))} · F&O: {sign(fnoUnrealised)}{fmt(Math.abs(fnoUnrealised))}
+                  <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:6 }}>
+                    {pnl >= 0
+                      ? <TrendingUp size={12} color="var(--green)" />
+                      : <TrendingDown size={12} color="var(--red)" />}
+                    <span style={{ fontSize:11, fontWeight:700, color:pnl>=0?"var(--green)":"var(--red)" }}>
+                      {sign(pnl)}{fmt(Math.abs(pnl))} ({sign(pnlPct)}{Math.abs(pnlPct).toFixed(1)}%)
+                    </span>
                   </div>
                 </div>
 
-                <div className={`zf-kpi ${todayPnl>=0?"kpi-green":"kpi-red"}`}>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-                    <div className="zf-kpi-icon" style={{ background: todayPnl>=0?"#d1fae5":"#fee2e2", marginBottom:0 }}>
-                      <Activity size={17} color={todayPnl>=0?"var(--green)":"var(--red)"} />
+                {/* Card 3 — Today's P&L */}
+                <div className="zf-kpi zf-anim-3">
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
+                    <div className="zf-kpi-icon" style={{ background:todayPnl>=0?"var(--green-bg)":"var(--red-bg)", marginBottom:0 }}>
+                      <Zap size={18} color={todayPnl>=0?"var(--green)":"var(--red)"} />
                     </div>
-                    <span className={`zf-kpi-chip ${todayPnl>=0?"zf-chip-green":"zf-chip-red"}`} style={{ margin:0 }}>
-                      {sign(todayPnl)}{todayPct.toFixed(2)}%
-                    </span>
+                    <span style={{ fontSize:"9px", fontWeight:800, color:"var(--tx-400)", textTransform:"uppercase", letterSpacing:".15em" }}>Live P&L</span>
                   </div>
                   <div className="zf-kpi-lbl">Today's P&L</div>
-                  <div className="zf-kpi-val">{sign(todayPnl)}{fmt(Math.abs(todayPnl))}</div>
-                  <div className="zf-kpi-sub" style={{ marginTop:6 }}>
-                    {isLive ? "Live" : "Cached"} · {now} IST
+                  <div className="zf-kpi-val" style={{ color:todayPnl>=0?"var(--green)":"var(--red)" }}>
+                    {sign(todayPnl)}{fmt(Math.abs(todayPnl))}
+                  </div>
+                  <div className="zf-kpi-sub" style={{ fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:".05em", marginTop:8 }}>
+                    {isLive ? "🟢" : "🟡"} Last update: {now} IST
                   </div>
                 </div>
 
-                <div className="zf-kpi" style={{ background:"var(--bg-card)" }}>
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
-                    <div className="zf-kpi-icon" style={{ background:"#fff7ed", marginBottom:0 }}>
-                      <Award size={17} color="#d97706" />
+                {/* Card 4 — Win Rate */}
+                <div className="zf-kpi zf-anim-4">
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:18 }}>
+                    <div className="zf-kpi-icon" style={{ background:"rgba(255,113,106,.1)", marginBottom:0 }}>
+                      <Award size={18} color="var(--red)" />
                     </div>
-                    <span className={`zf-kpi-chip ${winRate>=50?"zf-chip-green":"zf-chip-navy"}`} style={{ margin:0 }}>
-                      {winners.length}/{closedPos.length}
-                    </span>
+                    <span style={{ fontSize:"9px", fontWeight:800, color:"var(--tx-400)", textTransform:"uppercase", letterSpacing:".15em" }}>Win Rate</span>
                   </div>
                   <div className="zf-kpi-lbl">Win Rate</div>
-                  <div className="zf-kpi-val" style={{ color: winRate>=50?"var(--green)":winRate>0?"var(--amber)":"var(--tx-400)" }}>
+                  <div className="zf-kpi-val" style={{ color:winRate>=50?"var(--green)":winRate>0?"var(--amber)":"var(--tx-400)" }}>
                     {winRate.toFixed(0)}%
                   </div>
-                  <div className="zf-kpi-sub" style={{ marginTop:6 }}>
-                    Realised: {sign(totalRealised)}{fmt(Math.abs(totalRealised))}
+                  <div className="zf-kpi-sub">
+                    Realized: <span style={{ color:"var(--green)", fontWeight:700 }}>{sign(totalRealised)}{fmt(Math.abs(totalRealised))}</span>
                   </div>
                 </div>
               </div>
 
-              {/* ── ROW 2: Holdings + Watchlist (moved up) ── */}
-              <div style={{ display:"grid", gridTemplateColumns:"1.5fr 1fr", gap:16 }}>
+              {/* ── ROW 2: Performance Chart + Sector Allocation ── */}
+              <div className="zf-mid-row zf-anim-5">
 
-                {/* Holdings table */}
+                {/* Performance Matrix */}
                 <div className="zf-card">
                   <div className="zf-card-head">
-                    <span className="zf-card-title">Holdings</span>
-                    <div className="zf-card-meta">
-                      <span className="zf-card-badge">{activePos.length} active</span>
-                      <button className="zf-card-link" onClick={() => setTab("holdings")}>View all →</button>
+                    <div>
+                      <span className="zf-card-title">Performance Matrix</span>
+                      <div style={{ display:"flex", gap:18, marginTop:6 }}>
+                        {(["Portfolio Value","Invested Amount","P&L Trends"] as const).map((label, i) => (
+                          <button key={label} style={{
+                            fontSize:11.5, fontWeight: i===0 ? 700 : 500,
+                            color: i===0 ? "var(--navy)" : "var(--tx-400)",
+                            background:"none", border:"none", cursor:"pointer", padding:"0 0 4px",
+                            fontFamily:"var(--ff-body)",
+                            borderBottom: i===0 ? "2px solid var(--navy)" : "2px solid transparent",
+                            transition:"all .2s ease",
+                          }}>{label}</button>
+                        ))}
+                      </div>
                     </div>
+                    <div style={{ display:"flex", background:"var(--bg-app)", padding:"4px", borderRadius:8, gap:2 }}>
+                      {(["1Y","2Y","ALL"] as const).map((r,i) => (
+                        <button key={r} style={{
+                          padding:"4px 10px", fontSize:10, fontWeight:800,
+                          background: i===0 ? "var(--bg-surface)" : "transparent",
+                          color: i===0 ? "var(--tx-900)" : "var(--tx-400)",
+                          border:"none", borderRadius:6, cursor:"pointer", fontFamily:"var(--ff-body)",
+                          transition:"all .15s ease",
+                        }}>{r}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ padding:"8px 20px 16px", position:"relative" }}>
+                    {/* Floating price callout */}
+                    <div style={{
+                      position:"absolute", top:12, right:32, zIndex:3,
+                      background:"rgba(27,32,39,.9)", backdropFilter:"blur(8px)",
+                      border:"1px solid rgba(255,255,255,.08)",
+                      padding:"6px 12px", borderRadius:8,
+                      fontSize:10, fontWeight:700, color:"var(--tx-700)",
+                      display:"flex", alignItems:"center", gap:6,
+                    }}>
+                      {fmt(current)}
+                      <span style={{ color:"var(--green)", fontWeight:800 }}>
+                        {sign(pnlPct)}{Math.abs(pnlPct).toFixed(1)}%
+                      </span>
+                    </div>
+                    <LineChartWidget stocks={live} />
+                  </div>
+                </div>
+
+                {/* Sector Weightage */}
+                <div className="zf-card zf-sector-side">
+                  <div className="zf-card-head">
+                    <span className="zf-card-title">Sector Weightage</span>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"20px 22px 16px" }}>
+                    <DonutWidget stocks={live} />
+                  </div>
+                  <div className="zf-sector-list">
+                    {sectors.slice(0,5).map((s, i) => {
+                      const clrs = ["var(--navy)","var(--green)","var(--red)","var(--amber)","#a78bfa"];
+                      return (
+                        <div key={s.name} className="zf-sector-item">
+                          <div className="zf-sector-row">
+                            <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                              <div style={{ width:7, height:7, borderRadius:"50%", background:clrs[i], flexShrink:0 }} />
+                              <span className="zf-sector-name">{s.name}</span>
+                            </div>
+                            <span className="zf-sector-pct">{s.pct.toFixed(0)}%</span>
+                          </div>
+                          <div className="zf-sector-bar">
+                            <div className="zf-sector-fill" style={{ width:`${s.pct}%`, background:clrs[i] }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── ROW 3: Current Holdings + Watchlist ── */}
+              <div className="zf-bot-row zf-anim-6">
+
+                {/* Holdings Table */}
+                <div className="zf-card">
+                  <div className="zf-card-head">
+                    <span className="zf-card-title">Current Holdings</span>
+                    <button className="zf-card-link" onClick={() => setTab("holdings")}>View all</button>
                   </div>
                   <div className="zf-card-body">
                     <div className="zf-tbl-head">
-                      <span className="zf-th">Stock</span>
+                      <span className="zf-th">Asset Name</span>
                       <span className="zf-th r">Qty</span>
-                      <span className="zf-th r">Avg</span>
-                      <span className="zf-th r">CMP</span>
+                      <span className="zf-th r">Avg Price</span>
+                      <span className="zf-th r">LTP</span>
                       <span className="zf-th r">P&L</span>
                     </div>
                     {activePos.length === 0 ? (
-                      <div style={{ padding:"28px 20px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
-                        No active holdings
+                      <div style={{ padding:"40px 22px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
+                        No active holdings. <button onClick={() => setTab("holdings")} style={{ color:"var(--navy)", background:"none", border:"none", cursor:"pointer", fontWeight:700 }}>Add one →</button>
                       </div>
-                    ) : activePos.slice(0, 5).map(s => {
+                    ) : activePos.slice(0, 5).map((s, si) => {
                       const pl    = s.entryPrice > 0 ? (s.cmp - s.entryPrice) / s.entryPrice * 100 : 0;
                       const plAmt = (s.cmp - s.entryPrice) * s.quantity;
                       const pos   = pl >= 0;
+                      const initials = s.ticker.slice(0, 4);
                       return (
-                        <div key={s.ticker} className="zf-trow">
+                        <div key={s.ticker} className="zf-trow" style={{ animationDelay:`${si * 0.04}s` }}
+                          onClick={() => setTab("holdings")} style={{ cursor:"pointer" }}>
                           <div className="zf-stock-cell">
                             <div className="zf-logo-wrap">
                               <img src={`https://logo.clearbit.com/${(s.stockName??s.ticker).toLowerCase().replace(/\s+/g,"")}.com`} alt=""
-                                onError={e => { (e.target as HTMLImageElement).style.display="none"; (e.target as HTMLImageElement).parentElement!.textContent=s.ticker.slice(0,2); }} />
+                                onError={e => { (e.target as HTMLImageElement).style.display="none"; (e.target as HTMLImageElement).parentElement!.textContent=initials; }} />
                             </div>
                             <div>
-                              <div className="zf-ticker-name">{s.ticker}</div>
+                              <div className="zf-ticker-name">{s.stockName ?? s.ticker}</div>
                               <span className="zf-sector-tag">{s.sector}</span>
                             </div>
                           </div>
                           <span className="zf-td r">{s.quantity}</span>
-                          <span className="zf-td r">{fmtNum(s.entryPrice)}</span>
-                          <span className="zf-td r">{fmtNum(s.cmp)}</span>
+                          <span className="zf-td r">₹{fmtNum(s.entryPrice)}</span>
+                          <span className="zf-td r">₹{fmtNum(s.cmp)}</span>
                           <div style={{ textAlign:"right" }}>
-                            <div className="zf-pl" style={{ color: pos?"var(--green)":"var(--red)" }}>{sign(pl)}{Math.abs(pl).toFixed(1)}%</div>
-                            <div className="zf-pl-sub" style={{ color: pos?"var(--green)":"var(--red)" }}>{sign(plAmt)}₹{Math.abs(plAmt).toLocaleString("en-IN",{maximumFractionDigits:0})}</div>
+                            <div className="zf-pl" style={{ color:pos?"var(--green)":"var(--red)" }}>
+                              {pos ? "+" : "−"}₹{Math.abs(plAmt).toLocaleString("en-IN",{maximumFractionDigits:0})}
+                            </div>
+                            <div className="zf-pl-sub" style={{ color:pos?"var(--green)":"var(--red)", opacity:.7 }}>
+                              {sign(pl)}{Math.abs(pl).toFixed(1)}%
+                            </div>
                           </div>
                         </div>
                       );
@@ -1724,33 +1399,47 @@ export default function Index() {
                   </div>
                 </div>
 
-                {/* Watchlist */}
-                <div className="zf-card">
+                {/* Watchlist Panel */}
+                <div className="zf-card" style={{ display:"flex", flexDirection:"column" }}>
                   <div className="zf-card-head">
                     <span className="zf-card-title">Watchlist</span>
-                    <div className="zf-card-meta">
-                      <span className="zf-card-badge">{watchlist.length}</span>
-                      <button className="zf-card-link" onClick={() => setTab("watchlist")}>+ Add</button>
-                    </div>
+                    <button style={{
+                      width:30, height:30, borderRadius:"50%",
+                      background:"var(--navy-50)", border:"1px solid var(--navy-100)",
+                      color:"var(--navy)", display:"flex", alignItems:"center", justifyContent:"center",
+                      cursor:"pointer", fontSize:18, fontWeight:300, transition:"all .2s ease",
+                    }}
+                    onClick={() => setTab("watchlist")}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background="var(--navy)"; (e.currentTarget as HTMLElement).style.color="#0f00a4"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background="var(--navy-50)"; (e.currentTarget as HTMLElement).style.color="var(--navy)"; }}>
+                      +
+                    </button>
                   </div>
-                  <div className="zf-card-body">
-                    <div className="zf-wl-head">
-                      <span className="zf-th">Stock</span>
-                      <span className="zf-th" style={{ textAlign:"center" }}>Trend</span>
-                      <span className="zf-th" style={{ textAlign:"right" }}>Price</span>
-                    </div>
+                  <div className="zf-card-body" style={{ flex:1 }}>
                     {watchlist.length === 0 ? (
-                      <div style={{ padding:"28px 20px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
+                      <div style={{ padding:"32px 22px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
                         No watchlist stocks yet
                       </div>
-                    ) : watchlist.slice(0,6).map((w,wi) => {
-                      const cmp=w.cmp??0; const t1=w.target1??cmp; const sl=w.stopLoss??cmp;
-                      const pos=cmp>=(w.entryZoneLow??cmp); const seed=w.stockName.charCodeAt(0)+wi*7;
+                    ) : watchlist.slice(0, 4).map((w, wi) => {
+                      const cmp = w.cmp ?? 0;
+                      const pos = cmp >= (w.entryZoneLow ?? cmp);
+                      const seed = w.stockName.charCodeAt(0) + wi * 7;
                       return (
-                        <div key={w.stockName} className="zf-wl-row">
-                          <div>
-                            <div className="zf-wl-name">{w.stockName}</div>
-                            <div className="zf-wl-sub">T1 ₹{t1.toLocaleString("en-IN")} · SL ₹{sl.toLocaleString("en-IN")}</div>
+                        <div key={w.stockName} className="zf-wl-row"
+                          style={{ transition:"all .2s cubic-bezier(.22,1,.36,1)" }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                            <div style={{
+                              width:38, height:38, borderRadius:10,
+                              background:"var(--bg-surface)", border:"1px solid var(--bd-50)",
+                              display:"flex", alignItems:"center", justifyContent:"center",
+                              fontSize:10, fontWeight:900, color:"var(--tx-500)", flexShrink:0,
+                            }}>
+                              {w.stockName.slice(0,3).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="zf-wl-name">{w.stockName}</div>
+                              <div className="zf-wl-sub">{w.sector ?? "NSE"}</div>
+                            </div>
                           </div>
                           <svg className="zf-wl-spark" viewBox="0 0 56 26" fill="none">
                             <polyline points={Array.from({length:8},(_,i)=>{
@@ -1758,19 +1447,46 @@ export default function Index() {
                               return `${x},${Math.max(2,Math.min(24,y))}`;
                             }).join(" ")} stroke={pos?"var(--green)":"var(--red)"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
-                          <div>
+                          <div style={{ textAlign:"right" }}>
                             <div className="zf-wl-price">₹{cmp.toLocaleString("en-IN")}</div>
-                            <div className="zf-wl-chg" style={{ color:pos?"var(--green)":"var(--red)" }}>RSI {w.rsi?.toFixed(0)??"—"}</div>
+                            <div className="zf-wl-chg" style={{ color:pos?"var(--green)":"var(--red)" }}>
+                              RSI {w.rsi?.toFixed(0) ?? "—"}
+                            </div>
                           </div>
                         </div>
                       );
                     })}
+
+                    {/* AI Insight Teaser — from Stitch design */}
+                    <div className="zf-ai-teaser" onClick={() => setTab("ai")}
+                      style={{ marginTop: watchlist.length > 0 ? 0 : 8 }}>
+                      <div style={{ position:"relative", zIndex:1 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:8 }}>
+                          <span style={{ fontSize:13 }}>✨</span>
+                          <span style={{ fontSize:9.5, fontWeight:900, color:"#ffffff", textTransform:"uppercase", letterSpacing:".2em" }}>AI Opportunity</span>
+                        </div>
+                        <p style={{ fontSize:11, lineHeight:1.6, color:"var(--tx-500)", marginBottom:12 }}>
+                          {activePos.length > 0
+                            ? <>Portfolio momentum score for <strong style={{ color:"#ffffff" }}>{best?.ticker ?? activePos[0]?.ticker}</strong> has strengthened based on recent price action. Potential breakout zone detected.</>
+                            : <>Add holdings to unlock AI-powered portfolio analysis, sector insights, and trade recommendations.</>
+                          }
+                        </p>
+                        <button style={{
+                          fontSize:10.5, fontWeight:700, color:"var(--navy)",
+                          background:"none", border:"none", cursor:"pointer",
+                          fontFamily:"var(--ff-body)", padding:0, textDecoration:"none",
+                        }}>
+                          View Deep Dive Analysis →
+                        </button>
+                      </div>
+                      <div className="zf-ai-teaser-bg">🧠</div>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* ── ROW 3: F&O Positions ── */}
-              <div className="zf-card">
+              <div className="zf-card zf-anim-5" style={{ animationDelay:".36s" }}>
                 <div className="zf-card-head">
                   <div style={{ display:"flex", alignItems:"center", gap:10 }}>
                     <span className="zf-card-title">F&O Positions</span>
@@ -1784,7 +1500,7 @@ export default function Index() {
                   </div>
                 </div>
                 {/* Always-visible KPI strip */}
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", borderBottom:"1px solid var(--bd-100)" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", borderBottom:"1px solid var(--bd-50)" }}>
                   {([
                     { lbl:"Open Positions", val:String(fnoOpen.length), sub:`Premium: ${fmt(fnoInvested)}`, clr:"var(--navy)" },
                     { lbl:"Unrealised P&L", val:`${sign(fnoUnrealised)}${fmt(Math.abs(fnoUnrealised))}`, sub:`${fnoOpen.length} position${fnoOpen.length!==1?"s":""}`, clr:fnoUnrealised>=0?"var(--green)":"var(--red)" },
@@ -1887,7 +1603,7 @@ export default function Index() {
               </div>
 
               {/* ── ROW 4: Charts moved to bottom ── */}
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 340px", gap:16 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 340px", gap:18, animationDelay:".42s" }} className="zf-anim-6">
 
                 {/* Large line chart */}
                 <div className="zf-card">
@@ -1948,9 +1664,9 @@ export default function Index() {
 
                 {/* Trades = sub-tabbed: Equity | F&O */}
                 {tab === "trades" && (
-                  <div style={{ display:"flex", flexDirection:"column", height:"100%", background:"#fff" }}>
+                  <div style={{ display:"flex", flexDirection:"column", height:"100%", background:"var(--bg-card)" }}>
                     {/* Sub-tab bar */}
-                    <div style={{ display:"flex", alignItems:"center", gap:2, padding:"14px 20px 0", borderBottom:"1.5px solid #e5e7eb", background:"#f8f9fc", flexShrink:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:2, padding:"14px 20px 0", borderBottom:"1.5px solid var(--bd-100)", background:"var(--bg-surface)", flexShrink:0 }}>
                       {([
                         { id:"equity", label:"Equity Trades", count: live.length },
                         { id:"fno",    label:"F&O Positions", count: fnoTrades.length },
@@ -1959,11 +1675,11 @@ export default function Index() {
                           onClick={() => setTradesSubTab(st.id)}
                           style={{
                             fontSize:13, fontWeight: tradesSubTab === st.id ? 700 : 500,
-                            color: tradesSubTab === st.id ? "#1c3557" : "#6b7280",
+                            color: tradesSubTab === st.id ? "var(--navy)" : "var(--tx-400)",
                             padding:"9px 18px 10px", borderRadius:"8px 8px 0 0",
-                            border: tradesSubTab === st.id ? "1px solid #e5e7eb" : "1px solid transparent",
-                            borderBottom: tradesSubTab === st.id ? "1.5px solid #fff" : "1px solid transparent",
-                            background: tradesSubTab === st.id ? "#fff" : "transparent",
+                            border: tradesSubTab === st.id ? "1px solid var(--bd-100)" : "1px solid transparent",
+                            borderBottom: tradesSubTab === st.id ? "1.5px solid var(--bg-card)" : "1px solid transparent",
+                            background: tradesSubTab === st.id ? "var(--bg-card)" : "transparent",
                             cursor:"pointer", fontFamily:"inherit", position:"relative", bottom:"-1.5px",
                             display:"flex", alignItems:"center", gap:7, transition:"all .14s",
                           }}>
