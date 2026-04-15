@@ -1,0 +1,86 @@
+KT SCRIPT: Teradata to GCP Migration (Read During Call)
+
+Hi everyone, I’ll walk you through the Teradata to GCP migration in a
+simple way.
+
+First, let’s understand the problem.
+
+Earlier, our data movement was quite complex. Data was going from
+Teradata to on-prem systems, then through multiple layers before
+reaching BigQuery. This made the process slow, costly, and dependent on
+multiple teams.
+
+To solve this, we built a new cloud-native pipeline.
+
+Now, data moves directly from Teradata to Google Cloud Storage, and then
+into BigQuery. This makes the process faster, simpler, and fully
+scalable.
+
+The core idea is simple: we extract data from Teradata using a feature
+called WRITE_NOS, store it in GCS, and load it into BigQuery using
+serverless services.
+
+Now let’s talk about how the pipeline works.
+
+We have two main jobs.
+
+Job 1 is the Configuration Job. This job reads YAML configuration files,
+validates them, and stores metadata in Cloud SQL. It also ensures that
+PII columns are tagged properly and triggers the main job if required.
+
+Job 2 is the main job, called Extract and Load Orchestration.
+
+This job is triggered either from Control-M or manually. It reads
+configuration from Cloud SQL, runs queries in Teradata, and extracts
+data into GCS in parquet format.
+
+Once data is extracted, it is moved from the landing bucket to a
+processing bucket.
+
+Then, the system checks if BigQuery tables exist. If not, it creates
+both external and native tables.
+
+After that, data is loaded into BigQuery. Finally, files are archived
+into a storage bucket and record counts are validated.
+
+We support two types of loads.
+
+Full load means loading all data, typically used for the first time.
+
+Delta load means loading only new or changed data, which is faster and
+used for daily runs.
+
+One important point: if partitioning is not configured properly, delta
+loads can create duplicate data.
+
+Now let’s talk about storage.
+
+We use three buckets: Landing bucket for raw data, Processing bucket for
+active loading, Store bucket for archived data.
+
+Configuration is handled using YAML files. Each table has its own YAML
+file which defines queries, load type, partitioning, and other details.
+
+Security is handled using service accounts and secrets are stored
+securely in Secret Manager. PII data is protected using policy tags.
+
+Monitoring is done using Cloud SQL tables and logs. We track job status,
+record counts, and last load times.
+
+Now let’s quickly look at benefits.
+
+This solution is faster, reduces cost, removes dependencies on multiple
+systems, and is fully automated and scalable.
+
+Some common issues we may face include large file failures, schema
+mismatches, and count mismatches. These can be handled by splitting
+data, recreating tables, or triggering full loads.
+
+Best practices include always using partition columns, validating YAML
+files, optimizing queries, and monitoring loads regularly.
+
+To summarize in one line: we replaced a slow, complex on-prem pipeline
+with a fast, serverless, cloud-native pipeline from Teradata to
+BigQuery.
+
+That’s it from my side. Let me know if you have any questions.

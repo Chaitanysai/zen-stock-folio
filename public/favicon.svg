@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Navy rounded square background — matches #1c3557 brand color -->
+  <rect width="100" height="100" rx="22" fill="#1c3557"/>
+
+  <!-- Subtle inner highlight border -->
+  <rect width="100" height="100" rx="22" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+
+  <!-- Chart line — white on navy, clean minimal style -->
+  <polyline
+    points="18,68 30,60 42,64 54,44 66,38 82,24"
+    fill="none"
+    stroke="white"
+    stroke-width="5.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    opacity="0.95"
+  />
+
+  <!-- Area fill under chart -->
+  <polygon
+    points="18,68 30,60 42,64 54,44 66,38 82,24 82,76 18,76"
+    fill="white"
+    opacity="0.10"
+  />
+
+  <!-- Live dot at peak -->
+  <circle cx="82" cy="24" r="5.5" fill="#059669"/>
+  <circle cx="82" cy="24" r="2.5" fill="white"/>
+</svg>

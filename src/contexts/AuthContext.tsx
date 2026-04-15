@@ -1,117 +1,98 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import {
-  AuthSession,
-  fetchCurrentUser,
-  getStoredSession,
-  isSupabaseConfigured,
-  refreshSession,
-  signInWithPassword,
-  signOut,
-  storeSession,
-} from "@/lib/supabaseAuth";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 
-interface AuthContextValue {
-  session: AuthSession | null;
-  isAuthenticated: boolean;
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  loading: boolean;
   isLoading: boolean;
+  isAuthenticated: boolean;
   isConfigured: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<string | null>;
+  signUpWithEmail: (email: string, password: string) => Promise<string | null>;
+  signOut: () => Promise<void>;
   signOutUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const isConfigured = isSupabaseConfigured();
-
-  const applySession = useCallback((nextSession: AuthSession | null) => {
-    setSession(nextSession);
-    storeSession(nextSession);
-  }, []);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const isConfigured = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
   useEffect(() => {
-    let cancelled = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-    async function restoreSession() {
-      if (!isConfigured) {
-        setIsLoading(false);
-        return;
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-      const stored = getStoredSession();
-      if (!stored) {
-        setIsLoading(false);
-        return;
-      }
+    return () => subscription.unsubscribe();
+  }, []);
 
-      try {
-        const expiresSoon = stored.expiresAt <= Date.now() + 60_000;
-        const nextSession = expiresSoon
-          ? await refreshSession(stored.refreshToken)
-          : {
-              ...stored,
-              user: await fetchCurrentUser(stored.accessToken),
-            };
+  const signInWithGoogle = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+  };
 
-        if (!cancelled) {
-          applySession(nextSession);
-        }
-      } catch {
-        if (!cancelled) {
-          applySession(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
+  const signInWithEmail = async (email: string, password: string): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return error ? error.message : null;
+  };
+
+  const signUpWithEmail = async (email: string, password: string): Promise<string | null> => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    return error ? error.message : null;
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const error = await signInWithEmail(email, password);
+    if (error) {
+      throw new Error(error);
     }
+  };
 
-    restoreSession();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [applySession, isConfigured]);
-
-  const handleSignIn = useCallback(
-    async (email: string, password: string) => {
-      const nextSession = await signInWithPassword(email, password);
-      applySession(nextSession);
-    },
-    [applySession],
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        isLoading: loading,
+        isAuthenticated: !!user,
+        isConfigured,
+        signIn,
+        signInWithGoogle,
+        signInWithEmail,
+        signUpWithEmail,
+        signOut,
+        signOutUser: signOut,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   );
+};
 
-  const handleSignOut = useCallback(async () => {
-    if (session) {
-      await signOut(session.accessToken);
-    }
-    applySession(null);
-  }, [applySession, session]);
-
-  const value = useMemo(
-    () => ({
-      session,
-      isAuthenticated: !!session,
-      isLoading,
-      isConfigured,
-      signIn: handleSignIn,
-      signOutUser: handleSignOut,
-    }),
-    [handleSignIn, handleSignOut, isConfigured, isLoading, session],
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-
-  return context;
-}
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
+  return ctx;
+};
