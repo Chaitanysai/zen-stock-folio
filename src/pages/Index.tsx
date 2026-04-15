@@ -1219,17 +1219,45 @@ export default function Index() {
   const activePos   = live.filter(s => s.status === "Active");
   const closedPos   = live.filter(s => s.status !== "Active");
 
-  // Equity metrics
-  const equityInvested  = live.reduce((s, x) => s + calcInvestedValue(x), 0);          // ALL equity ever invested
-  const activeCurr      = activePos.reduce((s, x) => s + calcFinalValue(x), 0);         // current value of open positions
-  const realisedPnl     = closedPos.reduce((s, x) => s + calcProfitLoss(x), 0);         // closed trade P&L
-  const unrealisedPnl   = activePos.reduce((s, x) => s + calcProfitLoss(x), 0);         // open position P&L
+  // ════════════════════════════════════════
+  // ✅ CORRECT PORTFOLIO CALCULATIONS
+  // ════════════════════════════════════════
+
+  // 👉 Only OPEN trades
+  const activeStocks = live.filter(s => s.status === "Active");
+
+  // 👉 CLOSED trades (for realized P&L)
+  const closedStocks = live.filter(s => s.status !== "Active");
+
+  // ✅ Total Invested (ONLY OPEN trades)
+  const equityInvested = activeStocks.reduce(
+    (sum, s) => sum + (s.entryPrice * s.quantity),
+    0
+  );
+
+  // ✅ Current Portfolio Value (LIVE CMP - ONLY OPEN)
+  const activeCurr = activeStocks.reduce(
+    (sum, s) => sum + (s.cmp * s.quantity),
+    0
+  );
+
+  // ✅ Unrealized P&L (open trades only)
+  const unrealisedPnl = activeCurr - equityInvested;
+
+  // ✅ % Change
+  const unrealisedPnlPct = equityInvested > 0 ? (unrealisedPnl / equityInvested) * 100 : 0;
+
+  // ✅ Realized P&L (closed trades)
+  const realisedPnl = closedStocks.reduce(
+    (sum, s) => sum + ((s.exitPrice ?? s.cmp) - s.entryPrice) * s.quantity,
+    0
+  );
 
   // F&O metrics
   const fnoOpen         = fnoTrades.filter(t => t.status === "Open");
   const fnoClosed       = fnoTrades.filter(t => t.status !== "Open");
   // F&O "invested" = premium paid for options + margin deployed for futures (~15% notional)
-  const fnoInvested     = fnoTrades.reduce((s, t) => s + calcFnOInvested(t), 0);
+  const fnoInvested     = fnoOpen.reduce((s, t) => s + calcFnOInvested(t), 0);
   // F&O unrealised P&L = sum of P&L on all open positions
   const fnoUnrealised   = fnoOpen.reduce((s, t) => s + calcFnOPnL(t), 0);
   const fnoRealised     = fnoClosed.reduce((s, t) => s + calcFnOPnL(t), 0);
@@ -1238,9 +1266,9 @@ export default function Index() {
   const fnoActiveCurr   = fnoInvested + fnoUnrealised;
 
   // COMBINED dashboard metrics
-  // "Total Invested" = equity cost basis (all trades) + F&O capital deployed
+  // "Total Invested" = equity cost basis (ONLY OPEN) + F&O capital deployed (ONLY OPEN)
   const invested        = equityInvested + fnoInvested;
-  // "Portfolio Value" = active equity market value + F&O current value
+  // "Portfolio Value" = active equity market value (LIVE CMP ONLY OPEN) + F&O current value (ONLY OPEN)
   const current         = activeCurr + fnoActiveCurr;
   // "Unrealised P&L" = equity open P&L + F&O open P&L
   const pnl             = unrealisedPnl + fnoUnrealised;
