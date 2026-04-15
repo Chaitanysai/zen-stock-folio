@@ -154,7 +154,7 @@ const CSS = `
   min-height: 100vh;
   color: var(--tx-900);
   display: flex;
-  overflow: hidden;
+  overflow: visible;
   height: 100vh;
 }
 

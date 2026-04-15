@@ -1186,7 +1186,8 @@ button, a, input, select, textarea {
 
 /* Ensure dropdown always on top */
 [data-radix-popper-content-wrapper] {
-  z-index: var(--z-dropdown) !important;
+  z-index: 999999 !important;
+  position: fixed !important;
 }
 
 /* Smooth rendering */
