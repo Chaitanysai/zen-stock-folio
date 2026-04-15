@@ -4,7 +4,7 @@ import {
   BarChart, Bar,
   XAxis, YAxis, Tooltip,
   ResponsiveContainer,
-  LineChart, Line
+  AreaChart, Area
 } from "recharts";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { useEffect, useState } from "react";
@@ -24,7 +24,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-lg">
-      <p className="text-xs text-muted-foreground">{label || payload[0]?.name}</p>
+      <p className="text-xs text-muted-foreground">{label}</p>
       <p className="text-sm font-mono font-semibold text-foreground">
         ₹{Number(payload[0]?.value).toLocaleString("en-IN")}
       </p>
@@ -37,31 +37,59 @@ interface PortfolioChartsProps {
 }
 
 const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
-  // ✅ LIVE PRICES
   const tickers = stocks.map(s => s.ticker);
   const { prices } = useLivePrices(tickers);
 
-  // ✅ REAL-TIME HISTORY
   const [priceHistory, setPriceHistory] = useState<any[]>([]);
 
+  // 🔥 REAL MARKET DATA (Groww style)
   useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date().toLocaleTimeString();
+    const fetchPortfolioChart = async () => {
+      try {
+        const responses = await Promise.all(
+          stocks.map(s =>
+            fetch(
+              `https://query1.finance.yahoo.com/v8/finance/chart/${s.ticker}.NS?range=1d&interval=5m`
+            ).then(res => res.json())
+          )
+        );
 
-      const totalValue = stocks.reduce((sum, s) => {
-        const live = prices[s.ticker];
-        const cmp = live?.price ?? s.cmp;
-        return sum + (cmp * s.quantity);
-      }, 0);
+        // Get timestamps from first stock
+        const timestamps =
+          responses[0]?.chart?.result?.[0]?.timestamp || [];
 
-      setPriceHistory(prev => [
-        ...prev.slice(-20), // last 20 points
-        { time: now, value: totalValue }
-      ]);
-    }, 5000);
+        const chartData: any[] = [];
 
-    return () => clearInterval(interval);
-  }, [prices, stocks]);
+        timestamps.forEach((t: number, i: number) => {
+          let totalValue = 0;
+
+          stocks.forEach((s, idx) => {
+            const pricesArr =
+              responses[idx]?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+
+            const price = pricesArr?.[i];
+            if (!price) return;
+
+            totalValue += price * s.quantity;
+          });
+
+          chartData.push({
+            time: new Date(t * 1000).toLocaleTimeString("en-IN", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            value: totalValue,
+          });
+        });
+
+        setPriceHistory(chartData);
+      } catch (err) {
+        console.error("Portfolio chart error:", err);
+      }
+    };
+
+    fetchPortfolioChart();
+  }, [stocks]);
 
   // ✅ Allocation
   const allocationData = stocks.map((s) => ({
@@ -84,46 +112,64 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-      {/* 🔴 REAL-TIME PORTFOLIO CHART */}
+      {/* 🔥 REAL PORTFOLIO CHART */}
       <div className="bg-card rounded-lg border border-border p-4">
-        <h3 className="text-sm font-semibold mb-3">Live Portfolio Value (₹)</h3>
-        <ResponsiveContainer width="100%" height={200}>
-          <LineChart data={priceHistory}>
+        <h3 className="text-sm font-semibold mb-3">
+          Portfolio Value (Intraday ₹)
+        </h3>
+
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={priceHistory}>
+            <defs>
+              <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#16a34a" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+
+            {/* X Axis */}
             <XAxis
               dataKey="time"
               tick={{ fill: "hsl(215,12%,50%)", fontSize: 10 }}
               axisLine={false}
               tickLine={false}
+              minTickGap={25}
             />
+
+            {/* Y Axis */}
             <YAxis
               tick={{ fill: "hsl(215,12%,50%)", fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
             />
+
             <Tooltip content={<CustomTooltip />} />
-            <Line
+
+            <Area
               type="monotone"
               dataKey="value"
-              stroke="hsl(174,72%,46%)"
+              stroke="#16a34a"
               strokeWidth={2}
+              fillOpacity={1}
+              fill="url(#colorValue)"
               dot={false}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* 📊 P&L Distribution */}
+      {/* 📊 P&L */}
       <div className="bg-card rounded-lg border border-border p-4">
         <h3 className="text-sm font-semibold mb-3">P&L Distribution (₹)</h3>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={plData}>
-            <XAxis dataKey="name" tick={{ fill: "hsl(215,12%,50%)", fontSize: 10 }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fill: "hsl(215,12%,50%)", fontSize: 11 }} axisLine={false} tickLine={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+            <YAxis />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="pl" radius={[4, 4, 0, 0]}>
+            <Bar dataKey="pl">
               {plData.map((entry, i) => (
-                <Cell key={i} fill={entry.pl >= 0 ? "hsl(145,72%,44%)" : "hsl(0,72%,55%)"} />
+                <Cell key={i} fill={entry.pl >= 0 ? "#16a34a" : "#ef4444"} />
               ))}
             </Bar>
           </BarChart>
@@ -139,11 +185,8 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
               data={allocationData}
               dataKey="value"
               nameKey="name"
-              cx="50%"
-              cy="50%"
               outerRadius={75}
               innerRadius={40}
-              strokeWidth={0}
             >
               {allocationData.map((_, i) => (
                 <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -152,15 +195,6 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
             <Tooltip content={<CustomTooltip />} />
           </PieChart>
         </ResponsiveContainer>
-
-        <div className="flex flex-wrap gap-2 mt-2">
-          {allocationData.map((d, i) => (
-            <div key={d.name} className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-              <span className="text-[10px] text-muted-foreground">{d.name}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
     </div>
