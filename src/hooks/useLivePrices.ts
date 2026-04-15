@@ -18,14 +18,14 @@ export type PriceSource =
   | null;
 
 export interface UseLivePricesResult {
-  prices:      Record<string, StockPrice>;
-  loading:     boolean;
+  prices: Record<string, StockPrice>;
+  loading: boolean;
   lastUpdated: string | null;
-  error:       string | null;
-  source:      PriceSource;
-  marketOpen:  boolean;
-  sourceLabel: string;       // Human-readable label for UI
-  refresh:     () => void;
+  error: string | null;
+  source: PriceSource;
+  marketOpen: boolean;
+  sourceLabel: string;
+  refresh: () => void;
 }
 
 function isMarketOpen(): boolean {
@@ -38,16 +38,15 @@ function isMarketOpen(): boolean {
 
 function getSourceLabel(source: PriceSource, marketOpen: boolean): string {
   switch (source) {
-    case "upstox-live":  return "Live";
+    case "upstox-live": return "Live";
     case "yahoo-v8-eod":
     case "yahoo-v7-eod": return marketOpen ? "~15 min delayed" : "EOD";
-    case "stooq-eod":    return "EOD";
+    case "stooq-eod": return "EOD";
     case "memory-cache": return "Cached";
-    default:             return "";
+    default: return "";
   }
 }
 
-// Retry with exponential backoff
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
@@ -56,8 +55,7 @@ async function fetchWithRetry(
   let lastErr: any;
   for (let i = 0; i <= maxRetries; i++) {
     try {
-      const res = await fetch(url, options);
-      return res;
+      return await fetch(url, options);
     } catch (e) {
       lastErr = e;
       if (i < maxRetries) await new Promise(r => setTimeout(r, 800 * (i + 1)));
@@ -67,20 +65,27 @@ async function fetchWithRetry(
 }
 
 export function useLivePrices(tickers: string[]): UseLivePricesResult {
-  const [prices, setPrices]           = useState<Record<string, StockPrice>>({});
-  const [loading, setLoading]         = useState(false);
+  const [prices, setPrices] = useState<Record<string, StockPrice>>({});
+  const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [error, setError]             = useState<string | null>(null);
-  const [source, setSource]           = useState<PriceSource>(null);
-  const [marketOpen, setMarketOpen]   = useState(isMarketOpen());
+  const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<PriceSource>(null);
+  const [marketOpen, setMarketOpen] = useState(isMarketOpen());
+
   const tickerKey = tickers.slice().sort().join(",");
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFetchRef = useRef<number>(0);
 
   const fetchPrices = useCallback(async () => {
     if (tickers.length === 0) return;
+
+    // 🔥 Prevent too frequent calls
+    const now = Date.now();
+    if (now - lastFetchRef.current < 800) return;
+    lastFetchRef.current = now;
+
     const unique = [...new Set(tickers)];
     setLoading(true);
-    setError(null);
 
     try {
       const res = await fetchWithRetry(getApiUrl("/api/prices"), {
@@ -98,7 +103,7 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
       }
 
       if (data?.prices && Object.keys(data.prices).length > 0) {
-        setPrices(data.prices);
+        setPrices(prev => ({ ...prev, ...data.prices })); // ✅ merge (no flicker)
         setLastUpdated(data.fetchedAt ?? new Date().toISOString());
         setSource((data.source as PriceSource) ?? null);
         setMarketOpen(data.marketOpen ?? isMarketOpen());
@@ -113,30 +118,45 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
     } finally {
       setLoading(false);
     }
-  }, [tickerKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tickerKey]);
 
   useEffect(() => {
     fetchPrices();
 
     const schedule = () => {
-      // During market hours: refresh every 60s
-      // After close: refresh every 30 min (prices stable, just for fresh EOD)
-      // Weekend: refresh every 2 hours
       const open = isMarketOpen();
       const day = new Date().getDay();
       const isWeekend = day === 0 || day === 6;
-      const delay = isWeekend ? 2 * 60 * 60_000 : open ? 60_000 : 30 * 60_000;
+
+      // 🚀 REAL-TIME UPGRADE
+      const delay = isWeekend
+        ? 10 * 60_000        // 10 min weekend
+        : open
+        ? 1000              // 🔥 1 sec (REAL-TIME)
+        : 5 * 60_000;       // 5 min after market
 
       intervalRef.current = setTimeout(() => {
         fetchPrices().then(() => schedule());
       }, delay);
     };
+
     schedule();
 
-    return () => { if (intervalRef.current) clearTimeout(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearTimeout(intervalRef.current);
+    };
   }, [fetchPrices]);
 
   const sourceLabel = getSourceLabel(source, marketOpen);
 
-  return { prices, loading, lastUpdated, error, source, marketOpen, sourceLabel, refresh: fetchPrices };
+  return {
+    prices,
+    loading,
+    lastUpdated,
+    error,
+    source,
+    marketOpen,
+    sourceLabel,
+    refresh: fetchPrices
+  };
 }
