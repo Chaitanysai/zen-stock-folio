@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { getApiUnavailableMessage, getApiUrl } from "@/lib/api";
 
 interface StockPrice {
   price: number;
@@ -32,7 +33,7 @@ export function useLivePrices(tickers: string[], intervalMs = 5 * 60 * 1000): Us
     setError(null);
 
     try {
-      const response = await fetch("/api/prices", {
+      const response = await fetch(getApiUrl("/api/prices"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tickers: uniqueTickers }),
@@ -42,7 +43,7 @@ export function useLivePrices(tickers: string[], intervalMs = 5 * 60 * 1000): Us
 
       if (!response.ok) {
         console.error("Prices API error:", data);
-        setError("Failed to fetch live prices");
+        setError(data?.error || "Failed to fetch live prices");
         return;
       }
 
@@ -55,7 +56,7 @@ export function useLivePrices(tickers: string[], intervalMs = 5 * 60 * 1000): Us
       }
     } catch (err) {
       console.error("Fetch prices error:", err);
-      setError("Network error fetching prices");
+      setError(getApiUnavailableMessage("Live prices"));
     } finally {
       setLoading(false);
     }

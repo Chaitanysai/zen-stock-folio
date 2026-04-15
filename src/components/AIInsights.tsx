@@ -5,6 +5,7 @@ import { Brain, Loader2, Sparkles, Shield, TrendingUp, AlertTriangle, BarChart3 
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getApiUnavailableMessage, getApiUrl } from "@/lib/api";
 
 interface AIInsightsProps {
   stocks: PortfolioStock[];
@@ -56,11 +57,17 @@ const AIInsights = ({ stocks, trades }: AIInsightsProps) => {
   };
 
   const callAiApi = async (prompt: string) => {
-    const response = await fetch("/api/ai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    });
+    let response: Response;
+
+    try {
+      response = await fetch(getApiUrl("/api/ai"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+    } catch (error) {
+      throw new Error(getApiUnavailableMessage("AI analysis"));
+    }
 
     const text = await response.text();
     let data: any = {};

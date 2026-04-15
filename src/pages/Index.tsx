@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw, History, BookOpen, Bell, Brain, PieChart } from "lucide-react";
+import { BarChart3, Crosshair, Eye, LayoutDashboard, Shield, RefreshCw, History, BookOpen, Bell, Brain, PieChart, LogOut } from "lucide-react";
 import { portfolioData as initialData, PortfolioStock, tradeStrategies as initialTrades, TradeStrategy, watchlistData as initialWatchlist, WatchlistStock, PriceAlert, TradeJournalEntry } from "@/data/sampleData";
 import DashboardStats from "@/components/DashboardStats";
 import PortfolioTable from "@/components/PortfolioTable";
@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -27,6 +28,7 @@ const Index = () => {
   const [watchlist, setWatchlist] = useState<WatchlistStock[]>(initialWatchlist);
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const { toast } = useToast();
+  const { session, signOutUser } = useAuth();
 
   const allTickers = [
     ...stocks.filter(s => s.status === "Active").map(s => s.ticker),
@@ -125,6 +127,11 @@ const Index = () => {
     return new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
   };
 
+  const handleSignOut = async () => {
+    await signOutUser();
+    toast({ title: "Signed out", description: "Your session has been cleared." });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/80 backdrop-blur-xl sticky top-0 z-50">
@@ -146,6 +153,14 @@ const Index = () => {
               {loading ? "Fetching..." : "Refresh"}
             </Button>
             <ThemeToggle />
+            <div className="hidden md:flex flex-col text-right">
+              <span className="text-xs font-medium text-foreground">{session?.user.email}</span>
+              <span className="text-[10px] text-muted-foreground">Authenticated workspace</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleSignOut} className="gap-1.5 text-xs border-border">
+              <LogOut className="h-3.5 w-3.5" />
+              Logout
+            </Button>
             <div className="flex items-center gap-2">
               <div className={`h-2 w-2 rounded-full ${loading ? "bg-warning" : "bg-profit"} animate-pulse-glow`} />
               <span className="text-xs text-muted-foreground">

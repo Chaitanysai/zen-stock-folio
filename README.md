@@ -17,6 +17,13 @@ npm install
 npm run dev
 ```
 
+If you run the frontend with Vite, the app expects the serverless API to be available separately.
+
+- Recommended: run the project through `vercel dev` so both the frontend and `/api/*` routes are available together.
+- Alternative: set `VITE_API_BASE_URL` to the origin serving `/api`, for example `http://localhost:3000`.
+
+Without the API, the dashboard will still render sample data, but live prices and AI analysis will be unavailable.
+
 ## Build
 
 ```sh
@@ -28,6 +35,10 @@ npm run build
 Required:
 
 - `GOOGLE_API_KEY` — Google Gemini API key used by `/api/ai`.
+- `VITE_SUPABASE_URL` — Supabase project URL used by the login flow.
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase anon/publishable key used by the login flow.
+
+The login screen uses Supabase email/password auth. You need at least one valid user in your Supabase project's Authentication users list.
 
 ### Configure in Vercel
 
