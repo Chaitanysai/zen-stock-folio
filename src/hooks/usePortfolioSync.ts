@@ -1,12 +1,13 @@
 import { useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { PortfolioStock, TradeStrategy, WatchlistStock, PriceAlert } from "@/data/sampleData";
+import { PortfolioStock, TradeStrategy, WatchlistStock, PriceAlert, FnOTrade } from "@/data/sampleData";
 
 export type PortfolioSnapshot = {
   stocks: PortfolioStock[];
   trades: TradeStrategy[];
   watchlist: WatchlistStock[];
   alerts: PriceAlert[];
+  fnoTrades: FnOTrade[];
 };
 
 const STORAGE_KEY = "smart-stock-tracker-data";
@@ -33,7 +34,13 @@ export const loadFromLocal = (): PortfolioSnapshot | null => {
     ) {
       return null;
     }
-    return { stocks: parsed.stocks, trades: parsed.trades, watchlist: parsed.watchlist, alerts: parsed.alerts };
+    return {
+      stocks: parsed.stocks,
+      trades: parsed.trades,
+      watchlist: parsed.watchlist,
+      alerts: parsed.alerts,
+      fnoTrades: Array.isArray(parsed.fnoTrades) ? parsed.fnoTrades : [],
+    };
   } catch {
     return null;
   }
@@ -59,7 +66,13 @@ export const loadFromServer = async (userId: string): Promise<PortfolioSnapshot 
     ) {
       return null;
     }
-    return { stocks: parsed.stocks, trades: parsed.trades, watchlist: parsed.watchlist, alerts: parsed.alerts };
+    return {
+      stocks: parsed.stocks,
+      trades: parsed.trades,
+      watchlist: parsed.watchlist,
+      alerts: parsed.alerts,
+      fnoTrades: Array.isArray(parsed.fnoTrades) ? parsed.fnoTrades : [],
+    };
   } catch {
     return null;
   }

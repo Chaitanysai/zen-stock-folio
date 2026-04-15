@@ -31,6 +31,7 @@ interface TradeInput {
 
 interface FnOPrice {
   ltp:   number;
+  change?: number;
   iv?:   number;
   delta?: number;
   oi?:   number;
@@ -120,8 +121,10 @@ async function fetchUpstoxFnO(
         continue;
       }
       const ltp = q.last_price ?? 0;
+      const prevClose = q.ohlc?.close ?? q.prev_close ?? ltp;
       out[tradeId] = {
         ltp,
+        change: ltp - prevClose,
         oi:  q.oi ?? undefined,
         // Upstox v2 option greeks (available in some subscription tiers)
         iv:    q.option_greeks?.iv    ?? undefined,
@@ -154,7 +157,7 @@ async function fetchYahooFallback(
     };
     const syms = [...new Set(futTrades.map(t => `${t.symbol}.NS`))].join(",");
     const res = await tf(
-      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice`,
+      `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}&fields=regularMarketPrice,regularMarketPreviousClose`,
       { headers: BH }
     );
     if (!res.ok) return null;
@@ -172,9 +175,11 @@ async function fetchYahooFallback(
     const out: Record<string, FnOPrice> = {};
     for (const trade of futTrades) {
       const spot = spotMap[trade.symbol];
+      const result = results.find(q => (q.symbol ?? "").replace(/\.NS$/, "") === trade.symbol);
       if (spot && spot > 0) {
         // Futures trade at spot ± basis (typically < 1%). Use spot as approximation.
-        out[trade.id] = { ltp: spot };
+        const prevClose = result?.regularMarketPreviousClose ?? spot;
+        out[trade.id] = { ltp: spot, change: spot - prevClose };
         console.log(`✅ Yahoo FUT fallback ${trade.symbol}: ₹${spot}`);
       }
     }

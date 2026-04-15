@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   LayoutDashboard, TrendingUp, ScrollText, Eye,
   Brain, History, BarChart3, Bell, RefreshCw,
@@ -31,8 +31,9 @@ import ExportPortfolio       from "@/components/ExportPortfolio";
 import AuthModal             from "@/components/AuthModal";
 import { useToast }          from "@/hooks/use-toast";
 import { useLivePrices }     from "@/hooks/useLivePrices";
-import { usePortfolioSync, loadFromLocal } from "@/hooks/usePortfolioSync";
+import { usePortfolioSync, loadFromLocal, PortfolioSnapshot } from "@/hooks/usePortfolioSync";
 import { useAuth }           from "@/contexts/AuthContext";
+import { buildTrendSeries, isSameTradingDay } from "@/lib/trading";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ActiveTab =
@@ -1028,24 +1029,182 @@ export default function Index() {
       });
     } catch { return fnOTradesData; }
   });
+  const [selectedChartTicker, setSelectedChartTicker] = useState<string | null>(() => {
+    const localData = loadFromLocal();
+    return localData?.stocks?.find((stock) => stock.status === "Active")?.ticker ?? null;
+  });
   const [tradesSubTab, setTradesSubTab] = useState<"equity"|"fno">("equity");
-
-  // Persist F&O trades
-  useEffect(() => {
-    try { localStorage.setItem("zf-fno-trades", JSON.stringify(fnoTrades)); } catch {}
-  }, [fnoTrades]);
 
   const { toast }         = useToast();
   const { user, signOut, loading: _authLoading } = useAuth();
+  const { load, save }    = usePortfolioSync(user?.id);
   const tickers = stocks.map(s => s.ticker);
   const { prices, source, marketOpen, refresh } = useLivePrices(tickers);
   // isLive = fresh data from any real source (not memory-cache)
   const isLive = source !== null && source !== "memory-cache";
-  usePortfolioSync({ stocks, trades, watchlist, alerts, setStocks, setTrades, setWatchlist, setAlerts });
+  const snapshotRef = useRef<PortfolioSnapshot>({
+    stocks,
+    trades,
+    watchlist,
+    alerts,
+    fnoTrades,
+  });
 
-  const live = stocks.map(s =>
-    prices[s.ticker]?.price ? { ...s, cmp: prices[s.ticker].price } : s
-  );
+  useEffect(() => {
+    snapshotRef.current = { stocks, trades, watchlist, alerts, fnoTrades };
+  }, [alerts, fnoTrades, stocks, trades, watchlist]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    load().then((snapshot) => {
+      if (!snapshot || cancelled) return;
+      setStocks(snapshot.stocks);
+      setTrades(snapshot.trades);
+      setWatchlist(snapshot.watchlist);
+      setAlerts(snapshot.alerts);
+      setFnoTrades(snapshot.fnoTrades.length > 0 ? snapshot.fnoTrades : snapshotRef.current.fnoTrades);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
+
+  const persistSnapshot = useCallback(async (nextSnapshot: PortfolioSnapshot, actionLabel?: string) => {
+    const error = await save(nextSnapshot);
+    if (error) {
+      toast({
+        title: `${actionLabel ?? "Changes"} saved locally`,
+        description: "Cloud sync could not be completed. The latest changes are still available on this device.",
+        variant: "destructive",
+      });
+    }
+  }, [save, toast]);
+
+  const applySnapshot = useCallback(async (
+    partial: Partial<PortfolioSnapshot>,
+    actionLabel?: string
+  ) => {
+    const nextSnapshot: PortfolioSnapshot = {
+      ...snapshotRef.current,
+      ...partial,
+    };
+
+    snapshotRef.current = nextSnapshot;
+
+    if (partial.stocks) setStocks(partial.stocks);
+    if (partial.trades) setTrades(partial.trades);
+    if (partial.watchlist) setWatchlist(partial.watchlist);
+    if (partial.alerts) setAlerts(partial.alerts);
+    if (partial.fnoTrades) setFnoTrades(partial.fnoTrades);
+
+    await persistSnapshot(nextSnapshot, actionLabel);
+  }, [persistSnapshot]);
+
+  const live = useMemo(() => stocks.map((stock) => {
+    const livePrice = prices[stock.ticker];
+    return livePrice?.price
+      ? {
+          ...stock,
+          cmp: livePrice.price,
+          weekHigh52: livePrice.weekHigh52 || stock.weekHigh52,
+          weekLow52: livePrice.weekLow52 || stock.weekLow52,
+          dailyChange: livePrice.change,
+        }
+      : stock;
+  }), [prices, stocks]);
+
+  const handlePortfolioAdd = useCallback((stock: PortfolioStock) => {
+    void applySnapshot({ stocks: [...snapshotRef.current.stocks, stock] }, "Portfolio update");
+  }, [applySnapshot]);
+
+  const handlePortfolioImport = useCallback((importedStocks: PortfolioStock[]) => {
+    void applySnapshot({ stocks: [...snapshotRef.current.stocks, ...importedStocks] }, "Portfolio import");
+  }, [applySnapshot]);
+
+  const handlePortfolioEdit = useCallback((originalTicker: string, updatedStock: PortfolioStock) => {
+    const nextStocks = snapshotRef.current.stocks.map((stock) =>
+      stock.ticker === originalTicker ? updatedStock : stock
+    );
+    const nextTrades = snapshotRef.current.trades.map((trade) =>
+      trade.ticker === originalTicker ? { ...trade, ticker: updatedStock.ticker, livePrice: updatedStock.cmp } : trade
+    );
+    const nextAlerts = snapshotRef.current.alerts.map((alert) =>
+      alert.ticker === originalTicker ? { ...alert, ticker: updatedStock.ticker } : alert
+    );
+
+    void applySnapshot({ stocks: nextStocks, trades: nextTrades, alerts: nextAlerts }, "Transaction update");
+  }, [applySnapshot]);
+
+  const handlePortfolioDelete = useCallback((ticker: string) => {
+    const nextStocks = snapshotRef.current.stocks.filter((stock) => stock.ticker !== ticker);
+    const nextTrades = snapshotRef.current.trades.filter((trade) => trade.ticker !== ticker);
+    const nextAlerts = snapshotRef.current.alerts.filter((alert) => alert.ticker !== ticker);
+
+    if (selectedChartTicker === ticker) {
+      setSelectedChartTicker(nextStocks.find((stock) => stock.status === "Active")?.ticker ?? null);
+    }
+
+    void applySnapshot({ stocks: nextStocks, trades: nextTrades, alerts: nextAlerts }, "Transaction deletion");
+  }, [applySnapshot, selectedChartTicker]);
+
+  const handleTradeEdit = useCallback((originalTicker: string, updatedTrade: TradeStrategy) => {
+    void applySnapshot({
+      trades: snapshotRef.current.trades.map((trade) => trade.ticker === originalTicker ? updatedTrade : trade),
+    }, "Trade strategy update");
+  }, [applySnapshot]);
+
+  const handleTradeDelete = useCallback((ticker: string) => {
+    void applySnapshot({
+      trades: snapshotRef.current.trades.filter((trade) => trade.ticker !== ticker),
+    }, "Trade strategy deletion");
+  }, [applySnapshot]);
+
+  const handleWatchlistEdit = useCallback((originalName: string, updatedStock: WatchlistStock) => {
+    void applySnapshot({
+      watchlist: snapshotRef.current.watchlist.map((stock) => stock.stockName === originalName ? updatedStock : stock),
+    }, "Watchlist update");
+  }, [applySnapshot]);
+
+  const handleWatchlistDelete = useCallback((stockName: string) => {
+    void applySnapshot({
+      watchlist: snapshotRef.current.watchlist.filter((stock) => stock.stockName !== stockName),
+    }, "Watchlist deletion");
+  }, [applySnapshot]);
+
+  const handleAlertAdd = useCallback((alert: PriceAlert) => {
+    void applySnapshot({ alerts: [...snapshotRef.current.alerts, alert] }, "Alert update");
+  }, [applySnapshot]);
+
+  const handleAlertDelete = useCallback((id: string) => {
+    void applySnapshot({ alerts: snapshotRef.current.alerts.filter((alert) => alert.id !== id) }, "Alert update");
+  }, [applySnapshot]);
+
+  const handleAlertDismiss = useCallback((id: string) => {
+    void applySnapshot({
+      alerts: snapshotRef.current.alerts.map((alert) => alert.id === id ? { ...alert, triggered: false } : alert),
+    }, "Alert update");
+  }, [applySnapshot]);
+
+  const handleFnoTradesUpdate = useCallback((nextTrades: FnOTrade[]) => {
+    const sanitize = (trade: FnOTrade) => {
+      const { ltp, dayChange, iv, delta, ...rest } = trade;
+      return rest;
+    };
+
+    const previousSnapshot = snapshotRef.current;
+    const previousStable = JSON.stringify(previousSnapshot.fnoTrades.map(sanitize));
+    const nextStable = JSON.stringify(nextTrades.map(sanitize));
+    const nextSnapshot = { ...previousSnapshot, fnoTrades: nextTrades };
+
+    snapshotRef.current = nextSnapshot;
+    setFnoTrades(nextTrades);
+
+    if (previousStable !== nextStable) {
+      void persistSnapshot(nextSnapshot, "F&O update");
+    }
+  }, [persistSnapshot]);
 
   // Close user menu on outside click
   useEffect(() => {
@@ -1091,15 +1250,25 @@ export default function Index() {
 
   const winners         = closedPos.filter(s => calcProfitLoss(s) > 0);
   const winRate         = closedPos.length > 0 ? winners.length / closedPos.length * 100 : 0;
-  // Today's P&L — use prices[ticker].change (absolute ₹ day move) when available.
-  // change is populated by the API from Yahoo/Upstox for ALL sources, not just live.
-  const todayPnl = activePos.reduce((acc, s) => {
+  const today = new Date();
+  const todayEquityUnrealised = activePos.reduce((acc, s) => {
     const pd = prices[s.ticker];
-    if (pd?.change !== undefined && pd.change !== 0) return acc + pd.change * s.quantity;
-    // fallback only if API returned no day-change at all
+    if (pd?.change !== undefined) return acc + pd.change * s.quantity;
     return acc;
   }, 0);
-  const todayPct = activeCurr > 0 ? (todayPnl / activeCurr) * 100 : 0;
+  const todayFnOUnrealised = fnoOpen.reduce(
+    (acc, trade) => acc + (trade.dayChange ?? 0) * trade.lots * trade.lotSize,
+    0
+  );
+  const todayRealisedEquity = closedPos
+    .filter((stock) => isSameTradingDay(stock.exitDate, today))
+    .reduce((acc, stock) => acc + calcProfitLoss(stock), 0);
+  const todayRealisedFnO = fnoClosed
+    .filter((trade) => isSameTradingDay(trade.exitDate, today))
+    .reduce((acc, trade) => acc + calcFnOPnL(trade), 0);
+  const todayPnl = todayEquityUnrealised + todayFnOUnrealised + todayRealisedEquity + todayRealisedFnO;
+  const todayBase = activeCurr + fnoActiveCurr;
+  const todayPct = todayBase > 0 ? (todayPnl / todayBase) * 100 : 0;
 
   const performers = activePos
     .filter(s => s.entryPrice > 0)
@@ -1107,6 +1276,22 @@ export default function Index() {
     .sort((a, b) => b.pct - a.pct);
   const best  = performers[0];
   const worst = performers[performers.length - 1];
+
+  useEffect(() => {
+    const nextTicker = selectedChartTicker && activePos.some((stock) => stock.ticker === selectedChartTicker)
+      ? selectedChartTicker
+      : activePos[0]?.ticker ?? null;
+    if (nextTicker !== selectedChartTicker) {
+      setSelectedChartTicker(nextTicker);
+    }
+  }, [activePos, selectedChartTicker]);
+
+  const selectedChartStock = activePos.find((stock) => stock.ticker === selectedChartTicker) ?? activePos[0] ?? null;
+  const selectedChartPrice = selectedChartStock ? prices[selectedChartStock.ticker] : undefined;
+  const selectedChartDayPct = selectedChartPrice?.changePercent
+    ?? (selectedChartStock && selectedChartStock.entryPrice > 0
+      ? ((selectedChartStock.cmp - selectedChartStock.entryPrice) / selectedChartStock.entryPrice) * 100
+      : 0);
 
   // Sector allocation
   const sectorMap = new Map<string, number>();
@@ -1566,8 +1751,12 @@ export default function Index() {
                       const pos   = pl >= 0;
                       const initials = s.ticker.slice(0, 4);
                       return (
-                        <div key={s.ticker} className="zf-trow" style={{ animationDelay:`${si * 0.04}s` }}
-                          onClick={() => setTab("holdings")} style={{ cursor:"pointer" }}>
+                        <div
+                          key={s.ticker}
+                          className="zf-trow"
+                          style={{ animationDelay:`${si * 0.04}s`, cursor:"pointer" }}
+                          onClick={() => setSelectedChartTicker(s.ticker)}
+                        >
                           <div className="zf-stock-cell">
                             <div className="zf-logo-wrap">
                               <img src={`https://logo.clearbit.com/${(s.stockName??s.ticker).toLowerCase().replace(/\s+/g,"")}.com`} alt=""
@@ -1621,8 +1810,15 @@ export default function Index() {
                       const pos = cmp >= (w.entryZoneLow ?? cmp);
                       const seed = w.stockName.charCodeAt(0) + wi * 7;
                       return (
-                        <div key={w.stockName} className="zf-wl-row"
-                          style={{ transition:"all .2s cubic-bezier(.22,1,.36,1)" }}>
+                        <div
+                          key={w.stockName}
+                          className="zf-wl-row"
+                          style={{ transition:"all .2s cubic-bezier(.22,1,.36,1)" }}
+                          onClick={() => {
+                            const matchingActive = activePos.find((stock) => stock.stockName === w.stockName || stock.ticker === w.stockName);
+                            if (matchingActive) setSelectedChartTicker(matchingActive.ticker);
+                          }}
+                        >
                           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                             <div style={{
                               width:38, height:38, borderRadius:10,
@@ -1801,36 +1997,51 @@ export default function Index() {
               {/* ── ROW 4: Charts moved to bottom ── */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 340px", gap:18, animationDelay:".42s" }} className="zf-anim-6">
 
-                {/* Large line chart */}
+                {/* Selected stock chart */}
                 <div className="zf-card">
                   <div className="zf-card-head">
                     <div>
-                      <span className="zf-card-title">Portfolio Performance</span>
-                      <div style={{ display:"flex", gap:16, marginTop:4 }}>
-                        {(["Portfolio Value","Invested","P&L"] as const).map((label, i) => (
-                          <button key={label} style={{
-                            fontSize:11, fontWeight: i===0 ? 700 : 400,
-                            color: i===0 ? "var(--navy)" : "var(--tx-300)",
-                            background:"none", border:"none", cursor:"pointer", padding:0,
-                            fontFamily:"var(--ff-body)",
-                          }}>{label}</button>
+                      <span className="zf-card-title">
+                        {selectedChartStock ? `${selectedChartStock.ticker} Live Chart` : "Stock Chart"}
+                      </span>
+                      <div style={{ display:"flex", gap:8, marginTop:6, flexWrap:"wrap" }}>
+                        {activePos.slice(0, 6).map((stock) => (
+                          <button
+                            key={stock.ticker}
+                            onClick={() => setSelectedChartTicker(stock.ticker)}
+                            style={{
+                              fontSize:10.5,
+                              fontWeight: selectedChartStock?.ticker === stock.ticker ? 700 : 500,
+                              color: selectedChartStock?.ticker === stock.ticker ? "var(--navy)" : "var(--tx-400)",
+                              background: selectedChartStock?.ticker === stock.ticker ? "var(--navy-50)" : "transparent",
+                              border: `1px solid ${selectedChartStock?.ticker === stock.ticker ? "var(--navy-100)" : "var(--bd-100)"}`,
+                              borderRadius: 999,
+                              cursor: "pointer",
+                              padding: "4px 10px",
+                              fontFamily: "var(--ff-body)",
+                            }}
+                          >
+                            {stock.ticker}
+                          </button>
                         ))}
                       </div>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--tx-400)" }}>
-                        <span style={{ width:16, height:3, borderRadius:2, background:"var(--navy)", display:"inline-block" }} />
-                        This year
-                      </div>
-                      <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, color:"var(--tx-400)" }}>
-                        <span style={{ width:16, height:3, borderRadius:2, background:"var(--tx-200)", display:"inline-block" }} />
-                        Last year
-                      </div>
-                      <button className="zf-card-link" onClick={() => setTab("charts")}>Full view →</button>
+                      {selectedChartStock && (
+                        <div style={{ textAlign:"right" }}>
+                          <div style={{ fontFamily:"var(--ff-mono)", fontSize:18, fontWeight:700, color:"var(--tx-900)" }}>
+                            ₹{fmtNum(selectedChartStock.cmp)}
+                          </div>
+                          <div style={{ fontSize:11, fontWeight:700, color:selectedChartDayPct >= 0 ? "var(--green)" : "var(--red)" }}>
+                            {selectedChartDayPct >= 0 ? "+" : ""}{selectedChartDayPct.toFixed(2)}% today
+                          </div>
+                        </div>
+                      )}
+                      <button className="zf-card-link" onClick={refresh}>Refresh</button>
                     </div>
                   </div>
                   <div style={{ padding:"8px 20px 16px" }}>
-                    <LineChartWidget stocks={live} />
+                    <StockLineChartWidget stock={selectedChartStock} dayChangePercent={selectedChartDayPct} />
                   </div>
                 </div>
 
@@ -1856,7 +2067,15 @@ export default function Index() {
             {tab !== "overview" && (
               <div className="zf-tab-panel" style={{ flex: 1, minHeight: "calc(100vh - 140px)" }}>
                 {/* Holdings = active positions only */}
-                {tab === "holdings"  && <PortfolioTable stocks={live.filter(s => s.status === "Active")} onUpdate={setStocks} />}
+                {tab === "holdings"  && (
+                  <PortfolioTable
+                    stocks={live}
+                    onAdd={handlePortfolioAdd}
+                    onImport={handlePortfolioImport}
+                    onEdit={handlePortfolioEdit}
+                    onDelete={handlePortfolioDelete}
+                  />
+                )}
 
                 {/* Trades = sub-tabbed: Equity | F&O */}
                 {tab === "trades" && (
@@ -1898,19 +2117,38 @@ export default function Index() {
                     </div>
                     {/* Sub-tab content */}
                     <div style={{ flex:1, overflow:"auto", minHeight:0 }}>
-                      {tradesSubTab === "equity" && <TradeStrategyTable trades={trades} onUpdate={setTrades} stocks={live} />}
-                      {tradesSubTab === "fno"    && <FnOTable trades={fnoTrades} onUpdate={setFnoTrades} />}
+                      {tradesSubTab === "equity" && (
+                        <TradeStrategyTable
+                          trades={trades}
+                          onEdit={handleTradeEdit}
+                          onDelete={handleTradeDelete}
+                        />
+                      )}
+                      {tradesSubTab === "fno"    && <FnOTable trades={fnoTrades} onUpdate={handleFnoTradesUpdate} />}
                     </div>
                   </div>
                 )}
-                {tab === "watchlist" && <WatchlistTable watchlist={watchlist} onUpdate={setWatchlist} />}
+                {tab === "watchlist" && (
+                  <WatchlistTable
+                    watchlist={watchlist}
+                    onEdit={handleWatchlistEdit}
+                    onDelete={handleWatchlistDelete}
+                  />
+                )}
                 {tab === "news"      && <StockNewsFeed stocks={live} />}
                 {tab === "charts"    && <PortfolioCharts stocks={live} />}
                 {tab === "analytics" && <TradeAnalytics stocks={live} />}
                 {tab === "history"   && <TradeHistory stocks={live} />}
                 {tab === "journal"   && <TradeJournal entries={journal} onUpdate={setJournal} />}
                 {tab === "sector"    && <SectorDiversification stocks={live} />}
-                {tab === "alerts"    && <PriceAlerts alerts={alerts} onUpdate={setAlerts} stocks={live} />}
+                {tab === "alerts"    && (
+                  <PriceAlerts
+                    alerts={alerts}
+                    onAddAlert={handleAlertAdd}
+                    onDeleteAlert={handleAlertDelete}
+                    onDismissAlert={handleAlertDismiss}
+                  />
+                )}
                 {tab === "ai"        && <AIInsights stocks={live} />}
                 {tab === "export"    && <ExportPortfolio stocks={live} trades={trades} />}
               </div>
@@ -1922,5 +2160,74 @@ export default function Index() {
 
       <AuthModal open={showAuth} onOpenChange={setShowAuth} />
     </>
+  );
+}
+
+function StockLineChartWidget({
+  stock,
+  dayChangePercent,
+}: {
+  stock: PortfolioStock | null;
+  dayChangePercent: number;
+}) {
+  const W = 500;
+  const H = 150;
+  const pad = { l: 18, r: 18, t: 12, b: 26 };
+
+  const series = useMemo(() => {
+    if (!stock) return [];
+    return buildTrendSeries(stock.cmp || stock.entryPrice, dayChangePercent, stock.ticker, 28);
+  }, [dayChangePercent, stock]);
+
+  if (!stock || series.length === 0) {
+    return (
+      <div style={{ height: 150, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--tx-300)", fontSize: 12 }}>
+        Select a stock to view its chart
+      </div>
+    );
+  }
+
+  const values = series.map((point) => point.price);
+  const minV = Math.min(...values) * 0.995;
+  const maxV = Math.max(...values) * 1.005;
+  const range = maxV - minV || 1;
+  const xStep = (W - pad.l - pad.r) / Math.max(series.length - 1, 1);
+  const yOf = (value: number) => pad.t + (1 - (value - minV) / range) * (H - pad.t - pad.b);
+  const xOf = (index: number) => pad.l + index * xStep;
+  const line = series.map((point, index) => `${xOf(index).toFixed(1)},${yOf(point.price).toFixed(1)}`).join(" ");
+  const area = `M${xOf(0).toFixed(1)},${yOf(series[0].price).toFixed(1)} ` +
+    series.slice(1).map((point, index) => `L${xOf(index + 1).toFixed(1)},${yOf(point.price).toFixed(1)}`).join(" ") +
+    ` L${xOf(series.length - 1).toFixed(1)},${(H - pad.b).toFixed(1)} L${xOf(0).toFixed(1)},${(H - pad.b).toFixed(1)} Z`;
+  const positive = dayChangePercent >= 0;
+  const stroke = positive ? "var(--green)" : "var(--red)";
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: 150 }}>
+      <defs>
+        <linearGradient id="zfStockArea" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={positive ? "#6bff8f" : "#ff716a"} stopOpacity=".28" />
+          <stop offset="100%" stopColor={positive ? "#6bff8f" : "#ff716a"} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#zfStockArea)" />
+      <polyline points={line} fill="none" stroke={stroke} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+      {["Open", "Mid", "Now"].map((label, index) => {
+        const pointIndex = index === 0 ? 0 : index === 1 ? Math.floor((series.length - 1) / 2) : series.length - 1;
+        return (
+          <text
+            key={label}
+            x={xOf(pointIndex).toFixed(1)}
+            y={H - 8}
+            textAnchor="middle"
+            fontSize="9"
+            fill="var(--tx-300)"
+            fontFamily="var(--ff-body)"
+          >
+            {label}
+          </text>
+        );
+      })}
+      <circle cx={xOf(series.length - 1).toFixed(1)} cy={yOf(series[series.length - 1].price).toFixed(1)} r="4" fill="var(--bg-card)" stroke={stroke} strokeWidth="2" />
+    </svg>
   );
 }

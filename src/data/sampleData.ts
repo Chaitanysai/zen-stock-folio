@@ -239,6 +239,7 @@ export interface FnOTrade {
   exitDate?:       string;
   status:          FnOStatus;
   ltp?:            number;       // live last traded price (from API)
+  dayChange?:      number;       // absolute day move per unit (ltp - previous close)
   iv?:             number;       // implied volatility % (options only)
   delta?:          number;       // delta (options only)
   notes?:          string;
