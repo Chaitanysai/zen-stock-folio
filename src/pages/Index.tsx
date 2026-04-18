@@ -34,6 +34,7 @@ import { useLivePrices }     from "@/hooks/useLivePrices";
 import { usePortfolioSync, loadFromLocal, PortfolioSnapshot } from "@/hooks/usePortfolioSync";
 import { useAuth }           from "@/contexts/AuthContext";
 import { buildTrendSeries, isSameTradingDay } from "@/lib/trading";
+import { supabase } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ActiveTab =
@@ -1084,8 +1085,7 @@ export default function Index() {
       setDisplayName(nameInput.trim());
       // Save to Supabase profiles table if logged in
       if (user?.id) {
-        const { supabase: sb } = await import("@/lib/supabase");
-        await sb.from("profiles").upsert(
+        await supabase.from("profiles").upsert(
           { id: user.id, display_name: nameInput.trim(), updated_at: new Date().toISOString() },
           { onConflict: "id" }
         );
@@ -1100,18 +1100,16 @@ export default function Index() {
   // Load display name from Supabase on login
   useEffect(() => {
     if (!user?.id) return;
-    import("@/lib/supabase").then(({ supabase: sb }) => {
-      sb.from("profiles")
-        .select("display_name")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => {
-          if (data?.display_name) {
-            setDisplayName(data.display_name);
-            localStorage.setItem("zf-display-name", data.display_name);
-          }
-        });
-    });
+    supabase.from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.display_name) {
+          setDisplayName(data.display_name);
+          localStorage.setItem("zf-display-name", data.display_name);
+        }
+      });
   }, [user?.id]);
 
   const [stocks,    setStocks]    = useState<PortfolioStock[]>(()  => loadFromLocal()?.stocks    ?? initialData);
