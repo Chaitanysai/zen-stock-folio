@@ -11,7 +11,6 @@ export type PortfolioSnapshot = {
 };
 
 const STORAGE_KEY = "smart-stock-tracker-data";
-const DISPLAY_NAME_KEY = "zf-display-name";
 
 // ── Local helpers ──────────────────────────────────────────────────────────────
 export const saveToLocal = (snapshot: PortfolioSnapshot) => {
@@ -90,50 +89,29 @@ export const saveToServer = async (userId: string, snapshot: PortfolioSnapshot):
   return error ? error.message : null;
 };
 
-// ── Profile / Display Name helpers ────────────────────────────────────────────
-export const loadDisplayName = async (userId: string): Promise<string | null> => {
-  try {
-    const { data } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", userId)
-      .single();
-    return data?.display_name ?? null;
-  } catch {
-    return null;
-  }
-};
-
-export const saveDisplayName = async (userId: string, name: string): Promise<void> => {
-  try {
-    await supabase.from("profiles").upsert(
-      { id: userId, display_name: name, updated_at: new Date().toISOString() },
-      { onConflict: "id" }
-    );
-  } catch {
-    // silently fail — localStorage already saved
-  }
-};
-
 // ── Hook ───────────────────────────────────────────────────────────────────────
 export const usePortfolioSync = (userId: string | undefined) => {
   const load = useCallback(async (): Promise<PortfolioSnapshot | null> => {
     if (userId) {
       const serverData = await loadFromServer(userId);
       if (serverData) {
+        // Keep local cache in sync
         saveToLocal(serverData);
         return serverData;
       }
     }
+    // Fall back to local cache (e.g. offline or not yet logged in)
     return loadFromLocal();
   }, [userId]);
 
   const save = useCallback(async (snapshot: PortfolioSnapshot): Promise<string | null> => {
+    // Always write local first so it's instant
     saveToLocal(snapshot);
+
     if (userId) {
       return saveToServer(userId, snapshot);
     }
-    return null;
+    return null; // saved only locally (anonymous)
   }, [userId]);
 
   return { load, save };
