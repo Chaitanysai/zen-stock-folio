@@ -151,10 +151,10 @@ const CSS = `
 
   font-family: var(--ff-body);
   background: var(--bg-app);
-  min-height: 100vh;
+
   color: var(--tx-900);
   display: flex;
-  overflow: visible;
+  overflow: hidden;
   height: 100vh;
 }
 
@@ -834,6 +834,61 @@ const CSS = `
 
 /* Dark mode stays as-is */
 .dark .zf { color-scheme: dark; }
+
+/* ══════════════════════════════════════════════════
+   SETTINGS POPOVER
+══════════════════════════════════════════════════ */
+.zf-settings-pop {
+  position: absolute; bottom: calc(100% + 10px); left: 0; right: 0;
+  background: var(--bg-card); border: 1px solid var(--bd-100);
+  border-radius: 14px; box-shadow: var(--sh-3); z-index: 100;
+  overflow: hidden; animation: zf-scalein .15s ease both;
+  transform-origin: bottom left;
+}
+.zf-settings-head {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--bd-50);
+  background: var(--bg-surface);
+}
+.zf-settings-title {
+  font-size: 12px; font-weight: 700; color: var(--tx-900);
+  letter-spacing: -.1px;
+}
+.zf-settings-sub {
+  font-size: 10px; color: var(--tx-400); margin-top: 2px;
+}
+.zf-settings-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.zf-settings-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--tx-400); margin-bottom: 4px;
+}
+.zf-settings-input {
+  width: 100%; background: var(--bg-input); border: 1px solid var(--bd-100);
+  border-radius: 8px; padding: 8px 12px; font-size: 13px;
+  color: var(--tx-900); font-family: var(--ff-body); outline: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+  box-sizing: border-box;
+}
+.zf-settings-input:focus {
+  border-color: var(--navy); box-shadow: 0 0 0 3px rgba(163,166,255,.12);
+}
+.zf-settings-input::placeholder { color: var(--tx-300); }
+.zf-settings-save {
+  width: 100%; padding: 9px; border-radius: 8px; border: none;
+  background: var(--navy); color: #fff; font-size: 12.5px;
+  font-weight: 700; cursor: pointer; font-family: var(--ff-body);
+  transition: opacity .2s ease, transform .15s ease;
+}
+.zf-settings-save:hover { opacity: .88; transform: translateY(-1px); }
+.zf-settings-save:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+:not(.dark) .zf-settings-pop { background: #fff; border-color: #e8ebf0; }
+:not(.dark) .zf-settings-head { background: #f6f8fb; border-bottom-color: #e8ebf0; }
+:not(.dark) .zf-settings-title { color: #0d1117; }
+:not(.dark) .zf-settings-sub { color: #72767c; }
+:not(.dark) .zf-settings-input { background: #f6f8fb; border-color: #e8ebf0; color: #0d1117; }
+:not(.dark) .zf-settings-input:focus { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(79,82,212,.1); }
+:not(.dark) .zf-settings-save { background: var(--navy); }
 `;
 
 // ─── Line Chart Widget ────────────────────────────────────────────────────────
@@ -997,10 +1052,67 @@ export default function Index() {
     document.documentElement.classList.toggle("dark", darkMode);
     try { localStorage.setItem("zf-dark", darkMode ? "1" : "0"); } catch {}
   }, [darkMode]);
-  const [uMenu,     setUMenu]     = useState(false);
-  const [showAuth,  setShowAuth]  = useState(false);
-  const [searchQ,   setSearchQ]   = useState("");
-  const uMenuRef = useRef<HTMLDivElement>(null);
+  const [uMenu,        setUMenu]        = useState(false);
+  const [showAuth,     setShowAuth]     = useState(false);
+  const [searchQ,      setSearchQ]      = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [displayName,  setDisplayName]  = useState(() => {
+    try { return localStorage.getItem("zf-display-name") ?? ""; } catch { return ""; }
+  });
+  const [nameInput,    setNameInput]    = useState("");
+  const [nameSaving,   setNameSaving]   = useState(false);
+  const uMenuRef     = useRef<HTMLDivElement>(null);
+  const settingsRef  = useRef<HTMLDivElement>(null);
+
+  // Close settings popover on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSaveDisplayName = async () => {
+    if (!nameInput.trim()) return;
+    setNameSaving(true);
+    try {
+      // Save to localStorage immediately
+      localStorage.setItem("zf-display-name", nameInput.trim());
+      setDisplayName(nameInput.trim());
+      // Save to Supabase profiles table if logged in
+      if (user?.id) {
+        const { supabase: sb } = await import("@/lib/supabase");
+        await sb.from("profiles").upsert(
+          { id: user.id, display_name: nameInput.trim(), updated_at: new Date().toISOString() },
+          { onConflict: "id" }
+        );
+      }
+      setSettingsOpen(false);
+      setNameInput("");
+    } finally {
+      setNameSaving(false);
+    }
+  };
+
+  // Load display name from Supabase on login
+  useEffect(() => {
+    if (!user?.id) return;
+    import("@/lib/supabase").then(({ supabase: sb }) => {
+      sb.from("profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.display_name) {
+            setDisplayName(data.display_name);
+            localStorage.setItem("zf-display-name", data.display_name);
+          }
+        });
+    });
+  }, [user?.id]);
 
   const [stocks,    setStocks]    = useState<PortfolioStock[]>(()  => loadFromLocal()?.stocks    ?? initialData);
   const [trades,    setTrades]    = useState<TradeStrategy[]>(()   => loadFromLocal()?.trades    ?? initialTrades);
@@ -1489,15 +1601,56 @@ export default function Index() {
             ))}
           </div>
 
-          {/* Footer */}
-          <div className="zf-sidebar-foot">
-            <div className="zf-user-row" title={collapsed ? (user?.email ?? "Guest") : undefined}>
+          {/* Footer — Settings popover */}
+          <div className="zf-sidebar-foot" style={{ position: "relative" }} ref={settingsRef}>
+            {/* Settings popover */}
+            {settingsOpen && !collapsed && (
+              <div className="zf-settings-pop">
+                <div className="zf-settings-head">
+                  <div className="zf-settings-title">Edit Display Name</div>
+                  <div className="zf-settings-sub">{user?.email ?? "Not signed in"}</div>
+                </div>
+                <div className="zf-settings-body">
+                  <div>
+                    <div className="zf-settings-label">Display Name</div>
+                    <input
+                      className="zf-settings-input"
+                      placeholder={displayName || user?.email?.split("@")[0] || "Enter name…"}
+                      value={nameInput}
+                      onChange={e => setNameInput(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && handleSaveDisplayName()}
+                      autoFocus
+                    />
+                  </div>
+                  <button
+                    className="zf-settings-save"
+                    onClick={handleSaveDisplayName}
+                    disabled={nameSaving || !nameInput.trim()}
+                  >
+                    {nameSaving ? "Saving…" : "Save Name"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* User row — click to open settings */}
+            <div
+              className="zf-user-row"
+              title={collapsed ? (user?.email ?? "Guest") : "Click to edit display name"}
+              onClick={() => { setSettingsOpen(p => !p); setNameInput(""); }}
+              style={{ cursor: "pointer" }}
+            >
               <div className="zf-user-avatar">
-                {(user?.email?.[0] ?? "G").toUpperCase()}
+                {(displayName?.[0] ?? user?.email?.[0] ?? "G").toUpperCase()}
               </div>
               <div className="zf-user-info">
-                <div className="zf-user-name">{user?.email?.split("@")[0] ?? "Guest"}</div>
-                <div className="zf-user-role">Trader</div>
+                <div className="zf-user-name">
+                  {displayName || user?.email?.split("@")[0] || "Guest"}
+                </div>
+                <div className="zf-user-role" style={{ display:"flex", alignItems:"center", gap:4 }}>
+                  Trader
+                  <span style={{ fontSize:9, color:"var(--navy)", fontWeight:700, marginLeft:2 }}>✎ edit</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1568,11 +1721,11 @@ export default function Index() {
               <div>
                 <div className="zf-greeting-name">{getGreeting()}, {user?.email?.split("@")[0] ?? "Trader"} 👋</div>
                 <p style={{ fontSize:13, color:"var(--tx-500)", marginTop:4, fontWeight:500 }}>
-                  Your portfolio is{" "}
+                  Open positions are{" "}
                   <span style={{ color: pnl>=0 ? "var(--green)" : "var(--red)", fontWeight:700 }}>
                     {pnl >= 0 ? "up" : "down"} {sign(pnl)}{Math.abs(pnlPct).toFixed(1)}%
                   </span>
-                  {" "}since your last entry.
+                  {" "}unrealised since entry.
                 </p>
               </div>
               <div className="zf-greeting-right">
@@ -1612,7 +1765,7 @@ export default function Index() {
                   </div>
                   <div className="zf-kpi-lbl">Total Invested</div>
                   <div className="zf-kpi-val">{fmt(invested)}</div>
-                  <div className="zf-kpi-sub">{closedPos.length} closed · {live.length} total assets</div>
+                  <div className="zf-kpi-sub">{activePos.length} open · {closedPos.length} closed</div>
                 </div>
 
                 {/* Card 2 — Portfolio Value (highlighted) */}

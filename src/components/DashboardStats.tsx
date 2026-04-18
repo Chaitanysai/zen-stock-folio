@@ -1,5 +1,5 @@
-import { PortfolioStock, calcInvestedValue } from "@/data/sampleData";
-import { TrendingUp, TrendingDown, Briefcase, BarChart3, Target, IndianRupee, Percent, Activity } from "lucide-react";
+import { PortfolioStock } from "@/data/sampleData";
+import { TrendingUp, TrendingDown, Briefcase, IndianRupee } from "lucide-react";
 import { useLivePrices } from "@/hooks/useLivePrices";
 
 interface DashboardStatsProps {
@@ -10,20 +10,26 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
   const tickers = stocks.map(s => s.ticker);
   const { prices } = useLivePrices(tickers);
 
-  const totalInvested = stocks.reduce((sum, s) => sum + calcInvestedValue(s), 0);
+  // ✅ Only open/active positions
+  const openStocks = stocks.filter(s => s.status === "Active");
 
-  const totalCurrentValue = stocks.reduce((sum, s) => {
+  // ✅ Total Invested = only open positions cost basis
+  const totalInvested = openStocks.reduce((sum, s) => sum + (s.entryPrice * s.quantity), 0);
+
+  // ✅ Current Value = open positions at live CMP
+  const totalCurrentValue = openStocks.reduce((sum, s) => {
     const live = prices[s.ticker];
     const cmp = live?.price ?? s.cmp;
     return sum + (cmp * s.quantity);
   }, 0);
 
+  // ✅ Unrealised P&L = current value - cost basis (open only)
   const totalPL = totalCurrentValue - totalInvested;
 
   const profitPct = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
 
-  // ✅ TODAY P&L (REAL)
-  const todayPL = stocks.reduce((sum, s) => {
+  // ✅ Today's P&L = intraday price change x qty (open only)
+  const todayPL = openStocks.reduce((sum, s) => {
     const live = prices[s.ticker];
     return sum + ((live?.change ?? 0) * s.quantity);
   }, 0);
@@ -31,20 +37,30 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
   const isProfit = totalPL >= 0;
 
   const stats = [
-    { label: "Total Invested", value: `₹${totalInvested.toLocaleString("en-IN")}`, icon: IndianRupee, color: "text-primary" },
-    { label: "Portfolio Value", value: `₹${totalCurrentValue.toLocaleString("en-IN")}`, icon: Briefcase, color: "text-primary" },
-    { 
-      label: "Total P&L", 
-      value: `${isProfit ? "+" : ""}₹${totalPL.toLocaleString("en-IN")}`, 
-      subtitle: `${isProfit ? "+" : ""}${profitPct.toFixed(1)}%`,
-      icon: isProfit ? TrendingUp : TrendingDown, 
-      color: isProfit ? "text-profit" : "text-loss" 
+    {
+      label: "Invested (Open)",
+      value: `₹${totalInvested.toLocaleString("en-IN")}`,
+      icon: IndianRupee,
+      color: "text-primary",
     },
-    { 
-      label: "Today's P&L", 
-      value: `${todayPL >= 0 ? "+" : ""}₹${todayPL.toLocaleString("en-IN")}`, 
-      icon: TrendingUp, 
-      color: todayPL >= 0 ? "text-profit" : "text-loss" 
+    {
+      label: "Current Value",
+      value: `₹${totalCurrentValue.toLocaleString("en-IN")}`,
+      icon: Briefcase,
+      color: "text-primary",
+    },
+    {
+      label: "Unrealised P&L",
+      value: `${isProfit ? "+" : ""}₹${totalPL.toLocaleString("en-IN")}`,
+      subtitle: `${isProfit ? "+" : ""}${profitPct.toFixed(1)}%`,
+      icon: isProfit ? TrendingUp : TrendingDown,
+      color: isProfit ? "text-profit" : "text-loss",
+    },
+    {
+      label: "Today's P&L",
+      value: `${todayPL >= 0 ? "+" : ""}₹${todayPL.toLocaleString("en-IN")}`,
+      icon: TrendingUp,
+      color: todayPL >= 0 ? "text-profit" : "text-loss",
     },
   ];
 
