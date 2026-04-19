@@ -6,95 +6,95 @@
 
 @layer base {
   :root {
-    /* ── FOLIO: Slate Obsidian — Light ── */
-    --background:    220 16% 97%;
-    --foreground:    220 25% 10%;
+    /* ── FOLIO: Amber × Navy — Light ── */
+    --background:    36 20% 96%;
+    --foreground:    222 30% 10%;
     --card:          0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: 222 30% 10%;
     --popover:       0 0% 100%;
-    --popover-foreground: 220 25% 10%;
-    --primary:       220 85% 48%;
-    --primary-foreground: 0 0% 100%;
-    --secondary:     220 14% 93%;
-    --secondary-foreground: 220 25% 20%;
-    --muted:         220 14% 94%;
-    --muted-foreground: 220 12% 52%;
-    --accent:        220 70% 95%;
-    --accent-foreground: 220 85% 38%;
+    --popover-foreground: 222 30% 10%;
+    --primary:       38 92% 48%;
+    --primary-foreground: 222 30% 8%;
+    --secondary:     36 16% 92%;
+    --secondary-foreground: 222 25% 20%;
+    --muted:         36 14% 93%;
+    --muted-foreground: 222 12% 50%;
+    --accent:        38 80% 93%;
+    --accent-foreground: 38 92% 30%;
     --destructive:   4 84% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border:        220 14% 89%;
-    --input:         220 14% 94%;
-    --ring:          220 85% 48%;
+    --border:        36 14% 87%;
+    --input:         36 14% 92%;
+    --ring:          38 92% 48%;
     --radius:        0.625rem;
 
     --profit:        152 70% 34%;
     --profit-foreground: 152 70% 10%;
     --loss:          4 84% 52%;
     --loss-foreground: 4 84% 96%;
-    --warning:       40 90% 44%;
-    --warning-foreground: 40 90% 10%;
+    --warning:       38 92% 48%;
+    --warning-foreground: 38 92% 10%;
 
-    /* Chart palette */
-    --chart-1: 220 85% 48%;
+    /* Chart palette — amber first */
+    --chart-1: 38 92% 48%;
     --chart-2: 152 70% 34%;
     --chart-3: 4 84% 52%;
-    --chart-4: 40 90% 44%;
+    --chart-4: 222 70% 52%;
     --chart-5: 280 65% 52%;
 
-    /* Sidebar */
-    --sidebar-background: 222 28% 11%;
-    --sidebar-foreground: 220 20% 82%;
-    --sidebar-primary: 220 75% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 28% 18%;
-    --sidebar-accent-foreground: 220 75% 70%;
-    --sidebar-border: 220 22% 18%;
-    --sidebar-ring: 220 75% 60%;
+    /* Sidebar — deep navy */
+    --sidebar-background: 222 38% 10%;
+    --sidebar-foreground: 220 20% 78%;
+    --sidebar-primary: 38 88% 56%;
+    --sidebar-primary-foreground: 222 38% 8%;
+    --sidebar-accent: 222 32% 17%;
+    --sidebar-accent-foreground: 38 80% 70%;
+    --sidebar-border: 222 26% 17%;
+    --sidebar-ring: 38 88% 56%;
   }
 
   .dark {
-    --background: 222 28% 8%;
-    --foreground: 220 20% 92%;
-    --card: 222 28% 11%;
-    --card-foreground: 220 20% 90%;
-    --popover: 222 28% 13%;
-    --popover-foreground: 220 20% 90%;
-    --primary: 220 80% 62%;
-    --primary-foreground: 222 28% 8%;
-    --secondary: 222 22% 16%;
-    --secondary-foreground: 220 18% 70%;
-    --muted: 222 22% 15%;
-    --muted-foreground: 220 14% 54%;
-    --accent: 220 50% 20%;
-    --accent-foreground: 220 80% 75%;
+    --background: 222 30% 7%;
+    --foreground: 36 18% 92%;
+    --card: 222 28% 10%;
+    --card-foreground: 36 16% 90%;
+    --popover: 222 30% 12%;
+    --popover-foreground: 36 16% 90%;
+    --primary: 38 90% 54%;
+    --primary-foreground: 222 30% 7%;
+    --secondary: 222 24% 15%;
+    --secondary-foreground: 36 16% 70%;
+    --muted: 222 22% 14%;
+    --muted-foreground: 222 14% 52%;
+    --accent: 38 55% 18%;
+    --accent-foreground: 38 90% 72%;
     --destructive: 4 76% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 222 18% 20%;
-    --input: 222 22% 15%;
-    --ring: 220 80% 62%;
+    --border: 222 20% 19%;
+    --input: 222 22% 14%;
+    --ring: 38 90% 54%;
 
     --profit: 152 58% 48%;
     --profit-foreground: 152 58% 92%;
     --loss: 4 76% 58%;
     --loss-foreground: 4 76% 94%;
-    --warning: 40 85% 54%;
-    --warning-foreground: 40 85% 94%;
+    --warning: 38 88% 54%;
+    --warning-foreground: 38 88% 94%;
 
-    --chart-1: 220 80% 62%;
+    --chart-1: 38 90% 54%;
     --chart-2: 152 58% 48%;
     --chart-3: 4 76% 58%;
-    --chart-4: 40 85% 54%;
+    --chart-4: 220 78% 62%;
     --chart-5: 280 62% 62%;
 
-    --sidebar-background: 222 32% 7%;
-    --sidebar-foreground: 220 18% 78%;
-    --sidebar-primary: 220 75% 62%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 28% 14%;
-    --sidebar-accent-foreground: 220 75% 72%;
-    --sidebar-border: 222 25% 15%;
-    --sidebar-ring: 220 75% 62%;
+    --sidebar-background: 222 36% 6%;
+    --sidebar-foreground: 220 18% 75%;
+    --sidebar-primary: 38 88% 56%;
+    --sidebar-primary-foreground: 222 36% 6%;
+    --sidebar-accent: 222 30% 13%;
+    --sidebar-accent-foreground: 38 80% 70%;
+    --sidebar-border: 222 26% 14%;
+    --sidebar-ring: 38 88% 56%;
   }
 }
 
@@ -127,15 +127,15 @@
   .mesh-bg {
     background-color: hsl(var(--background));
     background-image:
-      radial-gradient(ellipse 70% 50% at 15% 0%,   hsl(220 85% 60% / 0.07) 0%, transparent 50%),
+      radial-gradient(ellipse 70% 50% at 15% 0%,   hsl(38 90% 60% / 0.07) 0%, transparent 50%),
       radial-gradient(ellipse 50% 40% at 85% 10%,  hsl(152 70% 50% / 0.05) 0%, transparent 50%),
-      radial-gradient(ellipse 40% 35% at 5% 90%,   hsl(280 65% 60% / 0.04) 0%, transparent 50%);
+      radial-gradient(ellipse 40% 35% at 5% 90%,   hsl(222 65% 60% / 0.04) 0%, transparent 50%);
   }
   .dark .mesh-bg {
     background-image:
-      radial-gradient(ellipse 70% 50% at 15% 0%,   hsl(220 80% 50% / 0.12) 0%, transparent 50%),
-      radial-gradient(ellipse 50% 40% at 85% 10%,  hsl(152 58% 40% / 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse 40% 35% at 5% 90%,   hsl(280 60% 50% / 0.07) 0%, transparent 50%);
+      radial-gradient(ellipse 70% 50% at 15% 0%,   hsl(38 88% 50% / 0.10) 0%, transparent 50%),
+      radial-gradient(ellipse 50% 40% at 85% 10%,  hsl(152 58% 40% / 0.07) 0%, transparent 50%),
+      radial-gradient(ellipse 40% 35% at 5% 90%,   hsl(222 60% 50% / 0.06) 0%, transparent 50%);
   }
 
   /* ── STAT CARD ── */
@@ -160,8 +160,8 @@
     transition: opacity 0.22s ease;
   }
   .stat-card:hover {
-    border-color: hsl(var(--primary) / 0.3);
-    box-shadow: 0 8px 28px hsl(var(--primary) / 0.10);
+    border-color: hsl(var(--primary) / 0.35);
+    box-shadow: 0 8px 28px hsl(var(--primary) / 0.12);
     transform: translateY(-3px);
   }
   .stat-card:hover::before { opacity: 1; }
@@ -178,7 +178,7 @@
     transition: box-shadow 0.22s ease, border-color 0.22s ease;
   }
   .glass-card:hover {
-    border-color: hsl(var(--primary) / 0.25);
+    border-color: hsl(var(--primary) / 0.28);
     box-shadow: 0 12px 40px hsl(var(--primary) / 0.08);
   }
 
@@ -217,7 +217,7 @@
     flex-direction: column;
     background: hsl(var(--sidebar-background));
     border-right: 1px solid hsl(var(--sidebar-border));
-    box-shadow: 16px 0 48px hsl(220 28% 4% / 0.4);
+    box-shadow: 16px 0 48px hsl(222 38% 4% / 0.4);
     max-height: 100dvh;
     overflow-y: auto;
   }
@@ -233,7 +233,7 @@
 
   .sidebar-overlay {
     position: fixed; inset: 0; z-index: 99;
-    background: hsl(220 28% 4% / 0.55);
+    background: hsl(222 38% 4% / 0.55);
     backdrop-filter: blur(4px);
     opacity: 0; pointer-events: none;
     transition: opacity 0.28s ease;
@@ -246,11 +246,11 @@
     background: hsl(var(--card) / 0.95);
     backdrop-filter: blur(20px);
     border-top: 1px solid hsl(var(--border));
-    box-shadow: 0 -4px 20px hsl(220 28% 4% / 0.06);
+    box-shadow: 0 -4px 20px hsl(222 38% 4% / 0.06);
   }
   .dark .bottom-nav-glass {
     background: hsl(var(--card) / 0.96);
-    box-shadow: 0 -4px 20px hsl(220 28% 4% / 0.3);
+    box-shadow: 0 -4px 20px hsl(222 38% 4% / 0.3);
   }
 
   /* ── TABLE OVERRIDES (wc-ctnr) ── */
@@ -294,19 +294,19 @@
 
   /* Dark mode table */
   .dark .wc-ctnr th {
-    background: hsl(222 28% 13%) !important;
-    color: hsl(220 14% 46%) !important;
+    background: hsl(222 28% 12%) !important;
+    color: hsl(222 14% 46%) !important;
     border-color: hsl(var(--border)) !important;
   }
   .dark .wc-ctnr td {
-    color: hsl(220 16% 74%) !important;
+    color: hsl(36 16% 72%) !important;
     border-color: hsl(var(--border)) !important;
   }
   .dark .wc-ctnr tr:hover > td {
-    background: hsl(220 28% 15%) !important;
+    background: hsl(38 30% 13%) !important;
   }
   .dark .wc-ctnr thead {
-    background: hsl(222 28% 13%) !important;
+    background: hsl(222 28% 12%) !important;
   }
 
   /* ── Typography helpers ── */

@@ -1,5 +1,5 @@
 import { PortfolioStock, calcInvestedValue } from "@/data/sampleData";
-import { TrendingUp, TrendingDown, Wallet, IndianRupee, BarChart3, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, BarChart3, Activity, Award } from "lucide-react";
 import { useLivePrices } from "@/hooks/useLivePrices";
 
 interface DashboardStatsProps {
@@ -8,13 +8,18 @@ interface DashboardStatsProps {
 
 const DashboardStats = ({ stocks }: DashboardStatsProps) => {
   const tickers = stocks.map((s) => s.ticker);
-  const totalInvested = stocks
-  .filter(s => s.status === "Active")
-  .reduce((sum, s) => sum + calcInvestedValue(s), 0);
+  const { prices } = useLivePrices(tickers);
 
-  const totalInvested = stocks.reduce((sum, s) => sum + calcInvestedValue(s), 0);
+  // Only count active positions for invested / current value
+  const activeStocks = stocks.filter((s) => s.status === "Active");
+  const closedStocks = stocks.filter((s) => s.status !== "Active");
 
-  const totalCurrentValue = stocks.reduce((sum, s) => {
+  const totalInvested = activeStocks.reduce(
+    (sum, s) => sum + s.entryPrice * s.quantity,
+    0
+  );
+
+  const totalCurrentValue = activeStocks.reduce((sum, s) => {
     const live = prices[s.ticker];
     const cmp = live?.price ?? s.cmp;
     return sum + cmp * s.quantity;
@@ -23,10 +28,20 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
   const totalPL = totalCurrentValue - totalInvested;
   const profitPct = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
 
-  const todayPL = stocks.reduce((sum, s) => {
+  const todayPL = activeStocks.reduce((sum, s) => {
     const live = prices[s.ticker];
     return sum + ((live?.change ?? 0) * s.quantity);
   }, 0);
+
+  // Win rate from closed trades
+  const winners = closedStocks.filter((s) => {
+    const pl = ((s.exitPrice ?? s.cmp) - s.entryPrice) * s.quantity;
+    return pl > 0;
+  });
+  const winRate =
+    closedStocks.length > 0
+      ? (winners.length / closedStocks.length) * 100
+      : 0;
 
   const isProfit = totalPL >= 0;
   const isTodayProfit = todayPL >= 0;
@@ -42,11 +57,11 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
     {
       label: "Invested",
       value: fmt(totalInvested),
-      sub: `${stocks.length} positions`,
+      sub: `${activeStocks.length} active · ${closedStocks.length} closed`,
       icon: Wallet,
       iconColor: "text-primary",
       iconBg: "bg-primary/10",
-      accent: "stat-card-neutral",
+      accent: "",
     },
     {
       label: "Portfolio Value",
@@ -55,11 +70,11 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
       icon: BarChart3,
       iconColor: "text-primary",
       iconBg: "bg-primary/10",
-      accent: "stat-card-neutral",
+      accent: "",
     },
     {
       label: "Total P&L",
-      value: `${isProfit ? "+" : "−"}${fmt(totalPL)}`,
+      value: `${isProfit ? "+" : "−"}${fmt(Math.abs(totalPL))}`,
       sub: `${isProfit ? "+" : ""}${profitPct.toFixed(1)}% return`,
       icon: isProfit ? TrendingUp : TrendingDown,
       iconColor: isProfit ? "text-profit" : "text-loss",
@@ -68,20 +83,35 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
       valueColor: isProfit ? "text-profit" : "text-loss",
     },
     {
-      label: "Today's P&L",
-      value: `${isTodayProfit ? "+" : "−"}${fmt(todayPL)}`,
-      sub: "intraday change",
-      icon: Activity,
-      iconColor: isTodayProfit ? "text-profit" : "text-loss",
-      iconBg: isTodayProfit ? "bg-profit/10" : "bg-loss/10",
-      accent: isTodayProfit ? "stat-card-profit" : "stat-card-loss",
-      valueColor: isTodayProfit ? "text-profit" : "text-loss",
+      label: "Win Rate",
+      value: `${winRate.toFixed(0)}%`,
+      sub: `Today: ${isTodayProfit ? "+" : "−"}${fmt(Math.abs(todayPL))}`,
+      icon: Award,
+      iconColor:
+        winRate >= 50
+          ? "text-profit"
+          : winRate > 0
+          ? "text-warning"
+          : "text-muted-foreground",
+      iconBg:
+        winRate >= 50
+          ? "bg-profit/10"
+          : winRate > 0
+          ? "bg-warning/10"
+          : "bg-muted",
+      accent: "",
+      valueColor:
+        winRate >= 50
+          ? "text-profit"
+          : winRate > 0
+          ? "text-warning"
+          : "text-foreground",
     },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger">
-      {stats.map((stat, i) => (
+      {stats.map((stat) => (
         <div
           key={stat.label}
           className={`stat-card animate-fade-up ${stat.accent ?? ""}`}
@@ -108,7 +138,9 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
           </p>
 
           {/* Subtitle */}
-          <p className="text-[11px] text-muted-foreground font-mono">{stat.sub}</p>
+          <p className="text-[11px] text-muted-foreground font-mono">
+            {stat.sub}
+          </p>
         </div>
       ))}
     </div>

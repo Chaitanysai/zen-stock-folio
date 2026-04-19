@@ -101,9 +101,9 @@ const CSS = `
   --bg-hover:     hsl(220 70% 95%);
   --bg-input:     hsl(220 14% 92%);
 
-  --blue:         hsl(220 85% 48%);
-  --blue-dim:     rgba(59,130,246,.12);
-  --blue-bd:      rgba(59,130,246,.25);
+  --blue:         hsl(38 92% 48%);
+  --blue-dim:     rgba(245,158,11,.12);
+  --blue-bd:      rgba(245,158,11,.25);
 
   --tx-900:       hsl(220 25% 10%);
   --tx-700:       hsl(220 20% 24%);
@@ -150,9 +150,9 @@ const CSS = `
   --bg-hover:     hsl(220 28% 15%);
   --bg-input:     hsl(222 22% 13%);
 
-  --blue:         hsl(220 80% 62%);
-  --blue-dim:     rgba(96,165,250,.12);
-  --blue-bd:      rgba(96,165,250,.25);
+  --blue:         hsl(38 90% 54%);
+  --blue-dim:     rgba(251,191,36,.12);
+  --blue-bd:      rgba(251,191,36,.25);
 
   --tx-900:       hsl(220 20% 92%);
   --tx-700:       hsl(220 18% 76%);
@@ -212,7 +212,7 @@ const CSS = `
 }
 .zf-logo {
   width: 36px; height: 36px; border-radius: 10px;
-  background: var(--blue);
+  background: var(--blue); /* amber accent */
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
@@ -285,7 +285,7 @@ const CSS = `
 .zf-user-row:hover { background: rgba(255,255,255,.08); }
 .zf-user-avatar {
   width: 28px; height: 28px; border-radius: 50%;
-  background: var(--blue);
+  background: var(--blue); /* amber accent */
   display: flex; align-items: center; justify-content: center;
   font-size: 10px; font-weight: 700; color: white; flex-shrink: 0;
 }
@@ -401,7 +401,7 @@ const CSS = `
   content: ''; position: absolute;
   top: 0; left: 0; right: 0; height: 2px;
   border-radius: 2px 2px 0 0;
-  background: var(--blue);
+  background: var(--blue); /* amber accent */
   opacity: 0; transition: opacity .22s ease;
 }
 .zf-kpi:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--blue-bd); }
