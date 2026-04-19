@@ -94,12 +94,12 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Geist:wght@300;400;500;600;700;800;900&display=swap');
 
 .zf {
-  --bg-app:       hsl(220 16% 97%);
+  --bg-app:       hsl(220 18% 95%);
   --bg-sidebar:   hsl(222 28% 11%);
-  --bg-card:      hsl(0 0% 100%);
-  --bg-surface:   hsl(220 14% 94%);
+  --bg-card:      hsl(0 0% 99%);
+  --bg-surface:   hsl(220 14% 92%);
   --bg-hover:     hsl(220 70% 95%);
-  --bg-input:     hsl(220 14% 94%);
+  --bg-input:     hsl(220 14% 92%);
 
   --blue:         hsl(220 85% 48%);
   --blue-dim:     rgba(59,130,246,.12);
@@ -295,10 +295,10 @@ const CSS = `
 .zf-sidebar.collapsed .zf-user-info, .zf-sidebar.collapsed .zf-brand-text { display: none; }
 
 /* ── MAIN ── */
-.zf-main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; min-width: 0; }
+.zf-main { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; min-width: 0; background: var(--bg-app); }
 
 .zf-header {
-  background: var(--bg-card);
+  background: var(--bg-app);
   border-bottom: 1px solid var(--bd-100);
   height: 58px; min-height: 58px;
   display: flex; align-items: center; padding: 0 22px; gap: 12px; flex-shrink: 0;
@@ -314,7 +314,7 @@ const CSS = `
   transition: all .18s ease;
 }
 .zf-search:focus-within {
-  border-color: var(--blue-bd); background: var(--bg-card);
+  border-color: var(--blue-bd); background: var(--bg-app);
   box-shadow: 0 0 0 3px var(--blue-dim);
 }
 .zf-search input {
@@ -382,7 +382,7 @@ const CSS = `
 .zf-greeting-pill {
   display: flex; align-items: center; gap: 5px;
   font-size: 11px; font-weight: 600; color: var(--tx-500);
-  background: var(--bg-card); border: 1px solid var(--bd-100);
+  background: var(--bg-surface); border: 1px solid var(--bd-100);
   border-radius: 99px; padding: 5px 12px; cursor: pointer;
   transition: all .16s ease;
 }
@@ -401,14 +401,11 @@ const CSS = `
   content: ''; position: absolute;
   top: 0; left: 0; right: 0; height: 2px;
   border-radius: 2px 2px 0 0;
+  background: var(--blue);
   opacity: 0; transition: opacity .22s ease;
 }
 .zf-kpi:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--blue-bd); }
 .zf-kpi:hover::before { opacity: 1; }
-
-.zf-kpi.kpi-navy::before  { background: var(--blue); }
-.zf-kpi.kpi-green::before { background: var(--green); opacity: 1; }
-.zf-kpi.kpi-red::before   { background: var(--red); opacity: 1; }
 
 .zf-kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .zf-kpi-icon {
@@ -451,7 +448,7 @@ const CSS = `
 .zf-card-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px; border-bottom: 1px solid var(--bd-50);
-  flex-shrink: 0; gap: 10px; background: var(--bg-card);
+  flex-shrink: 0; gap: 10px; background: var(--bg-surface);
 }
 .zf-card-title { font-size: 13.5px; font-weight: 600; color: var(--tx-900); letter-spacing: -.1px; }
 .zf-card-meta { display: flex; align-items: center; gap: 7px; }
@@ -1117,7 +1114,7 @@ export default function Index() {
 
           {/* Greeting */}
           {tab === "overview" && (
-            <div style={{ padding:"14px 24px 0", animation:"zf-fade .38s cubic-bezier(.22,1,.36,1) both" }}>
+            <div style={{ padding:"14px 24px 0", background:"var(--bg-app)", animation:"zf-fade .38s cubic-bezier(.22,1,.36,1) both" }}>
               <div className="zf-greeting">
                 <div>
                   <div className="zf-greeting-name">{getGreeting()}, {user?.email?.split("@")[0] ?? "Trader"}</div>
@@ -1156,7 +1153,7 @@ export default function Index() {
 
               {/* KPI Cards */}
               <div className="zf-kpi-row">
-                <div className="zf-kpi kpi-navy zf-a1">
+                <div className="zf-kpi zf-a1">
                   <div className="zf-kpi-top">
                     <div className="zf-kpi-icon" style={{ background:"var(--blue-dim)" }}>
                       <Wallet size={17} color="var(--blue)" />
@@ -1168,7 +1165,7 @@ export default function Index() {
                   <div className="zf-kpi-sub">{closedPos.length} closed · {live.length} total</div>
                 </div>
 
-                <div className="zf-kpi kpi-navy zf-a2" style={{ borderTop:"2px solid var(--blue)" }}>
+                <div className="zf-kpi zf-a2">
                   <div className="zf-kpi-top">
                     <div className="zf-kpi-icon" style={{ background:"var(--blue-dim)" }}>
                       <TrendingUp size={17} color="var(--blue)" />
@@ -1185,7 +1182,7 @@ export default function Index() {
                   </div>
                 </div>
 
-                <div className={`zf-kpi ${todayPnl>=0?"kpi-green":"kpi-red"} zf-a3`}>
+                <div className="zf-kpi zf-a3">
                   <div className="zf-kpi-top">
                     <div className="zf-kpi-icon" style={{ background:todayPnl>=0?"var(--green-bg)":"var(--red-bg)" }}>
                       <Zap size={17} color={todayPnl>=0?"var(--green)":"var(--red)"} />
@@ -1199,7 +1196,7 @@ export default function Index() {
                   </div>
                 </div>
 
-                <div className="zf-kpi kpi-navy zf-a4">
+                <div className="zf-kpi zf-a4">
                   <div className="zf-kpi-top">
                     <div className="zf-kpi-icon" style={{ background:"var(--amber-bg)" }}>
                       <Award size={17} color="var(--amber)" />
