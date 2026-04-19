@@ -8,7 +8,9 @@ interface DashboardStatsProps {
 
 const DashboardStats = ({ stocks }: DashboardStatsProps) => {
   const tickers = stocks.map((s) => s.ticker);
-  const { prices } = useLivePrices(tickers);
+  const totalInvested = stocks
+  .filter(s => s.status === "Active")
+  .reduce((sum, s) => sum + calcInvestedValue(s), 0);
 
   const totalInvested = stocks.reduce((sum, s) => sum + calcInvestedValue(s), 0);
 
