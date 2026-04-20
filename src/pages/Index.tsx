@@ -34,7 +34,6 @@ import { useLivePrices }     from "@/hooks/useLivePrices";
 import { usePortfolioSync, loadFromLocal, PortfolioSnapshot } from "@/hooks/usePortfolioSync";
 import { useAuth }           from "@/contexts/AuthContext";
 import { buildTrendSeries, isSameTradingDay } from "@/lib/trading";
-import { createChart, ColorType } from "lightweight-charts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ActiveTab =
@@ -1656,57 +1655,87 @@ function DashboardCandlestick({ ticker, range }: { ticker: string; range: "1d"|"
   useEffect(() => {
     if (!containerRef.current) return;
     let destroyed = false;
+    let isMounted = true;
 
-    try {
-      if (destroyed) return;
+    (async () => {
+      try {
+        // Dynamic import with validation
+        const lwc = await import("lightweight-charts");
+        
+        if (destroyed || !isMounted) return;
 
-      const isDark = document.documentElement.classList.contains("dark");
-      const chart = createChart(containerRef.current!, {
-        width: containerRef.current!.clientWidth,
-        height: 220,
-        layout: {
-          background: { type: ColorType.Solid, color: "transparent" },
-          textColor: isDark ? "#94a3b8" : "#64748b",
-        },
-        grid: {
-          vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-          horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-        },
-        crosshair: { mode: 1 },
-        rightPriceScale: { borderColor: isDark ? "#ffffff14" : "#00000014" },
-        timeScale: {
-          borderColor: isDark ? "#ffffff14" : "#00000014",
-          timeVisible: range === "1d",
-          secondsVisible: false,
-        },
-        handleScroll: true,
-        handleScale: true,
-      });
+        const createChart = lwc.createChart;
+        const ColorType = lwc.ColorType;
 
-      const series = chart.addCandlestickSeries({
-        upColor: "#10b981", downColor: "#ef4444",
-        borderUpColor: "#10b981", borderDownColor: "#ef4444",
-        wickUpColor: "#10b981", wickDownColor: "#ef4444",
-      });
-
-      chartRef.current = chart;
-      seriesRef.current = series;
-
-      const ro = new ResizeObserver(() => {
-        if (containerRef.current && chartRef.current && !destroyed) {
-          chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
+        // Validate exports
+        if (!createChart || !ColorType) {
+          console.error("Missing exports from lightweight-charts:", { createChart, ColorType });
+          setStatus("error");
+          setErrMsg("lightweight-charts module missing exports. Check console.");
+          return;
         }
-      });
-      ro.observe(containerRef.current!);
 
-      return () => { destroyed = true; ro.disconnect(); };
-    } catch (e: any) {
-      setStatus("error");
-      setErrMsg("Failed to initialize chart. Ensure lightweight-charts is installed.");
-    }
+        if (typeof createChart !== 'function') {
+          console.error("createChart is not a function:", typeof createChart);
+          setStatus("error");
+          setErrMsg("createChart is not a function");
+          return;
+        }
+
+        const isDark = document.documentElement.classList.contains("dark");
+        const chart = createChart(containerRef.current!, {
+          width: containerRef.current!.clientWidth,
+          height: 220,
+          layout: {
+            background: { type: ColorType.Solid, color: "transparent" },
+            textColor: isDark ? "#94a3b8" : "#64748b",
+          },
+          grid: {
+            vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+            horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+          },
+          crosshair: { mode: 1 },
+          rightPriceScale: { borderColor: isDark ? "#ffffff14" : "#00000014" },
+          timeScale: {
+            borderColor: isDark ? "#ffffff14" : "#00000014",
+            timeVisible: range === "1d",
+            secondsVisible: false,
+          },
+          handleScroll: true,
+          handleScale: true,
+        });
+
+        const series = chart.addCandlestickSeries({
+          upColor: "#10b981", downColor: "#ef4444",
+          borderUpColor: "#10b981", borderDownColor: "#ef4444",
+          wickUpColor: "#10b981", wickDownColor: "#ef4444",
+        });
+
+        if (isMounted && !destroyed) {
+          chartRef.current = chart;
+          seriesRef.current = series;
+
+          const ro = new ResizeObserver(() => {
+            if (containerRef.current && chartRef.current && !destroyed) {
+              chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
+            }
+          });
+          ro.observe(containerRef.current!);
+
+          return () => { destroyed = true; ro.disconnect(); };
+        }
+      } catch (e: any) {
+        console.error("Dashboard candlestick error:", e);
+        if (isMounted) {
+          setStatus("error");
+          setErrMsg(`Error: ${e?.message || 'Failed to load chart'}`);
+        }
+      }
+    })();
 
     return () => {
       destroyed = true;
+      isMounted = false;
       if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; seriesRef.current = null; }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps

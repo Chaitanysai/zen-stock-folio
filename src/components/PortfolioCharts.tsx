@@ -8,7 +8,6 @@ import {
 } from "recharts";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { useEffect, useRef, useState } from "react";
-import { useLightweightCharts } from "@/hooks/useLightweightCharts";
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const PALETTE = [
@@ -37,78 +36,103 @@ type CandleRange = "1d" | "5d" | "1mo";
 interface CandlestickPanelProps {
   ticker: string;
   range: CandleRange;
-  lib: any;
 }
 
-function CandlestickPanel({ ticker, range, lib }: CandlestickPanelProps) {
+function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialise chart once lib is loaded
+  // Initialise chart once
   useEffect(() => {
-    if (!containerRef.current || !lib) return;
+    if (!containerRef.current) return;
 
     let chart: any;
-    try {
-      const isDark = document.documentElement.classList.contains("dark");
+    let isMounted = true;
 
-      chart = lib.createChart(containerRef.current!, {
-        width: containerRef.current!.clientWidth,
-        height: 260,
-        layout: {
-          background: { type: lib.ColorType.Solid, color: "transparent" },
-          textColor: isDark ? "#94a3b8" : "#64748b",
-        },
-        grid: {
-          vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-          horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-        },
-        crosshair: { mode: 1 },
-        rightPriceScale: {
-          borderColor: isDark ? "#ffffff14" : "#00000014",
-        },
-        timeScale: {
-          borderColor: isDark ? "#ffffff14" : "#00000014",
-          timeVisible: range === "1d",
-          secondsVisible: false,
-        },
-        handleScroll: true,
-        handleScale: true,
-      });
+    (async () => {
+      try {
+        // Dynamic import - this is more reliable on Vercel
+        const lwc = await import("lightweight-charts");
+        
+        if (!isMounted) return;
+        
+        // Use the default export or named exports
+        const createChart = lwc.createChart;
+        const ColorType = lwc.ColorType;
 
-      const series = chart.addCandlestickSeries({
-        upColor: "#10b981",
-        downColor: "#ef4444",
-        borderUpColor: "#10b981",
-        borderDownColor: "#ef4444",
-        wickUpColor: "#10b981",
-        wickDownColor: "#ef4444",
-      });
-
-      chartRef.current = chart;
-      seriesRef.current = series;
-
-      // Resize observer
-      const ro = new ResizeObserver(() => {
-        if (containerRef.current && chartRef.current) {
-          chartRef.current.applyOptions({
-            width: containerRef.current.clientWidth,
-          });
+        if (!createChart || !ColorType) {
+          console.error("Missing exports from lightweight-charts:", { createChart, ColorType });
+          setError("lightweight-charts exports are missing. Check console.");
+          setLoading(false);
+          return;
         }
-      });
-      ro.observe(containerRef.current!);
 
-      return () => ro.disconnect();
-    } catch (err) {
-      console.error("Chart initialization error:", err);
-      setError("Failed to initialize chart. Check browser console.");
-      setLoading(false);
-    }
+        const isDark = document.documentElement.classList.contains("dark");
+
+        chart = createChart(containerRef.current!, {
+          width: containerRef.current!.clientWidth,
+          height: 260,
+          layout: {
+            background: { type: ColorType.Solid, color: "transparent" },
+            textColor: isDark ? "#94a3b8" : "#64748b",
+          },
+          grid: {
+            vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+            horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+          },
+          crosshair: { mode: 1 },
+          rightPriceScale: {
+            borderColor: isDark ? "#ffffff14" : "#00000014",
+          },
+          timeScale: {
+            borderColor: isDark ? "#ffffff14" : "#00000014",
+            timeVisible: range === "1d",
+            secondsVisible: false,
+          },
+          handleScroll: true,
+          handleScale: true,
+        });
+
+        const series = chart.addCandlestickSeries({
+          upColor: "#10b981",
+          downColor: "#ef4444",
+          borderUpColor: "#10b981",
+          borderDownColor: "#ef4444",
+          wickUpColor: "#10b981",
+          wickDownColor: "#ef4444",
+        });
+
+        if (isMounted) {
+          chartRef.current = chart;
+          seriesRef.current = series;
+
+          // Resize observer
+          const ro = new ResizeObserver(() => {
+            if (containerRef.current && chartRef.current) {
+              chartRef.current.applyOptions({
+                width: containerRef.current.clientWidth,
+              });
+            }
+          });
+          ro.observe(containerRef.current!);
+
+          // Cleanup function for resize observer
+          return () => ro.disconnect();
+        }
+      } catch (err: any) {
+        console.error("Chart initialization error:", err);
+        if (isMounted) {
+          setError(`Failed to initialize chart: ${err?.message || 'Unknown error'}`);
+          setLoading(false);
+        }
+      }
+    })();
 
     return () => {
+      isMounted = false;
       if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
@@ -116,7 +140,7 @@ function CandlestickPanel({ ticker, range, lib }: CandlestickPanelProps) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lib]);
+  }, []);
 
   // Fetch OHLC data whenever ticker or range changes
   useEffect(() => {
@@ -224,7 +248,6 @@ interface PortfolioChartsProps {
 const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
   const tickers = stocks.map((s) => s.ticker);
   const { prices } = useLivePrices(tickers);
-  const { lib, error: libError, isLoading: libLoading } = useLightweightCharts();
 
   const activeStocks = stocks.filter((s) => s.status === "Active");
 
@@ -266,22 +289,6 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
     "5d": "5 Days",
     "1mo": "1 Month",
   };
-
-  if (libError) {
-    return (
-      <div className="text-center py-8 text-red-500">
-        <p className="font-mono text-sm">{libError}</p>
-      </div>
-    );
-  }
-
-  if (libLoading) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <p className="font-mono text-sm animate-pulse">Loading chart library…</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -336,12 +343,11 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
           </div>
         </div>
 
-        {selectedTicker && lib ? (
+        {selectedTicker ? (
           <CandlestickPanel
             key={`${selectedTicker}-${candleRange}`}
             ticker={selectedTicker}
             range={candleRange}
-            lib={lib}
           />
         ) : (
           <div className="flex items-center justify-center h-[260px] text-muted-foreground text-sm font-mono">
