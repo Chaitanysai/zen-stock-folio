@@ -794,6 +794,7 @@ export default function Index() {
     return localData?.stocks?.find((stock) => stock.status === "Active")?.ticker ?? null;
   });
   const [tradesSubTab, setTradesSubTab] = useState<"equity"|"fno">("equity");
+  const [dashboardCandleRange, setDashboardCandleRange] = useState<"1d"|"5d"|"1mo">("1d");
 
   const { toast }         = useToast();
   const { user, signOut, loading: _authLoading } = useAuth();
@@ -1525,7 +1526,7 @@ export default function Index() {
                   <div className="zf-card-head">
                     <div>
                       <span className="zf-card-title">
-                        {selectedChartStock ? `${selectedChartStock.ticker} Live Chart` : "Stock Chart"}
+                        {selectedChartStock ? `${selectedChartStock.ticker} · Candlestick` : "Candlestick Chart"}
                       </span>
                       <div style={{ display:"flex", gap:6, marginTop:5, flexWrap:"wrap" }}>
                         {activePos.slice(0, 6).map((stock) => (
@@ -1540,7 +1541,19 @@ export default function Index() {
                         ))}
                       </div>
                     </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                      {/* Range selector */}
+                      <div style={{ display:"flex", gap:2, background:"var(--bg-surface)", padding:"3px", borderRadius:7 }}>
+                        {(["1d","5d","1mo"] as const).map((r) => (
+                          <button key={r} onClick={() => setDashboardCandleRange(r)} style={{
+                            fontSize:9.5, fontWeight:700, padding:"3px 8px", borderRadius:5,
+                            background: dashboardCandleRange === r ? "var(--bg-card)" : "transparent",
+                            color: dashboardCandleRange === r ? "var(--blue)" : "var(--tx-400)",
+                            border:"none", cursor:"pointer", fontFamily:"var(--ff-mono)",
+                            boxShadow: dashboardCandleRange === r ? "var(--sh-1)" : "none",
+                          }}>{r}</button>
+                        ))}
+                      </div>
                       {selectedChartStock && (
                         <div style={{ textAlign:"right" }}>
                           <div style={{ fontFamily:"var(--ff-mono)", fontSize:17, fontWeight:700, color:"var(--tx-900)" }}>₹{fmtNum(selectedChartStock.cmp)}</div>
@@ -1553,7 +1566,10 @@ export default function Index() {
                     </div>
                   </div>
                   <div style={{ padding:"8px 18px 14px" }}>
-                    <StockLineChartWidget stock={selectedChartStock} dayChangePercent={selectedChartDayPct} />
+                    {selectedChartTicker
+                      ? <DashboardCandlestick ticker={selectedChartTicker} range={dashboardCandleRange} />
+                      : <div style={{ height:200, display:"flex", alignItems:"center", justifyContent:"center", color:"var(--tx-300)", fontSize:12 }}>Add an active position to view the chart</div>
+                    }
                   </div>
                 </div>
 
@@ -1624,6 +1640,120 @@ export default function Index() {
 
       <AuthModal open={showAuth} onOpenChange={setShowAuth} />
     </>
+  );
+}
+
+// ─── Dashboard Candlestick (lightweight-charts) ───────────────────────────────
+function DashboardCandlestick({ ticker, range }: { ticker: string; range: "1d"|"5d"|"1mo" }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<any>(null);
+  const seriesRef = useRef<any>(null);
+  const [status, setStatus] = useState<"loading"|"ok"|"error">("loading");
+  const [errMsg, setErrMsg] = useState("");
+
+  // Init chart once
+  useEffect(() => {
+    if (!containerRef.current) return;
+    let destroyed = false;
+
+    (async () => {
+      try {
+        const { createChart, ColorType } = await import("lightweight-charts");
+        if (destroyed) return;
+
+        const isDark = document.documentElement.classList.contains("dark");
+        const chart = createChart(containerRef.current!, {
+          width: containerRef.current!.clientWidth,
+          height: 220,
+          layout: {
+            background: { type: ColorType.Solid, color: "transparent" },
+            textColor: isDark ? "#94a3b8" : "#64748b",
+          },
+          grid: {
+            vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+            horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+          },
+          crosshair: { mode: 1 },
+          rightPriceScale: { borderColor: isDark ? "#ffffff14" : "#00000014" },
+          timeScale: {
+            borderColor: isDark ? "#ffffff14" : "#00000014",
+            timeVisible: range === "1d",
+            secondsVisible: false,
+          },
+          handleScroll: true,
+          handleScale: true,
+        });
+
+        const series = chart.addCandlestickSeries({
+          upColor: "#10b981", downColor: "#ef4444",
+          borderUpColor: "#10b981", borderDownColor: "#ef4444",
+          wickUpColor: "#10b981", wickDownColor: "#ef4444",
+        });
+
+        chartRef.current = chart;
+        seriesRef.current = series;
+
+        const ro = new ResizeObserver(() => {
+          if (containerRef.current && chartRef.current && !destroyed) {
+            chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
+          }
+        });
+        ro.observe(containerRef.current!);
+
+        return () => { destroyed = true; ro.disconnect(); };
+      } catch (e: any) {
+        setStatus("error");
+        setErrMsg("Run: npm install lightweight-charts");
+      }
+    })();
+
+    return () => {
+      destroyed = true;
+      if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; seriesRef.current = null; }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fetch OHLC on ticker/range change
+  useEffect(() => {
+    if (!seriesRef.current) return;
+    setStatus("loading");
+
+    const iv = range === "1d" ? "5m" : range === "5d" ? "15m" : "1d";
+    fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.NS?range=${range}&interval=${iv}`)
+      .then(r => r.json())
+      .then(data => {
+        const result = data?.chart?.result?.[0];
+        if (!result) { setStatus("error"); setErrMsg("No data for this symbol."); return; }
+        const ts: number[] = result.timestamp ?? [];
+        const q = result.indicators?.quote?.[0] ?? {};
+        const candles = ts
+          .map((t, i) => ({ time: t as any, open: q.open?.[i]??0, high: q.high?.[i]??0, low: q.low?.[i]??0, close: q.close?.[i]??0 }))
+          .filter(c => c.open > 0 && c.close > 0)
+          .filter((c, i, a) => i === 0 || c.time > a[i-1].time);
+        if (!candles.length) { setStatus("error"); setErrMsg("Empty candle data for this range."); return; }
+        seriesRef.current?.setData(candles);
+        chartRef.current?.timeScale().fitContent();
+        setStatus("ok");
+      })
+      .catch(() => { setStatus("error"); setErrMsg("Network error fetching chart data."); });
+  }, [ticker, range]);
+
+  return (
+    <div style={{ position:"relative", minHeight:220 }}>
+      {status === "loading" && (
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:10 }}>
+          <span style={{ fontSize:11, color:"var(--tx-300)", fontFamily:"var(--ff-mono)" }}>Loading candles…</span>
+        </div>
+      )}
+      {status === "error" && (
+        <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6, zIndex:10 }}>
+          <span style={{ fontSize:18, opacity:.3 }}>📊</span>
+          <span style={{ fontSize:11, color:"var(--tx-400)", fontFamily:"var(--ff-mono)", textAlign:"center", maxWidth:280 }}>{errMsg}</span>
+        </div>
+      )}
+      <div ref={containerRef} style={{ width:"100%", height:220, opacity: status === "ok" ? 1 : 0, transition:"opacity .2s" }} />
+    </div>
   );
 }
 

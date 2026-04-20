@@ -8,6 +8,7 @@ import {
 } from "recharts";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { useEffect, useRef, useState } from "react";
+import { createChart, ColorType } from "lightweight-charts";
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const PALETTE = [
@@ -50,65 +51,60 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
     if (!containerRef.current) return;
 
     let chart: any;
-    (async () => {
-      try {
-        // Dynamic import — only loads if the package is installed
-        const { createChart, ColorType } = await import("lightweight-charts");
+    try {
+      const isDark = document.documentElement.classList.contains("dark");
 
-        const isDark = document.documentElement.classList.contains("dark");
+      chart = createChart(containerRef.current!, {
+        width: containerRef.current!.clientWidth,
+        height: 260,
+        layout: {
+          background: { type: ColorType.Solid, color: "transparent" },
+          textColor: isDark ? "#94a3b8" : "#64748b",
+        },
+        grid: {
+          vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+          horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+        },
+        crosshair: { mode: 1 },
+        rightPriceScale: {
+          borderColor: isDark ? "#ffffff14" : "#00000014",
+        },
+        timeScale: {
+          borderColor: isDark ? "#ffffff14" : "#00000014",
+          timeVisible: range === "1d",
+          secondsVisible: false,
+        },
+        handleScroll: true,
+        handleScale: true,
+      });
 
-        chart = createChart(containerRef.current!, {
-          width: containerRef.current!.clientWidth,
-          height: 260,
-          layout: {
-            background: { type: ColorType.Solid, color: "transparent" },
-            textColor: isDark ? "#94a3b8" : "#64748b",
-          },
-          grid: {
-            vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-            horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-          },
-          crosshair: { mode: 1 },
-          rightPriceScale: {
-            borderColor: isDark ? "#ffffff14" : "#00000014",
-          },
-          timeScale: {
-            borderColor: isDark ? "#ffffff14" : "#00000014",
-            timeVisible: range === "1d",
-            secondsVisible: false,
-          },
-          handleScroll: true,
-          handleScale: true,
-        });
+      const series = chart.addCandlestickSeries({
+        upColor: "#10b981",
+        downColor: "#ef4444",
+        borderUpColor: "#10b981",
+        borderDownColor: "#ef4444",
+        wickUpColor: "#10b981",
+        wickDownColor: "#ef4444",
+      });
 
-        const series = chart.addCandlestickSeries({
-          upColor: "#10b981",
-          downColor: "#ef4444",
-          borderUpColor: "#10b981",
-          borderDownColor: "#ef4444",
-          wickUpColor: "#10b981",
-          wickDownColor: "#ef4444",
-        });
+      chartRef.current = chart;
+      seriesRef.current = series;
 
-        chartRef.current = chart;
-        seriesRef.current = series;
+      // Resize observer
+      const ro = new ResizeObserver(() => {
+        if (containerRef.current && chartRef.current) {
+          chartRef.current.applyOptions({
+            width: containerRef.current.clientWidth,
+          });
+        }
+      });
+      ro.observe(containerRef.current!);
 
-        // Resize observer
-        const ro = new ResizeObserver(() => {
-          if (containerRef.current && chartRef.current) {
-            chartRef.current.applyOptions({
-              width: containerRef.current.clientWidth,
-            });
-          }
-        });
-        ro.observe(containerRef.current!);
-
-        return () => ro.disconnect();
-      } catch {
-        setError("Install lightweight-charts: npm install lightweight-charts");
-        setLoading(false);
-      }
-    })();
+      return () => ro.disconnect();
+    } catch (err) {
+      setError("Failed to initialize chart. Ensure lightweight-charts is installed.");
+      setLoading(false);
+    }
 
     return () => {
       if (chartRef.current) {
