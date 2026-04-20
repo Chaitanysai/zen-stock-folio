@@ -1,0 +1,7 @@
+{
+  "buildCommand": "npm install lightweight-charts && npm run build",
+  "installCommand": "npm ci",
+  "env": {
+    "VITE_API_PROXY_TARGET": "@vite_api_proxy_target"
+  }
+}

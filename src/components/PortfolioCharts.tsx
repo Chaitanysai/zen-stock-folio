@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { useEffect, useRef, useState } from "react";
-import { createChart, ColorType } from "lightweight-charts";
+import { useLightweightCharts } from "@/hooks/useLightweightCharts";
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const PALETTE = [
@@ -37,28 +37,29 @@ type CandleRange = "1d" | "5d" | "1mo";
 interface CandlestickPanelProps {
   ticker: string;
   range: CandleRange;
+  lib: any;
 }
 
-function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
+function CandlestickPanel({ ticker, range, lib }: CandlestickPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialise chart once
+  // Initialise chart once lib is loaded
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !lib) return;
 
     let chart: any;
     try {
       const isDark = document.documentElement.classList.contains("dark");
 
-      chart = createChart(containerRef.current!, {
+      chart = lib.createChart(containerRef.current!, {
         width: containerRef.current!.clientWidth,
         height: 260,
         layout: {
-          background: { type: ColorType.Solid, color: "transparent" },
+          background: { type: lib.ColorType.Solid, color: "transparent" },
           textColor: isDark ? "#94a3b8" : "#64748b",
         },
         grid: {
@@ -102,7 +103,8 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
 
       return () => ro.disconnect();
     } catch (err) {
-      setError("Failed to initialize chart. Ensure lightweight-charts is installed.");
+      console.error("Chart initialization error:", err);
+      setError("Failed to initialize chart. Check browser console.");
       setLoading(false);
     }
 
@@ -114,7 +116,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [lib]);
 
   // Fetch OHLC data whenever ticker or range changes
   useEffect(() => {
@@ -153,7 +155,6 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
             close: quote.close?.[i] ?? 0,
           }))
           .filter((c) => c.open > 0 && c.close > 0)
-          // lightweight-charts requires ascending time, deduplicated
           .filter((c, i, arr) => i === 0 || c.time > arr[i - 1].time);
 
         if (candles.length === 0) {
@@ -223,6 +224,7 @@ interface PortfolioChartsProps {
 const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
   const tickers = stocks.map((s) => s.ticker);
   const { prices } = useLivePrices(tickers);
+  const { lib, error: libError, isLoading: libLoading } = useLightweightCharts();
 
   const activeStocks = stocks.filter((s) => s.status === "Active");
 
@@ -264,6 +266,22 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
     "5d": "5 Days",
     "1mo": "1 Month",
   };
+
+  if (libError) {
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p className="font-mono text-sm">{libError}</p>
+      </div>
+    );
+  }
+
+  if (libLoading) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p className="font-mono text-sm animate-pulse">Loading chart library…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -318,11 +336,12 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
           </div>
         </div>
 
-        {selectedTicker ? (
+        {selectedTicker && lib ? (
           <CandlestickPanel
             key={`${selectedTicker}-${candleRange}`}
             ticker={selectedTicker}
             range={candleRange}
+            lib={lib}
           />
         ) : (
           <div className="flex items-center justify-center h-[260px] text-muted-foreground text-sm font-mono">
