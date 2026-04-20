@@ -34,6 +34,7 @@ import { useLivePrices }     from "@/hooks/useLivePrices";
 import { usePortfolioSync, loadFromLocal, PortfolioSnapshot } from "@/hooks/usePortfolioSync";
 import { useAuth }           from "@/contexts/AuthContext";
 import { buildTrendSeries, isSameTradingDay } from "@/lib/trading";
+import { createChart, ColorType } from "lightweight-charts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ActiveTab =
@@ -1656,56 +1657,53 @@ function DashboardCandlestick({ ticker, range }: { ticker: string; range: "1d"|"
     if (!containerRef.current) return;
     let destroyed = false;
 
-    (async () => {
-      try {
-        const { createChart, ColorType } = await import("lightweight-charts");
-        if (destroyed) return;
+    try {
+      if (destroyed) return;
 
-        const isDark = document.documentElement.classList.contains("dark");
-        const chart = createChart(containerRef.current!, {
-          width: containerRef.current!.clientWidth,
-          height: 220,
-          layout: {
-            background: { type: ColorType.Solid, color: "transparent" },
-            textColor: isDark ? "#94a3b8" : "#64748b",
-          },
-          grid: {
-            vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-            horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-          },
-          crosshair: { mode: 1 },
-          rightPriceScale: { borderColor: isDark ? "#ffffff14" : "#00000014" },
-          timeScale: {
-            borderColor: isDark ? "#ffffff14" : "#00000014",
-            timeVisible: range === "1d",
-            secondsVisible: false,
-          },
-          handleScroll: true,
-          handleScale: true,
-        });
+      const isDark = document.documentElement.classList.contains("dark");
+      const chart = createChart(containerRef.current!, {
+        width: containerRef.current!.clientWidth,
+        height: 220,
+        layout: {
+          background: { type: ColorType.Solid, color: "transparent" },
+          textColor: isDark ? "#94a3b8" : "#64748b",
+        },
+        grid: {
+          vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+          horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+        },
+        crosshair: { mode: 1 },
+        rightPriceScale: { borderColor: isDark ? "#ffffff14" : "#00000014" },
+        timeScale: {
+          borderColor: isDark ? "#ffffff14" : "#00000014",
+          timeVisible: range === "1d",
+          secondsVisible: false,
+        },
+        handleScroll: true,
+        handleScale: true,
+      });
 
-        const series = chart.addCandlestickSeries({
-          upColor: "#10b981", downColor: "#ef4444",
-          borderUpColor: "#10b981", borderDownColor: "#ef4444",
-          wickUpColor: "#10b981", wickDownColor: "#ef4444",
-        });
+      const series = chart.addCandlestickSeries({
+        upColor: "#10b981", downColor: "#ef4444",
+        borderUpColor: "#10b981", borderDownColor: "#ef4444",
+        wickUpColor: "#10b981", wickDownColor: "#ef4444",
+      });
 
-        chartRef.current = chart;
-        seriesRef.current = series;
+      chartRef.current = chart;
+      seriesRef.current = series;
 
-        const ro = new ResizeObserver(() => {
-          if (containerRef.current && chartRef.current && !destroyed) {
-            chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
-          }
-        });
-        ro.observe(containerRef.current!);
+      const ro = new ResizeObserver(() => {
+        if (containerRef.current && chartRef.current && !destroyed) {
+          chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
+        }
+      });
+      ro.observe(containerRef.current!);
 
-        return () => { destroyed = true; ro.disconnect(); };
-      } catch (e: any) {
-        setStatus("error");
-        setErrMsg("Run: npm install lightweight-charts");
-      }
-    })();
+      return () => { destroyed = true; ro.disconnect(); };
+    } catch (e: any) {
+      setStatus("error");
+      setErrMsg("Failed to initialize chart. Ensure lightweight-charts is installed.");
+    }
 
     return () => {
       destroyed = true;
