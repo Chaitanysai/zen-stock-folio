@@ -1643,52 +1643,34 @@ export default function Index() {
   );
 }
 
-// ─── Dashboard Candlestick (lightweight-charts) ───────────────────────────────
+// ─── Dashboard Candlestick (lightweight-charts v5.1) ───────────────────────────────
 function DashboardCandlestick({ ticker, range }: { ticker: string; range: "1d"|"5d"|"1mo" }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
   const [status, setStatus] = useState<"loading"|"ok"|"error">("loading");
   const [errMsg, setErrMsg] = useState("");
-
+ 
   // Init chart once
   useEffect(() => {
     if (!containerRef.current) return;
     let destroyed = false;
     let isMounted = true;
-
+ 
     (async () => {
       try {
-        // Dynamic import with validation
-        const lwc = await import("lightweight-charts");
+        // Import with v5.1 API
+        const { createChart, CandlestickSeries } = await import("lightweight-charts");
         
         if (destroyed || !isMounted) return;
-
-        const createChart = lwc.createChart;
-        const ColorType = lwc.ColorType;
-
-        // Validate exports
-        if (!createChart || !ColorType) {
-          console.error("Missing exports from lightweight-charts:", { createChart, ColorType });
-          setStatus("error");
-          setErrMsg("lightweight-charts module missing exports. Check console.");
-          return;
-        }
-
-        if (typeof createChart !== 'function') {
-          console.error("createChart is not a function:", typeof createChart);
-          setStatus("error");
-          setErrMsg("createChart is not a function");
-          return;
-        }
-
+ 
         const isDark = document.documentElement.classList.contains("dark");
         const chart = createChart(containerRef.current!, {
           width: containerRef.current!.clientWidth,
           height: 220,
           layout: {
-            background: { type: ColorType.Solid, color: "transparent" },
             textColor: isDark ? "#94a3b8" : "#64748b",
+            background: { type: "solid", color: "transparent" },
           },
           grid: {
             vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
@@ -1704,24 +1686,25 @@ function DashboardCandlestick({ ticker, range }: { ticker: string; range: "1d"|"
           handleScroll: true,
           handleScale: true,
         });
-
-        const series = chart.addCandlestickSeries({
+ 
+        // Use v5.1 API: addSeries(CandlestickSeries, options)
+        const series = chart.addSeries(CandlestickSeries, {
           upColor: "#10b981", downColor: "#ef4444",
           borderUpColor: "#10b981", borderDownColor: "#ef4444",
           wickUpColor: "#10b981", wickDownColor: "#ef4444",
         });
-
+ 
         if (isMounted && !destroyed) {
           chartRef.current = chart;
           seriesRef.current = series;
-
+ 
           const ro = new ResizeObserver(() => {
             if (containerRef.current && chartRef.current && !destroyed) {
               chartRef.current.applyOptions({ width: containerRef.current.clientWidth });
             }
           });
           ro.observe(containerRef.current!);
-
+ 
           return () => { destroyed = true; ro.disconnect(); };
         }
       } catch (e: any) {
@@ -1732,7 +1715,7 @@ function DashboardCandlestick({ ticker, range }: { ticker: string; range: "1d"|"
         }
       }
     })();
-
+ 
     return () => {
       destroyed = true;
       isMounted = false;
@@ -1740,49 +1723,55 @@ function DashboardCandlestick({ ticker, range }: { ticker: string; range: "1d"|"
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
+ 
   // Fetch OHLC on ticker/range change
   useEffect(() => {
-    if (!seriesRef.current) return;
-    setStatus("loading");
+  if (!seriesRef.current || !chartRef.current) return;
 
-    const iv = range === "1d" ? "5m" : range === "5d" ? "15m" : "1d";
-    fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.NS?range=${range}&interval=${iv}`)
-      .then(r => r.json())
-      .then(data => {
-        const result = data?.chart?.result?.[0];
-        if (!result) { setStatus("error"); setErrMsg("No data for this symbol."); return; }
-        const ts: number[] = result.timestamp ?? [];
-        const q = result.indicators?.quote?.[0] ?? {};
-        const candles = ts
-          .map((t, i) => ({ time: t as any, open: q.open?.[i]??0, high: q.high?.[i]??0, low: q.low?.[i]??0, close: q.close?.[i]??0 }))
-          .filter(c => c.open > 0 && c.close > 0)
-          .filter((c, i, a) => i === 0 || c.time > a[i-1].time);
-        if (!candles.length) { setStatus("error"); setErrMsg("Empty candle data for this range."); return; }
-        seriesRef.current?.setData(candles);
-        chartRef.current?.timeScale().fitContent();
-        setStatus("ok");
-      })
-      .catch(() => { setStatus("error"); setErrMsg("Network error fetching chart data."); });
-  }, [ticker, range]);
+  setStatus("loading");
 
-  return (
-    <div style={{ position:"relative", minHeight:220 }}>
-      {status === "loading" && (
-        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:10 }}>
-          <span style={{ fontSize:11, color:"var(--tx-300)", fontFamily:"var(--ff-mono)" }}>Loading candles…</span>
-        </div>
-      )}
-      {status === "error" && (
-        <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:6, zIndex:10 }}>
-          <span style={{ fontSize:18, opacity:.3 }}>📊</span>
-          <span style={{ fontSize:11, color:"var(--tx-400)", fontFamily:"var(--ff-mono)", textAlign:"center", maxWidth:280 }}>{errMsg}</span>
-        </div>
-      )}
-      <div ref={containerRef} style={{ width:"100%", height:220, opacity: status === "ok" ? 1 : 0, transition:"opacity .2s" }} />
-    </div>
-  );
-}
+  const iv = range === "1d" ? "5m" : range === "5d" ? "15m" : "1d";
+
+  fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.NS?range=${range}&interval=${iv}`)
+    .then(r => r.json())
+    .then(data => {
+      const result = data?.chart?.result?.[0];
+      if (!result) {
+        setStatus("error");
+        setErrMsg("No data for this symbol.");
+        return;
+      }
+
+      const ts: number[] = result.timestamp ?? [];
+      const q = result.indicators?.quote?.[0] ?? {};
+
+      const candles = ts
+        .map((t, i) => ({
+          time: t as any,
+          open: q.open?.[i] ?? 0,
+          high: q.high?.[i] ?? 0,
+          low: q.low?.[i] ?? 0,
+          close: q.close?.[i] ?? 0
+        }))
+        .filter(c => c.open > 0 && c.close > 0)
+        .filter((c, i, a) => i === 0 || c.time > a[i - 1].time);
+
+      if (!candles.length) {
+        setStatus("error");
+        setErrMsg("Empty candle data for this range.");
+        return;
+      }
+
+      seriesRef.current.setData(candles);
+      chartRef.current.timeScale().fitContent();
+      setStatus("ok");
+    })
+    .catch(() => {
+      setStatus("error");
+      setErrMsg("Network error fetching chart data.");
+    });
+
+}, [ticker, range]);
 
 function StockLineChartWidget({ stock, dayChangePercent }: { stock: PortfolioStock | null; dayChangePercent: number; }) {
   const W = 500, H = 150;
