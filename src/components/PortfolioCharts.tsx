@@ -54,29 +54,47 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
 
     (async () => {
       try {
-        // Dynamic import - this is more reliable on Vercel
+        // Dynamic import
         const lwc = await import("lightweight-charts");
         
         if (!isMounted) return;
-        
-        // Use the default export or named exports
-        const createChart = lwc.createChart;
-        const ColorType = lwc.ColorType;
 
-        if (!createChart || !ColorType) {
-          console.error("Missing exports from lightweight-charts:", { createChart, ColorType });
-          setError("lightweight-charts exports are missing. Check console.");
-          setLoading(false);
-          return;
+        console.log("=== Diagnostic: lightweight-charts module ===");
+        console.log("Module type:", typeof lwc);
+        console.log("Module keys:", Object.keys(lwc));
+        console.log("Full module:", lwc);
+
+        // Try to get createChart - it might be default export or named export
+        let createChart = lwc.createChart || (lwc.default?.createChart);
+        let ColorType = lwc.ColorType || (lwc.default?.ColorType);
+
+        console.log("createChart found:", !!createChart, "type:", typeof createChart);
+        console.log("ColorType found:", !!ColorType, "type:", typeof ColorType);
+
+        if (!createChart) {
+          // Last resort - try default export
+          if (typeof lwc.default === 'function') {
+            console.log("Using default export as createChart");
+            createChart = lwc.default;
+          } else if (lwc.default && typeof lwc.default.createChart === 'function') {
+            console.log("Using default.createChart");
+            createChart = lwc.default.createChart;
+            ColorType = lwc.default.ColorType;
+          }
+        }
+
+        if (!createChart || typeof createChart !== 'function') {
+          throw new Error(`createChart is not available. Type: ${typeof createChart}`);
         }
 
         const isDark = document.documentElement.classList.contains("dark");
 
+        console.log("Creating chart with ColorType:", ColorType);
         chart = createChart(containerRef.current!, {
           width: containerRef.current!.clientWidth,
           height: 260,
           layout: {
-            background: { type: ColorType.Solid, color: "transparent" },
+            background: { type: ColorType?.Solid || 'solid', color: "transparent" },
             textColor: isDark ? "#94a3b8" : "#64748b",
           },
           grid: {
@@ -95,6 +113,14 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
           handleScroll: true,
           handleScale: true,
         });
+
+        console.log("Chart created:", chart);
+        console.log("Chart type:", typeof chart);
+        console.log("Chart methods:", chart ? Object.keys(chart).slice(0, 10) : "N/A");
+
+        if (!chart || typeof chart.addCandlestickSeries !== 'function') {
+          throw new Error(`addCandlestickSeries not available on chart. Available: ${chart ? Object.keys(chart).slice(0, 5).join(', ') : 'chart is null'}`);
+        }
 
         const series = chart.addCandlestickSeries({
           upColor: "#10b981",
@@ -119,11 +145,12 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
           });
           ro.observe(containerRef.current!);
 
-          // Cleanup function for resize observer
           return () => ro.disconnect();
         }
       } catch (err: any) {
-        console.error("Chart initialization error:", err);
+        console.error("=== Chart initialization FAILED ===");
+        console.error("Error:", err);
+        console.error("Stack:", err?.stack);
         if (isMounted) {
           setError(`Failed to initialize chart: ${err?.message || 'Unknown error'}`);
           setLoading(false);
