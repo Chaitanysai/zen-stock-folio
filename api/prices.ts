@@ -45,15 +45,17 @@ async function cacheRead(tickers: string[]): Promise<Record<string, StockPrice> 
       const age = (Date.now() - new Date(row.fetched_at).getTime()) / 3600000;
       if (age > 30) continue;
 
-      out[row.ticker] = {
-        price: row.price,
-        weekHigh52: row.week_high52,
-        weekLow52: row.week_low52,
-        changePercent: row.change_percent,
-        change: row.change,
+      // NUMERIC columns arrive as strings from PostgREST; convert before any arithmetic
+      const cached: StockPrice = {
+        price: Number(row.price),
+        weekHigh52: Number(row.week_high52 ?? 0),
+        weekLow52: Number(row.week_low52 ?? 0),
+        changePercent: Number(row.change_percent ?? 0),
+        change: Number(row.change ?? 0),
         // When this cached value was actually fetched, so stale data is visible to the client
         asOf: row.fetched_at,
       };
+      if (isValidPrice(cached)) out[row.ticker] = cached;
     }
 
     return out;

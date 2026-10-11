@@ -17,6 +17,12 @@ dist-ssr
 .env.*
 !.env.example
 
+# Local Claude Code settings may contain machine-specific permissions
+.claude/settings.local.json
+
+# Supabase CLI local state (not source)
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
