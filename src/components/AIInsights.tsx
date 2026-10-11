@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { PortfolioStock, TradeStrategy } from "@/data/sampleData";
-import { getApiUnavailableMessage, getApiUrl } from "@/lib/api";
+import { getApiUnavailableMessage, fetchApi } from "@/lib/api";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface ChatMessage { role: "user" | "assistant"; content: string; ts: number; }
@@ -206,13 +206,12 @@ export default function AIInsights({ stocks, trades = [] }: Props) {
     setAnalysisLoading(true);
     setAnalysisError(null);
     try {
-      const res  = await fetch(getApiUrl("/api/ai"), {
+      const data = await fetchApi<{ response?: string; insights?: string }>("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "analysis", portfolioContext: ctx, portfolioSummary: ctx }),
+        label: "AI analysis",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setAnalysis(data.response || data.insights);
     } catch (e: any) {
       setAnalysisError(e?.message || getApiUnavailableMessage("AI analysis"));
@@ -237,7 +236,7 @@ export default function AIInsights({ stocks, trades = [] }: Props) {
     if (inputRef.current) inputRef.current.style.height = "auto";
 
     try {
-      const res  = await fetch(getApiUrl("/api/ai"), {
+      const data = await fetchApi<{ response?: string; insights?: string }>("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -245,9 +244,8 @@ export default function AIInsights({ stocks, trades = [] }: Props) {
           portfolioContext: ctx,
           messages: history.map(m => ({ role: m.role, content: m.content })),
         }),
+        label: "AI chat",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       setChatHistory(prev => [...prev, {
         role: "assistant",
         content: data.response || data.insights || "No response received.",

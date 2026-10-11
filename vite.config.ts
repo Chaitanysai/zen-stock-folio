@@ -25,4 +25,10 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  ssr: {
+    noExternal: ["lightweight-charts"],
+  },
+  optimizeDeps: {
+    include: ["lightweight-charts"],
+  },
 });

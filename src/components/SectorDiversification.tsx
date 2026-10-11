@@ -1,16 +1,22 @@
 import { getSectorAllocation, PortfolioStock } from "@/data/sampleData";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { PieChart as PieIcon } from "lucide-react";
 
-const COLORS = ["hsl(174,72%,46%)", "hsl(145,72%,44%)", "hsl(38,92%,50%)", "hsl(262,60%,55%)", "hsl(200,70%,50%)", "hsl(0,72%,55%)", "hsl(30,80%,55%)", "hsl(320,60%,50%)"];
+const PALETTE = [
+  "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6",
+  "#ec4899", "#ef4444", "#f97316", "#06b6d4",
+];
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-popover border border-border rounded-md px-3 py-2 shadow-lg">
+    <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
       <p className="text-xs font-semibold text-foreground">{payload[0]?.name}</p>
-      <p className="text-sm font-mono text-primary">₹{Number(payload[0]?.value).toLocaleString("en-IN")}</p>
-      <p className="text-xs text-muted-foreground">{payload[0]?.payload?.percentage?.toFixed(1)}% of portfolio</p>
+      <p className="text-sm font-mono text-primary">
+        ₹{Number(payload[0]?.value).toLocaleString("en-IN")}
+      </p>
+      <p className="text-[11px] text-muted-foreground font-mono">
+        {payload[0]?.payload?.percentage?.toFixed(1)}% of portfolio
+      </p>
     </div>
   );
 };
@@ -24,46 +30,94 @@ const SectorDiversification = ({ stocks }: SectorDiversificationProps) => {
 
   if (sectorData.length === 0) {
     return (
-      <div className="bg-card rounded-lg border border-border p-6 text-center">
-        <p className="text-sm text-muted-foreground">No active positions for sector analysis</p>
+      <div className="glass-card p-6 flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">
+          No active positions for sector analysis
+        </p>
       </div>
     );
   }
 
-  const chartData = sectorData.map(s => ({ name: s.sector, value: s.value, percentage: s.percentage }));
+  const chartData = sectorData.map((s) => ({
+    name: s.sector,
+    value: s.value,
+    percentage: s.percentage,
+  }));
+
+  const topSector = sectorData[0];
 
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden">
-      <div className="p-4 border-b border-border flex items-center gap-2">
-        <PieIcon className="h-4 w-4 text-primary" />
+    <div className="glass-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
         <div>
-          <h2 className="text-lg font-semibold">Sector Diversification</h2>
-          <p className="text-xs text-muted-foreground mt-1">Active portfolio breakdown by sector</p>
+          <h2 className="text-base font-semibold text-foreground tracking-tight">
+            Sector Diversification
+          </h2>
+          <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+            Active portfolio breakdown
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-[11px] font-mono font-semibold text-primary">
+            {topSector?.sector}
+          </div>
+          <div className="text-[10px] text-muted-foreground font-mono">
+            top sector · {topSector?.percentage?.toFixed(1)}%
+          </div>
         </div>
       </div>
-      <div className="p-4 flex flex-col lg:flex-row items-center gap-6">
-        <div className="w-full lg:w-1/2">
-          <ResponsiveContainer width="100%" height={250}>
+
+      <div className="p-5 flex flex-col lg:flex-row items-center gap-6">
+        {/* Donut */}
+        <div className="flex-shrink-0">
+          <ResponsiveContainer width={160} height={160}>
             <PieChart>
-              <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} innerRadius={55} strokeWidth={2} stroke="hsl(220,18%,10%)">
+              <Pie
+                data={chartData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={72}
+                innerRadius={42}
+                strokeWidth={2}
+                stroke="hsl(var(--card))"
+              >
                 {chartData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
                 ))}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <div className="w-full lg:w-1/2 space-y-2">
+
+        {/* Legend */}
+        <div className="w-full flex flex-col gap-2.5">
           {sectorData.map((s, i) => (
             <div key={s.sector} className="flex items-center gap-3">
-              <div className="h-3 w-3 rounded-sm shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-              <div className="flex-1 flex items-center justify-between">
-                <span className="text-sm text-foreground">{s.sector}</span>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-mono text-muted-foreground">₹{s.value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
-                  <span className="text-xs font-mono font-semibold text-primary w-12 text-right">{s.percentage.toFixed(1)}%</span>
+              <div
+                className="h-2.5 w-2.5 rounded-sm flex-shrink-0"
+                style={{ backgroundColor: PALETTE[i % PALETTE.length] }}
+              />
+              <div className="flex-1 flex items-center gap-2 min-w-0">
+                <span className="text-[12px] text-foreground font-medium flex-1 truncate">
+                  {s.sector}
+                </span>
+                {/* Bar */}
+                <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${s.percentage}%`,
+                      backgroundColor: PALETTE[i % PALETTE.length],
+                    }}
+                  />
                 </div>
+                <span className="text-[11px] font-mono font-semibold text-foreground w-10 text-right flex-shrink-0">
+                  {s.percentage.toFixed(1)}%
+                </span>
               </div>
             </div>
           ))}
