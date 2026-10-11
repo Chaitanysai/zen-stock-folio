@@ -1097,6 +1097,8 @@ export default function Index() {
     }
   };
 
+  const { user, signOut, loading: _authLoading } = useAuth();
+
   // Load display name from Supabase on login
   useEffect(() => {
     if (!user?.id) return;
@@ -1116,7 +1118,6 @@ export default function Index() {
   const [trades,    setTrades]    = useState<TradeStrategy[]>(()   => loadFromLocal()?.trades    ?? initialTrades);
   const [watchlist, setWatchlist] = useState<WatchlistStock[]>(()  => loadFromLocal()?.watchlist ?? initialWatchlist);
   const [alerts,    setAlerts]    = useState<PriceAlert[]>(()      => loadFromLocal()?.alerts    ?? []);
-  const [journal,   setJournal]   = useState<TradeJournalEntry[]>([]);
   const [fnoTrades, setFnoTrades] = useState<FnOTrade[]>(() => {
     try {
       const d = localStorage.getItem("zf-fno-trades");
@@ -1146,7 +1147,6 @@ export default function Index() {
   const [tradesSubTab, setTradesSubTab] = useState<"equity"|"fno">("equity");
 
   const { toast }         = useToast();
-  const { user, signOut, loading: _authLoading } = useAuth();
   const { load, save }    = usePortfolioSync(user?.id);
   const tickers = stocks.map(s => s.ticker);
   const { prices, source, marketOpen, refresh } = useLivePrices(tickers);
@@ -2318,7 +2318,7 @@ export default function Index() {
                 {tab === "charts"    && <PortfolioCharts stocks={live} />}
                 {tab === "analytics" && <TradeAnalytics stocks={live} />}
                 {tab === "history"   && <TradeHistory stocks={live} />}
-                {tab === "journal"   && <TradeJournal entries={journal} onUpdate={setJournal} />}
+                {tab === "journal"   && <TradeJournal stocks={stocks} onUpdateNotes={(ticker, notes) => setStocks(prev => prev.map(s => s.ticker === ticker ? { ...s, notes } : s))} />}
                 {tab === "sector"    && <SectorDiversification stocks={live} />}
                 {tab === "alerts"    && (
                   <PriceAlerts
@@ -2329,7 +2329,7 @@ export default function Index() {
                   />
                 )}
                 {tab === "ai"        && <AIInsights stocks={live} />}
-                {tab === "export"    && <ExportPortfolio stocks={live} trades={trades} />}
+                {tab === "export"    && <ExportPortfolio stocks={live} />}
               </div>
             )}
 

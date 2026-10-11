@@ -11,6 +11,8 @@ type StockPrice = {
   weekLow52: number;
   changePercent: number;
   change: number;
+  // Set only for cache-served values; live provider responses omit it
+  asOf?: string;
 };
 
 // ── Supabase client ─────────────────────────────────────────
@@ -49,6 +51,8 @@ async function cacheRead(tickers: string[]): Promise<Record<string, StockPrice> 
         weekLow52: row.week_low52,
         changePercent: row.change_percent,
         change: row.change,
+        // When this cached value was actually fetched, so stale data is visible to the client
+        asOf: row.fetched_at,
       };
     }
 
@@ -88,8 +92,16 @@ function isMarketOpen(): boolean {
 }
 
 // ── Fetch helper ──────────────────────────────────────────
+// Bounded so one slow provider can't stall the whole request
+const PROVIDER_TIMEOUT_MS = 5000;
+
 async function tf(url: string, opts: RequestInit = {}) {
-  return fetch(url, opts);
+  return fetch(url, { ...opts, signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS) });
+}
+
+// Reject null, zero, negative, or non-finite prices before they reach the cache
+function isValidPrice(p: StockPrice): boolean {
+  return Number.isFinite(p.price) && p.price > 0;
 }
 
 // ── Upstox (REAL-TIME) ────────────────────────────────────
@@ -117,13 +129,14 @@ async function fetchUpstox(tickers: string[]) {
       const pc = q.prev_close;
       const ch = ltp - pc;
 
-      out[t] = {
+      const price: StockPrice = {
         price: ltp,
         weekHigh52: q.week_52_high ?? 0,
         weekLow52: q.week_52_low ?? 0,
         changePercent: (ch / pc) * 100,
         change: ch,
       };
+      if (isValidPrice(price)) out[t] = price;
     }
 
     return Object.keys(out).length ? out : null;
@@ -149,14 +162,18 @@ async function fetchYahooChartAll(tickers: string[]) {
         const pc = meta.previousClose;
         const ch = ltp - pc;
 
-        out[t] = {
+        const price: StockPrice = {
           price: ltp,
           weekHigh52: meta.fiftyTwoWeekHigh ?? 0,
           weekLow52: meta.fiftyTwoWeekLow ?? 0,
           changePercent: (ch / pc) * 100,
           change: ch,
         };
-      } catch {}
+        if (isValidPrice(price)) out[t] = price;
+      } catch (err) {
+        // Log per-ticker failures so provider problems are visible in Vercel logs
+        console.warn("yahoo fetch failed", t, err instanceof Error ? err.message : err);
+      }
     })
   );
 

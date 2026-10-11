@@ -35,6 +35,7 @@ export interface TradeStrategy {
 
 export interface WatchlistStock {
   stockName: string;
+  sector?: string;
   cmp: number;
   entryZoneLow: number;
   entryZoneHigh: number;
