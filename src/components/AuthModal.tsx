@@ -25,8 +25,9 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
       ? await signInWithEmail(email, password)
       : await signUpWithEmail(email, password);
     setLoading(false);
-    if (err) setError(err);
-    else if (mode === "signup") setSuccess("Check your email to confirm your account, then sign in.");
+    if (err === "CONFIRM_EMAIL" || (mode === "signup" && !err)) {
+      setSuccess("Check your email to confirm your account, then sign in.");
+    } else if (err) setError(err);
     else onOpenChange(false);
   };
 

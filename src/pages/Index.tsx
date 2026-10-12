@@ -33,6 +33,7 @@ import { useToast }          from "@/hooks/use-toast";
 import { useLivePrices }     from "@/hooks/useLivePrices";
 import { usePortfolioSync, loadFromLocal, PortfolioSnapshot } from "@/hooks/usePortfolioSync";
 import { useAuth }           from "@/contexts/AuthContext";
+import LogoMark              from "@/components/LogoMark";
 import { supabase }          from "@/lib/supabase";
 import { buildTrendSeries, isSameTradingDay } from "@/lib/trading";
 
@@ -1087,7 +1088,7 @@ export default function Index() {
 
           <div className="zf-brand">
             <div className="zf-logo">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 13L5.5 4.5L10 9L12 6.5L14 13H2Z" fill="white" /></svg>
+              <LogoMark size={28} />
             </div>
             <div className="zf-brand-text">
               <div className="zf-brand-name">ZenFolio</div>

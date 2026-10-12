@@ -1,29 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Navy rounded square background — matches #1c3557 brand color -->
-  <rect width="100" height="100" rx="22" fill="#1c3557"/>
-
-  <!-- Subtle inner highlight border -->
-  <rect width="100" height="100" rx="22" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
-
-  <!-- Chart line — white on navy, clean minimal style -->
-  <polyline
-    points="18,68 30,60 42,64 54,44 66,38 82,24"
-    fill="none"
-    stroke="white"
-    stroke-width="5.5"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    opacity="0.95"
-  />
-
-  <!-- Area fill under chart -->
-  <polygon
-    points="18,68 30,60 42,64 54,44 66,38 82,24 82,76 18,76"
-    fill="white"
-    opacity="0.10"
-  />
-
-  <!-- Live dot at peak -->
-  <circle cx="82" cy="24" r="5.5" fill="#059669"/>
-  <circle cx="82" cy="24" r="2.5" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#142033"/>
+  <path d="M7 22.5V10.5L16 15.2L25 10.5V22.5L16 27.2L7 22.5Z" fill="#1E3148"/>
+  <path d="M7 10.5L16 15.2L25 10.5L16 5.8L7 10.5Z" fill="#C4A574"/>
+  <path d="M16 15.2V27.2L25 22.5V10.5L16 15.2Z" fill="#8E7350"/>
+  <path d="M10 19.2L13.2 16.4L16.1 17.8L21.6 12.6" stroke="#F4E6C8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="21.6" cy="12.6" r="1.3" fill="#E8C98A"/>
 </svg>
