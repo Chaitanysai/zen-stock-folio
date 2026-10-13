@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getApiUnavailableMessage, getApiUrl } from "@/lib/api";
+import { getMarketStatus, getPriceRefreshIntervalMs } from "@/lib/market/marketStatus";
+import { useMarketStatus } from "@/hooks/useMarketStatus";
 
 export interface StockPrice {
   price: number;
@@ -26,14 +28,6 @@ export interface UseLivePricesResult {
   marketOpen: boolean;
   sourceLabel: string;
   refresh: () => void;
-}
-
-function isMarketOpen(): boolean {
-  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-  const day = ist.getUTCDay();
-  if (day === 0 || day === 6) return false;
-  const mins = ist.getUTCHours() * 60 + ist.getUTCMinutes();
-  return mins >= 555 && mins <= 930;
 }
 
 function getSourceLabel(source: PriceSource, marketOpen: boolean): string {
@@ -70,7 +64,10 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [source, setSource] = useState<PriceSource>(null);
-  const [marketOpen, setMarketOpen] = useState(isMarketOpen());
+  // Exchange status comes from the shared clock/calendar service only — never
+  // from the price API response (a 200 after 15:30 must not read as "live").
+  const market = useMarketStatus();
+  const marketOpen = market.isOpen;
 
   const tickerKey = tickers.slice().sort().join(",");
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -106,7 +103,6 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
         setPrices(prev => ({ ...prev, ...data.prices })); // ✅ merge (no flicker)
         setLastUpdated(data.fetchedAt ?? new Date().toISOString());
         setSource((data.source as PriceSource) ?? null);
-        setMarketOpen(data.marketOpen ?? isMarketOpen());
         setError(null);
       } else {
         setError("No price data returned");
@@ -121,21 +117,17 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
   }, [tickerKey]);
 
   useEffect(() => {
+    let cancelled = false;
     fetchPrices();
 
     const schedule = () => {
-      const open = isMarketOpen();
-      const day = new Date().getDay();
-      const isWeekend = day === 0 || day === 6;
-
-      // 🚀 REAL-TIME UPGRADE
-      const delay = isWeekend
-        ? 10 * 60_000        // 10 min weekend
-        : open
-        ? 1000              // 🔥 1 sec (REAL-TIME)
-        : 5 * 60_000;       // 5 min after market
+      if (cancelled) return;
+      // Re-read status every cycle so the cadence follows the real session
+      // without needing this effect (or the page) to be re-run.
+      const delay = getPriceRefreshIntervalMs(getMarketStatus());
 
       intervalRef.current = setTimeout(() => {
+        if (cancelled) return;
         fetchPrices().then(() => schedule());
       }, delay);
     };
@@ -143,7 +135,9 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
     schedule();
 
     return () => {
+      cancelled = true;
       if (intervalRef.current) clearTimeout(intervalRef.current);
+      intervalRef.current = null;
     };
   }, [fetchPrices]);
 

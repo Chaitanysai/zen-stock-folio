@@ -31,7 +31,8 @@ import ExportPortfolio       from "@/components/ExportPortfolio";
 import AuthModal             from "@/components/AuthModal";
 import { useToast }          from "@/hooks/use-toast";
 import { useLivePrices }     from "@/hooks/useLivePrices";
-import { usePortfolioSync, loadFromLocal, PortfolioSnapshot } from "@/hooks/usePortfolioSync";
+import { useMarketStatus }   from "@/hooks/useMarketStatus";
+import { usePortfolioSync, displayNameKeyFor, PortfolioSnapshot } from "@/hooks/usePortfolioSync";
 import { useAuth }           from "@/contexts/AuthContext";
 import LogoMark              from "@/components/LogoMark";
 import { supabase }          from "@/lib/supabase";
@@ -776,14 +777,14 @@ export default function Index() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const { user, signOut, loading: _authLoading } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
 
   const handleSaveDisplayName = async () => {
     if (!nameInput.trim()) return;
     setNameSaving(true);
     try {
-      // Save to localStorage immediately
-      localStorage.setItem("zf-display-name", nameInput.trim());
+      // Save to this account's own scope (never a shared global key)
+      localStorage.setItem(displayNameKeyFor(user?.id), nameInput.trim());
       setDisplayName(nameInput.trim());
       // Save to Supabase profiles table if logged in
       if (user?.id) {
@@ -799,8 +800,13 @@ export default function Index() {
     }
   };
 
-  // Load display name from Supabase on login
+  // Load display name for the current account only
   useEffect(() => {
+    try {
+      setDisplayName(localStorage.getItem(displayNameKeyFor(user?.id)) ?? "");
+    } catch {
+      setDisplayName("");
+    }
     if (!user?.id) return;
     supabase.from("profiles")
       .select("display_name")
@@ -809,7 +815,7 @@ export default function Index() {
       .then(({ data }) => {
         if (data?.display_name) {
           setDisplayName(data.display_name);
-          localStorage.setItem("zf-display-name", data.display_name);
+          localStorage.setItem(displayNameKeyFor(user.id), data.display_name);
         }
       });
   }, [user?.id]);
@@ -818,46 +824,35 @@ export default function Index() {
   const [showAuth,  setShowAuth]  = useState(false);
   const [searchQ,   setSearchQ]   = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [displayName,  setDisplayName]  = useState(() => {
-    try { return localStorage.getItem("zf-display-name") ?? ""; } catch { return ""; }
-  });
+  const [displayName,  setDisplayName]  = useState("");
   const [nameInput,    setNameInput]    = useState("");
   const [nameSaving,   setNameSaving]   = useState(false);
   const uMenuRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
-  const [stocks,    setStocks]    = useState<PortfolioStock[]>(()  => loadFromLocal()?.stocks    ?? initialData);
-  const [trades,    setTrades]    = useState<TradeStrategy[]>(()   => loadFromLocal()?.trades    ?? initialTrades);
-  const [watchlist, setWatchlist] = useState<WatchlistStock[]>(()  => loadFromLocal()?.watchlist ?? initialWatchlist);
-  const [alerts,    setAlerts]    = useState<PriceAlert[]>(()      => loadFromLocal()?.alerts    ?? []);
-  const [fnoTrades, setFnoTrades] = useState<FnOTrade[]>(() => {
-    try {
-      const d = localStorage.getItem("zf-fno-trades");
-      if (!d) return fnOTradesData;
-      const parsed: FnOTrade[] = JSON.parse(d);
-      return parsed.map(t => {
-        if (t.instrumentType !== "FUT" && t.ltp !== undefined) {
-          const maxReasonableLtp = Math.max(t.entryPrice * 20, 500);
-          if (t.ltp > maxReasonableLtp) {
-            return { ...t, ltp: undefined };
-          }
-        }
-        return t;
-      });
-    } catch { return fnOTradesData; }
-  });
-  const [selectedChartTicker, setSelectedChartTicker] = useState<string | null>(() => {
-    const localData = loadFromLocal();
-    return localData?.stocks?.find((stock) => stock.status === "Active")?.ticker ?? null;
-  });
+  // Per-account data is never seeded from a shared/global cache. State starts
+  // empty and is filled by the scoped loader effect below once the Supabase
+  // session is known, so one account can never render another's rows.
+  const [stocks,    setStocks]    = useState<PortfolioStock[]>([]);
+  const [trades,    setTrades]    = useState<TradeStrategy[]>([]);
+  const [watchlist, setWatchlist] = useState<WatchlistStock[]>([]);
+  const [alerts,    setAlerts]    = useState<PriceAlert[]>([]);
+  const [fnoTrades, setFnoTrades] = useState<FnOTrade[]>([]);
+  const [selectedChartTicker, setSelectedChartTicker] = useState<string | null>(null);
   const [tradesSubTab, setTradesSubTab] = useState<"equity"|"fno">("equity");
   const [dashboardCandleRange, setDashboardCandleRange] = useState<"1d"|"5d"|"1mo">("1d");
 
   const { toast }         = useToast();
   const { load, save }    = usePortfolioSync(user?.id);
   const tickers = stocks.map(s => s.ticker);
-  const { prices, source, marketOpen, refresh } = useLivePrices(tickers);
-  const isLive = source !== null && source !== "memory-cache";
+  const { prices, source, refresh } = useLivePrices(tickers);
+  // Exchange status: clock + NSE calendar only (Asia/Kolkata). Shared by every
+  // market indicator in the app.
+  const market = useMarketStatus();
+  const marketLive = market.isOpen;
+  // Data/API availability is deliberately a SEPARATE signal — a successful
+  // price response must never make the exchange look live after 15:30 IST.
+  const dataFresh = source !== null;
   const snapshotRef = useRef<PortfolioSnapshot>({ stocks, trades, watchlist, alerts, fnoTrades });
 
   useEffect(() => {
@@ -865,17 +860,48 @@ export default function Index() {
   }, [alerts, fnoTrades, stocks, trades, watchlist]);
 
   useEffect(() => {
+    // Wait until the Supabase session is resolved so we never load the wrong scope.
+    if (authLoading) return;
+
     let cancelled = false;
+    const userId = user?.id;
+    const empty: PortfolioSnapshot = { stocks: [], trades: [], watchlist: [], alerts: [], fnoTrades: [] };
+
+    // Hard reset first: on sign-out or account switch the previous account's
+    // rows must disappear even when the new scope has nothing to load.
+    setStocks([]);
+    setTrades([]);
+    setWatchlist([]);
+    setAlerts([]);
+    setFnoTrades([]);
+    setSelectedChartTicker(null);
+    snapshotRef.current = empty;
+
     load().then((snapshot) => {
-      if (!snapshot || cancelled) return;
-      setStocks(snapshot.stocks);
-      setTrades(snapshot.trades);
-      setWatchlist(snapshot.watchlist);
-      setAlerts(snapshot.alerts);
-      setFnoTrades(snapshot.fnoTrades.length > 0 ? snapshot.fnoTrades : snapshotRef.current.fnoTrades);
+      if (cancelled) return;
+
+      if (snapshot) {
+        setStocks(snapshot.stocks);
+        setTrades(snapshot.trades);
+        setWatchlist(snapshot.watchlist);
+        setAlerts(snapshot.alerts);
+        setFnoTrades(snapshot.fnoTrades);
+        setSelectedChartTicker(snapshot.stocks.find((stock) => stock.status === "Active")?.ticker ?? null);
+        return;
+      }
+
+      // Signed-out demo view only. Sample data is never seeded into an account.
+      if (!userId) {
+        setStocks(initialData);
+        setTrades(initialTrades);
+        setWatchlist(initialWatchlist);
+        setFnoTrades(fnOTradesData);
+        setSelectedChartTicker(initialData.find((stock) => stock.status === "Active")?.ticker ?? null);
+      }
     });
+
     return () => { cancelled = true; };
-  }, [load]);
+  }, [load, authLoading, user?.id]);
 
   const persistSnapshot = useCallback(async (nextSnapshot: PortfolioSnapshot, actionLabel?: string) => {
     const error = await save(nextSnapshot);
@@ -989,7 +1015,8 @@ export default function Index() {
   const sectors = [...sectorMap.entries()].sort((a, b) => b[1] - a[1]).map(([name, val]) => ({ name, val, pct: val / sectorTotal * 100 }));
   const SECTOR_COLORS = ["hsl(220 85% 48%)","hsl(152 70% 38%)","hsl(40 90% 44%)","hsl(280 65% 52%)","hsl(4 84% 52%)","hsl(200 70% 50%)"];
 
-  const now = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  // IST wall clock from the shared market-status service (never browser-local).
+  const now = market.istTime;
 
   const PAGE_TITLES: Record<ActiveTab, string> = {
     overview: "Dashboard", holdings: "Portfolio Holdings", trades: "Trades & F&O",
@@ -1132,13 +1159,13 @@ export default function Index() {
               <input placeholder="Search stocks…" value={searchQ} onChange={e => setSearchQ(e.target.value)} />
             </div>
 
-            <div className={`zf-live${!isLive ? " cached" : ""}`}>
+            <div className={`zf-live${marketLive ? "" : " cached"}`} title={market.description}>
               <div className="zf-ldot" />
-              NSE {isLive ? "Live" : "Cached"} · {now}
+              NSE {market.label} · {now} IST
             </div>
 
             <button className="zf-hbtn" onClick={refresh} title="Refresh prices">
-              <RefreshCw size={13} className={!isLive ? "zf-spin" : ""} />
+              <RefreshCw size={13} className={!dataFresh ? "zf-spin" : ""} />
             </button>
 
             <button className="zf-hbtn" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Light mode" : "Dark mode"}>
@@ -1184,9 +1211,9 @@ export default function Index() {
                   </p>
                 </div>
                 <div className="zf-greeting-right">
-                  <div className="zf-greeting-pill">
-                    <span style={{ width:6, height:6, borderRadius:"50%", background:isLive?"var(--green)":"var(--amber)", display:"inline-block" }} />
-                    {isLive ? "Live" : "Cached"} · {now}
+                  <div className="zf-greeting-pill" title={market.description}>
+                    <span style={{ width:6, height:6, borderRadius:"50%", background:marketLive?"var(--green)":"var(--amber)", display:"inline-block" }} />
+                    {market.label} · {now} IST
                   </div>
                   {activePos.length > 0 && (
                     <div className="zf-greeting-pill" style={{ color: pnl>=0?"var(--green)":"var(--red)", borderColor: pnl>=0?"var(--green-bd)":"var(--red-bd)" }}>
@@ -1249,7 +1276,7 @@ export default function Index() {
                   <div className="zf-kpi-lbl">Today's P&L</div>
                   <div className="zf-kpi-val">{sign(todayPnl)}{fmt(Math.abs(todayPnl))}</div>
                   <div className="zf-kpi-sub" style={{ fontSize:9.5, fontWeight:700, textTransform:"uppercase", letterSpacing:".05em", marginTop:7, fontFamily:"var(--ff-mono)" }}>
-                    {isLive ? "● " : "○ "}Last update: {now} IST
+                    {dataFresh ? "● " : "○ "}Last update: {now} IST
                   </div>
                 </div>
 

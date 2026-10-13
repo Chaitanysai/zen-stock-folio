@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { clearLocalPortfolioCache } from "@/hooks/usePortfolioSync";
 
 interface AuthContextType {
   user: User | null;
@@ -26,15 +27,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const isConfigured = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+  const lastUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      lastUserIdRef.current = session?.user?.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const nextUserId = session?.user?.id ?? null;
+      // Sign-out or account switch: drop every cached portfolio scope so the
+      // next session can never render the previous account's data.
+      if (lastUserIdRef.current && lastUserIdRef.current !== nextUserId) {
+        clearLocalPortfolioCache();
+      }
+      lastUserIdRef.current = nextUserId;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -90,6 +100,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    // Belt and braces: also clear here in case no auth event is delivered.
+    clearLocalPortfolioCache();
   };
 
   const signIn = async (email: string, password: string) => {

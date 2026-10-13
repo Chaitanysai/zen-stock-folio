@@ -85,14 +85,6 @@ async function cacheWrite(prices: Record<string, StockPrice>, source: string) {
   } catch {}
 }
 
-// ── IST helpers ───────────────────────────────────────────
-function isMarketOpen(): boolean {
-  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
-  if ([0, 6].includes(ist.getUTCDay())) return false;
-  const mins = ist.getUTCHours() * 60 + ist.getUTCMinutes();
-  return mins >= 555 && mins <= 930;
-}
-
 // ── Fetch helper ──────────────────────────────────────────
 // Bounded so one slow provider can't stall the whole request
 const PROVIDER_TIMEOUT_MS = 5000;

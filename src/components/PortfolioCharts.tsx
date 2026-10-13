@@ -7,6 +7,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { useLivePrices } from "@/hooks/useLivePrices";
+import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { useEffect, useRef, useState } from "react";
 
 // ── Palette ──────────────────────────────────────────────────────────────────
@@ -237,6 +238,7 @@ interface PortfolioChartsProps {
 const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
   const tickers = stocks.map((s) => s.ticker);
   const { prices } = useLivePrices(tickers);
+  const market = useMarketStatus();
 
   const activeStocks = stocks.filter((s) => s.status === "Active");
 
@@ -325,9 +327,16 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
               ))}
             </div>
 
-            {/* Live badge */}
-            <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-profit/10 text-profit border border-profit/20">
-              Live
+            {/* Market status badge — shared market-status service, not API state */}
+            <span
+              title={market.description}
+              className={`text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border ${
+                market.isOpen
+                  ? "bg-profit/10 text-profit border-profit/20"
+                  : "bg-muted text-muted-foreground border-border"
+              }`}
+            >
+              {market.label}
             </span>
           </div>
         </div>

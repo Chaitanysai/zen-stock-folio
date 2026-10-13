@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useMarketStatus } from "@/hooks/useMarketStatus";
 import {
   Plus, RefreshCw, TrendingUp, TrendingDown,
   ChevronDown, CheckCircle2, XCircle, Clock,
@@ -652,6 +653,7 @@ function StatusBadge({ status }: { status: FnOStatus }) {
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 export default function FnOTable({ trades, onUpdate }: Props) {
+  const market = useMarketStatus();
   const [filter, setFilter] = useState<"ALL" | FnOInstrumentType | "Open" | "Closed">("ALL");
   const [showModal, setShowModal] = useState(false);
   const [editTrade, setEditTrade] = useState<FnOTrade | null>(null);
@@ -715,9 +717,10 @@ export default function FnOTable({ trades, onUpdate }: Props) {
 
   useEffect(() => {
     fetchLivePrices();
-    const id = setInterval(fetchLivePrices, 60000);
+    // Poll fast only while the exchange is actually trading.
+    const id = setInterval(fetchLivePrices, market.isOpen ? 60_000 : 5 * 60_000);
     return () => clearInterval(id);
-  }, [fetchLivePrices]);
+  }, [fetchLivePrices, market.isOpen]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const addTrade = (t: FnOTrade) => {
@@ -850,7 +853,9 @@ export default function FnOTable({ trades, onUpdate }: Props) {
                   const pnl    = calcFnOPnL(t);
                   const pnlPct = t.entryPrice > 0 ? pnl / (t.entryPrice * t.lots * t.lotSize) * 100 : 0;
                   const pos    = pnl >= 0;
-                  const hasLive = t.status === "Open" && !!ltpMap[t.id];
+                  // "Live" only when the exchange is open — not merely when an
+                  // LTP value happens to be present in memory.
+                  const hasLive = market.isOpen && t.status === "Open" && !!ltpMap[t.id];
 
                   return (
                     <tr key={t.id}>
