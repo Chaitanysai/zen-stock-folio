@@ -94,45 +94,46 @@ function getGreeting(): string {
 
 // ─── Design System CSS ────────────────────────────────────────────────────────
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Geist:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
 .zf {
-  --bg-app:       hsl(220 18% 95%);
-  --bg-sidebar:   hsl(222 28% 11%);
-  --bg-card:      hsl(0 0% 99%);
-  --bg-surface:   hsl(220 14% 92%);
-  --bg-hover:     hsl(220 70% 95%);
-  --bg-input:     hsl(220 14% 92%);
+  --bg-app:       hsl(40 20% 97%);
+  --bg-sidebar:   hsl(220 20% 8%);
+  --bg-card:      hsl(0 0% 100%);
+  --bg-surface:   hsl(40 15% 93%);
+  --bg-hover:     hsl(40 20% 92%);
+  --bg-input:     hsl(40 15% 94%);
 
-  --blue:         hsl(38 92% 48%);
-  --blue-dim:     rgba(245,158,11,.12);
-  --blue-bd:      rgba(245,158,11,.25);
+  --accent:       hsl(162 60% 38%);
+  --accent-dim:   hsl(162 60% 38% / .10);
+  --accent-bd:    hsl(162 60% 38% / .25);
 
-  --tx-900:       hsl(220 25% 10%);
-  --tx-700:       hsl(220 20% 24%);
-  --tx-500:       hsl(220 14% 46%);
+  --tx-900:       hsl(220 30% 12%);
+  --tx-700:       hsl(220 20% 28%);
+  --tx-500:       hsl(220 14% 48%);
   --tx-400:       hsl(220 12% 58%);
   --tx-300:       hsl(220 10% 72%);
 
-  --bd-200:       hsl(220 14% 82%);
-  --bd-100:       hsl(220 14% 89%);
-  --bd-50:        hsl(220 14% 94%);
+  --bd-200:       hsl(40 15% 82%);
+  --bd-100:       hsl(40 15% 88%);
+  --bd-50:        hsl(40 15% 94%);
 
-  --green:        hsl(152 70% 34%);
-  --green-bg:     hsl(152 70% 34% / .08);
-  --green-bd:     hsl(152 70% 34% / .22);
-  --red:          hsl(4 84% 52%);
-  --red-bg:       hsl(4 84% 52% / .08);
-  --red-bd:       hsl(4 84% 52% / .22);
-  --amber:        hsl(40 90% 44%);
-  --amber-bg:     hsl(40 90% 44% / .08);
-  --amber-bd:     hsl(40 90% 44% / .22);
+  --green:        hsl(152 65% 36%);
+  --green-bg:     hsl(152 65% 36% / .08);
+  --green-bd:     hsl(152 65% 36% / .20);
+  --red:          hsl(4 70% 52%);
+  --red-bg:       hsl(4 70% 52% / .08);
+  --red-bd:       hsl(4 70% 52% / .20);
+  --amber:        hsl(38 85% 48%);
+  --amber-bg:     hsl(38 85% 48% / .08);
+  --amber-bd:     hsl(38 85% 48% / .20);
 
-  --sh-1: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
-  --sh-2: 0 4px 16px rgba(0,0,0,.08);
+  --sh-1: 0 1px 3px rgba(0,0,0,.05), 0 1px 2px rgba(0,0,0,.03);
+  --sh-2: 0 4px 12px rgba(0,0,0,.06);
+  --sh-3: 0 8px 24px rgba(0,0,0,.08);
 
-  --ff-body: 'Geist', -apple-system, sans-serif;
-  --ff-mono: 'Geist Mono', 'SF Mono', monospace;
+  --ff-body: 'DM Sans', -apple-system, sans-serif;
+  --ff-mono: 'DM Mono', 'SF Mono', monospace;
 
   font-family: var(--ff-body);
   background: var(--bg-app);
@@ -146,39 +147,40 @@ const CSS = `
 
 /* Dark mode */
 .dark .zf {
-  --bg-app:       hsl(222 28% 8%);
-  --bg-sidebar:   hsl(222 32% 7%);
-  --bg-card:      hsl(222 28% 11%);
-  --bg-surface:   hsl(222 22% 15%);
-  --bg-hover:     hsl(220 28% 15%);
-  --bg-input:     hsl(222 22% 13%);
+  --bg-app:       hsl(220 25% 7%);
+  --bg-sidebar:   hsl(220 30% 5%);
+  --bg-card:      hsl(220 25% 9%);
+  --bg-surface:   hsl(220 20% 12%);
+  --bg-hover:     hsl(220 25% 14%);
+  --bg-input:     hsl(220 22% 11%);
 
-  --blue:         hsl(38 90% 54%);
-  --blue-dim:     rgba(251,191,36,.12);
-  --blue-bd:      rgba(251,191,36,.25);
+  --accent:       hsl(162 55% 50%);
+  --accent-dim:   hsl(162 55% 50% / .12);
+  --accent-bd:    hsl(162 55% 50% / .25);
 
-  --tx-900:       hsl(220 20% 92%);
-  --tx-700:       hsl(220 18% 76%);
-  --tx-500:       hsl(220 14% 54%);
-  --tx-400:       hsl(220 12% 44%);
-  --tx-300:       hsl(220 10% 32%);
+  --tx-900:       hsl(220 20% 94%);
+  --tx-700:       hsl(220 18% 78%);
+  --tx-500:       hsl(220 14% 58%);
+  --tx-400:       hsl(220 12% 48%);
+  --tx-300:       hsl(220 10% 34%);
 
-  --bd-200:       hsl(222 18% 28%);
-  --bd-100:       hsl(222 18% 22%);
-  --bd-50:        hsl(222 18% 17%);
+  --bd-200:       hsl(220 18% 22%);
+  --bd-100:       hsl(220 18% 18%);
+  --bd-50:        hsl(220 18% 14%);
 
-  --green:        hsl(152 58% 48%);
-  --green-bg:     hsl(152 58% 48% / .10);
-  --green-bd:     hsl(152 58% 48% / .22);
-  --red:          hsl(4 76% 58%);
-  --red-bg:       hsl(4 76% 58% / .10);
-  --red-bd:       hsl(4 76% 58% / .22);
-  --amber:        hsl(40 85% 54%);
-  --amber-bg:     hsl(40 85% 54% / .10);
-  --amber-bd:     hsl(40 85% 54% / .22);
+  --green:        hsl(152 60% 52%);
+  --green-bg:     hsl(152 60% 52% / .10);
+  --green-bd:     hsl(152 60% 52% / .22);
+  --red:          hsl(4 72% 60%);
+  --red-bg:       hsl(4 72% 60% / .10);
+  --red-bd:       hsl(4 72% 60% / .22);
+  --amber:        hsl(38 85% 56%);
+  --amber-bg:     hsl(38 85% 56% / .10);
+  --amber-bd:     hsl(38 85% 56% / .22);
 
-  --sh-1: 0 1px 4px rgba(0,0,0,.3);
-  --sh-2: 0 4px 20px rgba(0,0,0,.4);
+  --sh-1: 0 1px 4px rgba(0,0,0,.25);
+  --sh-2: 0 4px 16px rgba(0,0,0,.3);
+  --sh-3: 0 8px 32px rgba(0,0,0,.35);
 }
 
 /* Animations */
@@ -215,9 +217,10 @@ const CSS = `
 }
 .zf-logo {
   width: 36px; height: 36px; border-radius: 10px;
-  background: var(--blue); /* amber accent */
+  background: linear-gradient(135deg, var(--accent) 0%, hsl(162 50% 45%) 100%);
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
 }
 .zf-logo svg { color: white; }
 .zf-brand-text { overflow: hidden; white-space: nowrap; }
@@ -235,12 +238,12 @@ const CSS = `
   position: absolute; right: -11px; top: 72px;
   width: 22px; height: 22px; border-radius: 50%;
   background: var(--bg-card); border: 1px solid var(--bd-100);
-  box-shadow: var(--sh-1);
+  box-shadow: var(--sh-2);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; z-index: 40; color: var(--tx-400);
   transition: all .18s ease;
 }
-.zf-collapse-btn:hover { background: var(--blue-dim); color: var(--blue); transform: scale(1.1); }
+.zf-collapse-btn:hover { background: var(--accent-dim); color: var(--accent); transform: scale(1.1); }
 
 .zf-nav-scroll {
   flex: 1; overflow-y: auto; overflow-x: hidden;
@@ -259,23 +262,23 @@ const CSS = `
 .zf-nav-item {
   display: flex; align-items: center; gap: 12px;
   padding: 8.5px 10px; border-radius: 8px;
-  font-size: 13px; font-weight: 500; color: rgba(255,255,255,.42);
+  font-size: 13px; font-weight: 500; color: rgba(255,255,255,.45);
   cursor: pointer; white-space: nowrap; overflow: hidden;
   margin-bottom: 1px;
   transition: all .16s ease;
 }
 .zf-nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
-.zf-nav-item:hover { color: rgba(255,255,255,.75); background: rgba(255,255,255,.06); }
+.zf-nav-item:hover { color: rgba(255,255,255,.78); background: rgba(255,255,255,.06); }
 .zf-nav-item.active {
   color: white;
-  background: var(--blue-dim);
-  border: 1px solid var(--blue-bd);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-bd);
   font-weight: 600;
 }
-.zf-nav-item.active svg { color: var(--blue); }
+.zf-nav-item.active svg { color: var(--accent); }
 .zf-sidebar.collapsed .zf-nav-item { justify-content: center; padding: 9px; gap: 0; border: none; }
 .zf-sidebar.collapsed .zf-nav-item span { display: none; }
-.zf-sidebar.collapsed .zf-nav-item.active { background: var(--blue-dim); border: 1px solid var(--blue-bd); }
+.zf-sidebar.collapsed .zf-nav-item.active { background: var(--accent-dim); border: 1px solid var(--accent-bd); }
 .zf-nav-label { overflow: hidden; }
 
 .zf-sidebar-foot { padding: 12px; border-top: 1px solid rgba(255,255,255,.05); flex-shrink: 0; }
@@ -288,9 +291,10 @@ const CSS = `
 .zf-user-row:hover { background: rgba(255,255,255,.08); }
 .zf-user-avatar {
   width: 28px; height: 28px; border-radius: 50%;
-  background: var(--blue); /* amber accent */
+  background: linear-gradient(135deg, var(--accent) 0%, hsl(162 50% 45%) 100%);
   display: flex; align-items: center; justify-content: center;
   font-size: 10px; font-weight: 700; color: white; flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
 }
 .zf-user-info { overflow: hidden; flex: 1; }
 .zf-user-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -317,8 +321,8 @@ const CSS = `
   transition: all .18s ease;
 }
 .zf-search:focus-within {
-  border-color: var(--blue-bd); background: var(--bg-app);
-  box-shadow: 0 0 0 3px var(--blue-dim);
+  border-color: var(--accent-bd); background: var(--bg-app);
+  box-shadow: 0 0 0 3px var(--accent-dim);
 }
 .zf-search input {
   background: none; border: none; outline: none;
@@ -343,7 +347,7 @@ const CSS = `
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: all .16s ease; flex-shrink: 0; position: relative;
 }
-.zf-hbtn:hover { background: var(--bg-hover); border-color: var(--blue-bd); color: var(--blue); }
+.zf-hbtn:hover { background: var(--bg-hover); border-color: var(--accent-bd); color: var(--accent); }
 
 .zf-umenu {
   position: absolute; right: 0; top: calc(100% + 8px);
@@ -362,7 +366,7 @@ const CSS = `
 }
 .zf-umenu-btn:hover { background: var(--bg-surface); }
 .zf-umenu-btn.danger { color: var(--red); }
-.zf-umenu-btn.primary { color: var(--blue); }
+.zf-umenu-btn.primary { color: var(--accent); }
 
 /* Content */
 .zf-content {
@@ -389,25 +393,26 @@ const CSS = `
   border-radius: 99px; padding: 5px 12px; cursor: pointer;
   transition: all .16s ease;
 }
-.zf-greeting-pill:hover { background: var(--bg-hover); border-color: var(--blue-bd); color: var(--blue); }
+.zf-greeting-pill:hover { background: var(--bg-hover); border-color: var(--accent-bd); color: var(--accent); }
 
 /* KPI Grid */
 .zf-kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
 .zf-kpi {
   background: var(--bg-card); border: 1px solid var(--bd-100);
-  border-radius: 12px; padding: 20px;
+  border-radius: 14px; padding: 20px;
   display: flex; flex-direction: column; gap: 0;
   transition: transform .22s cubic-bezier(.22,1,.36,1), box-shadow .22s ease, border-color .22s ease;
   position: relative; overflow: hidden; cursor: default;
+  box-shadow: var(--sh-1);
 }
 .zf-kpi::before {
   content: ''; position: absolute;
-  top: 0; left: 0; right: 0; height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: var(--blue); /* amber accent */
+  top: 0; left: 0; right: 0; height: 3px;
+  border-radius: 14px 14px 0 0;
+  background: linear-gradient(90deg, var(--accent) 0%, hsl(162 50% 45%) 100%);
   opacity: 0; transition: opacity .22s ease;
 }
-.zf-kpi:hover { transform: translateY(-3px); box-shadow: var(--sh-2); border-color: var(--blue-bd); }
+.zf-kpi:hover { transform: translateY(-2px); box-shadow: var(--sh-3); border-color: var(--accent-bd); }
 .zf-kpi:hover::before { opacity: 1; }
 
 .zf-kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
@@ -435,7 +440,7 @@ const CSS = `
 }
 .zf-chip-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
 .zf-chip-red   { background: var(--red-bg);   color: var(--red);   border: 1px solid var(--red-bd); }
-.zf-chip-blue  { background: var(--blue-dim); color: var(--blue);  border: 1px solid var(--blue-bd); }
+.zf-chip-blue  { background: var(--accent-dim); color: var(--accent);  border: 1px solid var(--accent-bd); }
 
 /* Cards */
 .zf-mid-row { display: grid; grid-template-columns: 1fr 280px; gap: 14px; min-height: 0; }
@@ -443,11 +448,12 @@ const CSS = `
 
 .zf-card {
   background: var(--bg-card); border: 1px solid var(--bd-100);
-  border-radius: 12px; display: flex; flex-direction: column;
+  border-radius: 14px; display: flex; flex-direction: column;
   overflow: hidden; min-height: 0;
   transition: box-shadow .2s ease;
+  box-shadow: var(--sh-1);
 }
-.zf-card:hover { box-shadow: var(--sh-2); }
+.zf-card:hover { box-shadow: var(--sh-3); }
 .zf-card-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px; border-bottom: 1px solid var(--bd-50);
@@ -456,17 +462,17 @@ const CSS = `
 .zf-card-title { font-size: 13.5px; font-weight: 600; color: var(--tx-900); letter-spacing: -.1px; }
 .zf-card-meta { display: flex; align-items: center; gap: 7px; }
 .zf-card-badge {
-  font-size: 10px; font-weight: 700; color: var(--blue);
-  background: var(--blue-dim); border: 1px solid var(--blue-bd);
+  font-size: 10px; font-weight: 700; color: var(--accent);
+  background: var(--accent-dim); border: 1px solid var(--accent-bd);
   border-radius: 99px; padding: 2px 9px; font-family: var(--ff-mono);
 }
 .zf-card-link {
-  font-size: 11px; font-weight: 600; color: var(--blue);
+  font-size: 11px; font-weight: 600; color: var(--accent);
   cursor: pointer; padding: 5px 12px; border-radius: 7px;
-  background: var(--blue-dim); border: 1px solid var(--blue-bd);
+  background: var(--accent-dim); border: 1px solid var(--accent-bd);
   transition: all .16s ease; white-space: nowrap;
 }
-.zf-card-link:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+.zf-card-link:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
 .zf-card-body { padding: 0; overflow-y: auto; flex: 1; }
 .zf-card-body::-webkit-scrollbar { width: 3px; }
 .zf-card-body::-webkit-scrollbar-thumb { background: var(--bd-100); border-radius: 3px; }
@@ -483,9 +489,9 @@ const CSS = `
 .zf-sector-item { display: flex; flex-direction: column; gap: 4px; }
 .zf-sector-row { display: flex; align-items: center; justify-content: space-between; }
 .zf-sector-name { font-size: 12px; font-weight: 600; color: var(--tx-700); }
-.zf-sector-pct  { font-family: var(--ff-mono); font-size: 11px; font-weight: 700; color: var(--blue); }
+.zf-sector-pct  { font-family: var(--ff-mono); font-size: 11px; font-weight: 700; color: var(--accent); }
 .zf-sector-bar  { height: 3px; border-radius: 3px; background: var(--bd-50); overflow: hidden; }
-.zf-sector-fill { height: 100%; border-radius: 3px; background: var(--blue); transition: width .5s cubic-bezier(.22,1,.36,1); }
+.zf-sector-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width .5s cubic-bezier(.22,1,.36,1); }
 
 /* Holdings table */
 .zf-tbl-head {
@@ -505,9 +511,9 @@ const CSS = `
 .zf-stock-cell { display: flex; align-items: center; gap: 10px; }
 .zf-logo-wrap {
   width: 32px; height: 32px; border-radius: 8px;
-  background: var(--blue-dim); border: 1px solid var(--blue-bd);
+  background: var(--accent-dim); border: 1px solid var(--accent-bd);
   display: flex; align-items: center; justify-content: center;
-  font-size: 9px; font-weight: 800; color: var(--blue);
+  font-size: 9px; font-weight: 800; color: var(--accent);
   overflow: hidden; flex-shrink: 0;
 }
 .zf-ticker-name { font-size: 12.5px; font-weight: 600; color: var(--tx-900); letter-spacing: -.1px; }
@@ -542,12 +548,12 @@ const CSS = `
 /* AI Teaser */
 .zf-ai-teaser {
   margin: 14px; padding: 14px;
-  background: linear-gradient(135deg, var(--blue-dim) 0%, var(--green-bg) 100%);
-  border: 1px solid var(--blue-bd);
+  background: linear-gradient(135deg, var(--accent-dim) 0%, var(--green-bg) 100%);
+  border: 1px solid var(--accent-bd);
   border-radius: 10px; position: relative; overflow: hidden;
   transition: all .22s ease; cursor: pointer;
 }
-.zf-ai-teaser:hover { background: linear-gradient(135deg, rgba(59,130,246,.16) 0%, rgba(16,185,129,.10) 100%); transform: translateY(-1px); }
+.zf-ai-teaser:hover { background: linear-gradient(135deg, rgba(22,163,74,.16) 0%, rgba(16,185,129,.10) 100%); transform: translateY(-1px); }
 .zf-ai-teaser-bg {
   position: absolute; right: -6px; bottom: -6px;
   font-size: 64px; opacity: .07; pointer-events: none;
@@ -582,20 +588,20 @@ const CSS = `
 .zf-tab-panel .font-semibold, .zf-tab-panel .font-bold { color: var(--tx-900) !important; }
 .zf-tab-panel h2, .zf-tab-panel h3 { color: var(--tx-900) !important; }
 .zf-tab-panel p.text-muted-foreground, .zf-tab-panel [class*="text-muted"] { color: var(--tx-400) !important; }
-.zf-tab-panel button.bg-primary, .zf-tab-panel [class*="bg-primary"] { background: var(--blue) !important; color: white !important; }
-.zf-tab-panel button[class*="outline"] { background: var(--bg-card) !important; border-color: var(--bd-100) !important; color: var(--blue) !important; }
-.zf-tab-panel button[class*="ghost"]:hover { background: var(--bg-hover) !important; color: var(--blue) !important; }
+.zf-tab-panel button.bg-primary, .zf-tab-panel [class*="bg-primary"] { background: var(--accent) !important; color: white !important; }
+.zf-tab-panel button[class*="outline"] { background: var(--bg-card) !important; border-color: var(--bd-100) !important; color: var(--accent) !important; }
+.zf-tab-panel button[class*="ghost"]:hover { background: var(--bg-hover) !important; color: var(--accent) !important; }
 .zf-tab-panel input:not([type="checkbox"]), .zf-tab-panel select, .zf-tab-panel textarea {
   background: var(--bg-input) !important; border-color: var(--bd-100) !important;
   color: var(--tx-900) !important; font-size: 13px !important;
 }
 .zf-tab-panel input:focus, .zf-tab-panel select:focus {
-  border-color: var(--blue) !important; box-shadow: 0 0 0 3px var(--blue-dim) !important;
+  border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-dim) !important;
 }
 .zf-tab-panel label { color: var(--tx-500) !important; font-size: 12px !important; font-weight: 600 !important; }
 .zf-tab-panel [role="tablist"] { background: var(--bg-surface) !important; border-radius: 8px !important; }
 .zf-tab-panel [role="tab"] { color: var(--tx-400) !important; }
-.zf-tab-panel [role="tab"][data-state="active"] { background: var(--bg-card) !important; color: var(--blue) !important; font-weight: 700 !important; }
+.zf-tab-panel [role="tab"][data-state="active"] { background: var(--bg-card) !important; color: var(--accent) !important; font-weight: 700 !important; }
 .zf-tab-panel .recharts-text { fill: var(--tx-400) !important; }
 .zf-tab-panel .rounded-xl, .zf-tab-panel .rounded-lg, .zf-tab-panel [class*="card"] { background: var(--bg-card) !important; border-color: var(--bd-100) !important; }
 
@@ -604,6 +610,26 @@ const CSS = `
 @media (max-width:1100px) { .zf-mid-row { grid-template-columns:1fr; } .zf-mid-row .zf-sector-side { display:none; } }
 @media (max-width:900px)  { .zf-kpi-row { grid-template-columns:repeat(2,1fr); } .zf-bot-row { grid-template-columns:1fr; } .zf-search { display:none; } }
 @media (max-width:640px)  { .zf-kpi-row { grid-template-columns:1fr 1fr; } .zf-content { padding:14px; gap:14px; } }
+
+/* Scrollbar styling */
+.zf-content::-webkit-scrollbar,
+.zf-card-body::-webkit-scrollbar,
+.zf-nav-scroll::-webkit-scrollbar { width: 6px; }
+.zf-content::-webkit-scrollbar-track,
+.zf-card-body::-webkit-scrollbar-track,
+.zf-nav-scroll::-webkit-scrollbar-track { background: transparent; }
+.zf-content::-webkit-scrollbar-thumb,
+.zf-card-body::-webkit-scrollbar-thumb,
+.zf-nav-scroll::-webkit-scrollbar-thumb { background: var(--bd-200); border-radius: 3px; }
+.zf-content::-webkit-scrollbar-thumb:hover,
+.zf-card-body::-webkit-scrollbar-thumb:hover,
+.zf-nav-scroll::-webkit-scrollbar-thumb:hover { background: var(--tx-400); }
+
+/* Text selection */
+.zf ::selection { background: var(--accent-dim); color: var(--tx-900); }
+
+/* Focus visible */
+.zf :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 `;
 
 // ─── Line Chart Widget ────────────────────────────────────────────────────────
@@ -650,8 +676,8 @@ function LineChartWidget({ stocks }: { stocks: PortfolioStock[] }) {
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ width:"100%", height:130 }}>
       <defs>
         <linearGradient id="lgArea" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="hsl(220 85% 48%)" stopOpacity=".12" />
-          <stop offset="100%" stopColor="hsl(220 85% 48%)" stopOpacity="0" />
+          <stop offset="0%" stopColor="hsl(162 60% 38%)" stopOpacity=".12" />
+          <stop offset="100%" stopColor="hsl(162 60% 38%)" stopOpacity="0" />
         </linearGradient>
       </defs>
       {yTicks.map(t => (
@@ -662,11 +688,11 @@ function LineChartWidget({ stocks }: { stocks: PortfolioStock[] }) {
       ))}
       <path d={thisArea} fill="url(#lgArea)" />
       <polyline points={prevLine} fill="none" stroke="var(--bd-200)" strokeWidth="1.4" strokeDasharray="4 3" strokeLinecap="round" />
-      <polyline points={thisLine} fill="none" stroke="var(--blue)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points={thisLine} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       {pts.map((p, i) => (i === 0 || i === pts.length - 1 || i % 2 === 0) && (
         <text key={p.m} x={xOf(i).toFixed(1)} y={H - 6} textAnchor="middle" fontSize="9" fill="var(--tx-400)" fontFamily="var(--ff-mono)">{p.m}</text>
       ))}
-      <circle cx={xOf(pts.length-1).toFixed(1)} cy={yOf(pts[pts.length-1].val).toFixed(1)} r="4" fill="var(--bg-card)" stroke="var(--blue)" strokeWidth="2" />
+      <circle cx={xOf(pts.length-1).toFixed(1)} cy={yOf(pts[pts.length-1].val).toFixed(1)} r="4" fill="var(--bg-card)" stroke="var(--accent)" strokeWidth="2" />
     </svg>
   );
 }
@@ -678,7 +704,7 @@ function DonutWidget({ stocks }: { stocks: PortfolioStock[] }) {
   active.forEach(s => map.set(s.sector ?? "Other", (map.get(s.sector ?? "Other") ?? 0) + calcInvestedValue(s)));
   const total = [...map.values()].reduce((a, b) => a + b, 0) || 1;
   const entries = [...map.entries()].sort((a,b) => b[1]-a[1]).slice(0,5);
-  const COLORS = ["hsl(220 85% 48%)","hsl(152 70% 38%)","hsl(40 90% 44%)","hsl(280 65% 52%)","hsl(4 84% 52%)"];
+  const COLORS = ["hsl(162 60% 38%)","hsl(152 65% 36%)","hsl(38 85% 48%)","hsl(280 65% 52%)","hsl(4 70% 52%)"];
 
   const R = 36, r = 22, cx = 50, cy = 50;
   let startAngle = -Math.PI / 2;
@@ -742,7 +768,7 @@ function BarWidget({ stocks }: { stocks: PortfolioStock[] }) {
             <div style={{ fontSize:9, fontWeight:700, color:pos?"var(--green)":"var(--red)", fontFamily:"var(--ff-mono)" }}>
               {pos?"+":""}{item.pnlPct.toFixed(1)}%
             </div>
-            <div style={{ width:"100%", height:h, borderRadius:"4px 4px 0 0", background:pos?"var(--blue)":"var(--red)", opacity:pos?0.75:0.55 }} />
+            <div style={{ width:"100%", height:h, borderRadius:"4px 4px 0 0", background:pos?"var(--accent)":"var(--red)", opacity:pos?0.75:0.55 }} />
             <div style={{ fontSize:9, color:"var(--tx-400)", fontWeight:600, textAlign:"center", whiteSpace:"nowrap", overflow:"hidden", maxWidth:"100%", fontFamily:"var(--ff-mono)" }}>
               {item.ticker}
             </div>
@@ -1013,7 +1039,7 @@ export default function Index() {
   activePos.forEach(s => { const sec = s.sector ?? "Other"; sectorMap.set(sec, (sectorMap.get(sec) ?? 0) + calcInvestedValue(s)); });
   const sectorTotal = invested > 0 ? activePos.reduce((s, x) => s + calcInvestedValue(x), 0) : 1;
   const sectors = [...sectorMap.entries()].sort((a, b) => b[1] - a[1]).map(([name, val]) => ({ name, val, pct: val / sectorTotal * 100 }));
-  const SECTOR_COLORS = ["hsl(220 85% 48%)","hsl(152 70% 38%)","hsl(40 90% 44%)","hsl(280 65% 52%)","hsl(4 84% 52%)","hsl(200 70% 50%)"];
+  const SECTOR_COLORS = ["hsl(162 60% 38%)","hsl(152 65% 36%)","hsl(38 85% 48%)","hsl(280 65% 52%)","hsl(4 70% 52%)","hsl(200 70% 50%)"];
 
   // IST wall clock from the shared market-status service (never browser-local).
   const now = market.istTime;
@@ -1026,7 +1052,7 @@ export default function Index() {
     news: "Holdings News Feed",
   };
 
-  if (_authLoading) return (
+  if (authLoading) return (
     <div style={{ height:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"hsl(220 16% 97%)", fontFamily:"Geist, sans-serif" }}>
       <div style={{ textAlign:"center" }}>
         <div style={{ width:36, height:36, border:"2.5px solid hsl(220 14% 89%)", borderTop:"2.5px solid hsl(220 85% 48%)", borderRadius:"50%", animation:"spin 0.8s linear infinite", margin:"0 auto 12px" }} />
@@ -1239,8 +1265,8 @@ export default function Index() {
               <div className="zf-kpi-row">
                 <div className="zf-kpi zf-a1">
                   <div className="zf-kpi-top">
-                    <div className="zf-kpi-icon" style={{ background:"var(--blue-dim)" }}>
-                      <Wallet size={17} color="var(--blue)" />
+                    <div className="zf-kpi-icon" style={{ background:"var(--accent-dim)" }}>
+                      <Wallet size={17} color="var(--accent)" />
                     </div>
                     <span style={{ fontSize:"9px", fontWeight:700, color:"var(--tx-400)", textTransform:"uppercase", letterSpacing:".12em", fontFamily:"var(--ff-mono)" }}>Invested</span>
                   </div>
@@ -1251,10 +1277,10 @@ export default function Index() {
 
                 <div className="zf-kpi zf-a2">
                   <div className="zf-kpi-top">
-                    <div className="zf-kpi-icon" style={{ background:"var(--blue-dim)" }}>
-                      <TrendingUp size={17} color="var(--blue)" />
+                    <div className="zf-kpi-icon" style={{ background:"var(--accent-dim)" }}>
+                      <TrendingUp size={17} color="var(--accent)" />
                     </div>
-                    <span style={{ fontSize:"9px", fontWeight:700, color:"var(--blue)", textTransform:"uppercase", letterSpacing:".12em", fontFamily:"var(--ff-mono)" }}>Net Worth</span>
+                     <span style={{ fontSize:"9px", fontWeight:700, color:"var(--accent)", textTransform:"uppercase", letterSpacing:".12em", fontFamily:"var(--ff-mono)" }}>Net Worth</span>
                   </div>
                   <div className="zf-kpi-lbl">Portfolio Value</div>
                   <div className="zf-kpi-val">{fmt(current)}</div>
@@ -1307,10 +1333,10 @@ export default function Index() {
                         {(["Portfolio Value","Invested Amount","P&L Trends"] as const).map((label, i) => (
                           <button key={label} style={{
                             fontSize:11, fontWeight: i===0 ? 700 : 500,
-                            color: i===0 ? "var(--blue)" : "var(--tx-400)",
+                            color: i===0 ? "var(--accent)" : "var(--tx-400)",
                             background:"none", border:"none", cursor:"pointer", padding:"0 0 3px",
                             fontFamily:"var(--ff-body)",
-                            borderBottom: i===0 ? "2px solid var(--blue)" : "2px solid transparent",
+                            borderBottom: i===0 ? "2px solid var(--accent)" : "2px solid transparent",
                           }}>{label}</button>
                         ))}
                       </div>
@@ -1386,7 +1412,7 @@ export default function Index() {
                     {activePos.length === 0 ? (
                       <div style={{ padding:"36px 20px", textAlign:"center", color:"var(--tx-300)", fontSize:12 }}>
                         No active holdings.{" "}
-                        <button onClick={() => setTab("holdings")} style={{ color:"var(--blue)", background:"none", border:"none", cursor:"pointer", fontWeight:700 }}>Add one →</button>
+                        <button onClick={() => setTab("holdings")} style={{ color:"var(--accent)", background:"none", border:"none", cursor:"pointer", fontWeight:700 }}>Add one →</button>
                       </div>
                     ) : activePos.slice(0, 5).map((s, si) => {
                       const pl    = s.entryPrice > 0 ? (s.cmp - s.entryPrice) / s.entryPrice * 100 : 0;
@@ -1442,7 +1468,7 @@ export default function Index() {
                             if (match) setSelectedChartTicker(match.ticker);
                           }}>
                           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                            <div style={{ width:34, height:34, borderRadius:9, background:"var(--blue-dim)", border:"1px solid var(--blue-bd)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9.5, fontWeight:800, color:"var(--blue)", flexShrink:0 }}>
+                            <div style={{ width:34, height:34, borderRadius:9, background:"var(--accent-dim)", border:"1px solid var(--accent-bd)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:9.5, fontWeight:800, color:"var(--accent)", flexShrink:0 }}>
                               {w.stockName.slice(0,3).toUpperCase()}
                             </div>
                             <div>
@@ -1469,8 +1495,8 @@ export default function Index() {
                     <div className="zf-ai-teaser" onClick={() => setTab("ai")} style={{ marginTop: watchlist.length > 0 ? 0 : 6 }}>
                       <div style={{ position:"relative", zIndex:1 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:7 }}>
-                          <span style={{ fontSize:12 }}>✦</span>
-                          <span style={{ fontSize:9, fontWeight:800, color:"var(--blue)", textTransform:"uppercase", letterSpacing:".18em", fontFamily:"var(--ff-mono)" }}>AI Opportunity</span>
+                           <span style={{ fontSize:12 }}>✦</span>
+                          <span style={{ fontSize:9, fontWeight:800, color:"var(--accent)", textTransform:"uppercase", letterSpacing:".18em", fontFamily:"var(--ff-mono)" }}>AI Opportunity</span>
                         </div>
                         <p style={{ fontSize:11, lineHeight:1.6, color:"var(--tx-500)", marginBottom:10 }}>
                           {activePos.length > 0
@@ -1478,7 +1504,7 @@ export default function Index() {
                             : <>Add holdings to unlock AI-powered portfolio analysis and trade recommendations.</>
                           }
                         </p>
-                        <button style={{ fontSize:10.5, fontWeight:700, color:"var(--blue)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--ff-body)", padding:0 }}>
+                        <button style={{ fontSize:10.5, fontWeight:700, color:"var(--accent)", background:"none", border:"none", cursor:"pointer", fontFamily:"var(--ff-body)", padding:0 }}>
                           View AI Analysis →
                         </button>
                       </div>
@@ -1504,7 +1530,7 @@ export default function Index() {
                 </div>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", borderBottom:"1px solid var(--bd-50)" }}>
                   {([
-                    { lbl:"Open Positions", val:String(fnoOpen.length), sub:`Premium: ${fmt(fnoInvested)}`, clr:"var(--blue)" },
+                     { lbl:"Open Positions", val:String(fnoOpen.length), sub:`Premium: ${fmt(fnoInvested)}`, clr:"var(--accent)" },
                     { lbl:"Unrealised P&L", val:`${sign(fnoUnrealised)}${fmt(Math.abs(fnoUnrealised))}`, sub:`${fnoOpen.length} position${fnoOpen.length!==1?"s":""}`, clr:fnoUnrealised>=0?"var(--green)":"var(--red)" },
                     { lbl:"Realised P&L",   val:`${sign(fnoRealised)}${fmt(Math.abs(fnoRealised))}`, sub:`${fnoClosed.length} closed`, clr:fnoRealised>=0?"var(--green)":"var(--red)" },
                     { lbl:"Win Rate",       val:fnoClosed.length>0?`${Math.round(fnoClosed.filter(t=>calcFnOPnL(t)>0).length/fnoClosed.length*100)}%`:"—", sub:`${fnoClosed.filter(t=>calcFnOPnL(t)>0).length}/${fnoClosed.length} profitable`, clr:"var(--amber)" },
@@ -1523,14 +1549,14 @@ export default function Index() {
                       <div style={{ fontSize:12, color:"var(--tx-300)" }}>
                         Go to{" "}
                         <button onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}
-                          style={{ background:"none", border:"none", color:"var(--blue)", fontSize:12, fontWeight:700, cursor:"pointer", padding:0 }}>
+                          style={{ background:"none", border:"none", color:"var(--accent)", fontSize:12, fontWeight:700, cursor:"pointer", padding:0 }}>
                           Trades → F&O
                         </button>
                         {" "}to add futures or options.
                       </div>
                     </div>
                     <button onClick={() => { setTab("trades"); setTradesSubTab("fno"); }}
-                      style={{ background:"var(--blue)", color:"#fff", border:"none", padding:"7px 16px", borderRadius:8, fontSize:12.5, fontWeight:600, cursor:"pointer", fontFamily:"var(--ff-body)", flexShrink:0 }}>
+                      style={{ background:"var(--accent)", color:"#fff", border:"none", padding:"7px 16px", borderRadius:8, fontSize:12.5, fontWeight:600, cursor:"pointer", fontFamily:"var(--ff-body)", flexShrink:0 }}>
                       + Add F&O Trade
                     </button>
                   </div>
@@ -1559,7 +1585,7 @@ export default function Index() {
                           const tcMap: Record<string,{bg:string;color:string;bd:string}> = {
                             CE:  { bg:"var(--green-bg)", color:"var(--green)", bd:"var(--green-bd)" },
                             PE:  { bg:"var(--red-bg)",   color:"var(--red)",   bd:"var(--red-bd)"   },
-                            FUT: { bg:"var(--blue-dim)", color:"var(--blue)",  bd:"var(--blue-bd)"  },
+                            FUT: { bg:"var(--accent-dim)", color:"var(--accent)",  bd:"var(--accent-bd)"  },
                           };
                           const tc = tcMap[t.instrumentType] ?? tcMap["FUT"];
                           const ep = t.expiry.split("-");
@@ -1582,7 +1608,7 @@ export default function Index() {
                               <td style={{ padding:"11px 13px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)" }}>{t.lots} × {t.lotSize.toLocaleString("en-IN")}</td>
                               <td style={{ padding:"11px 13px", borderBottom:"1px solid var(--bd-50)", fontFamily:"var(--ff-mono)", fontSize:12, color:"var(--tx-500)", textAlign:"right" }}>₹{t.entryPrice.toFixed(2)}</td>
                               <td style={{ padding:"11px 13px", borderBottom:"1px solid var(--bd-50)", textAlign:"right" }}>
-                                <div style={{ fontFamily:"var(--ff-mono)", fontSize:12, fontWeight:600, color:"var(--blue)", display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4 }}>
+                                 <div style={{ fontFamily:"var(--ff-mono)", fontSize:12, fontWeight:600, color:"var(--accent)", display:"flex", alignItems:"center", justifyContent:"flex-end", gap:4 }}>
                                   {t.ltp && <span style={{ width:4, height:4, borderRadius:"50%", background:"var(--green)", display:"inline-block" }} />}
                                   ₹{ltp.toFixed(2)}
                                 </div>
@@ -1592,7 +1618,7 @@ export default function Index() {
                                 <div style={{ fontFamily:"var(--ff-mono)", fontSize:9.5, color:pos?"var(--green)":"var(--red)" }}>{sign(pct)}{Math.abs(pct).toFixed(1)}%</div>
                               </td>
                               <td style={{ padding:"11px 13px", borderBottom:"1px solid var(--bd-50)", textAlign:"center" }}>
-                                <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:10, fontWeight:700, padding:"2px 9px", borderRadius:20, background:"var(--blue-dim)", color:"var(--blue)", border:"1px solid var(--blue-bd)", fontFamily:"var(--ff-mono)" }}>Open</span>
+                                <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:10, fontWeight:700, padding:"2px 9px", borderRadius:20, background:"var(--accent-dim)", color:"var(--accent)", border:"1px solid var(--accent-bd)", fontFamily:"var(--ff-mono)" }}>Open</span>
                               </td>
                             </tr>
                           );
@@ -1615,9 +1641,9 @@ export default function Index() {
                         {activePos.slice(0, 6).map((stock) => (
                           <button key={stock.ticker} onClick={() => setSelectedChartTicker(stock.ticker)} style={{
                             fontSize:10.5, fontWeight: selectedChartStock?.ticker === stock.ticker ? 700 : 500,
-                            color: selectedChartStock?.ticker === stock.ticker ? "var(--blue)" : "var(--tx-400)",
-                            background: selectedChartStock?.ticker === stock.ticker ? "var(--blue-dim)" : "transparent",
-                            border: `1px solid ${selectedChartStock?.ticker === stock.ticker ? "var(--blue-bd)" : "var(--bd-100)"}`,
+                            color: selectedChartStock?.ticker === stock.ticker ? "var(--accent)" : "var(--tx-400)",
+                            background: selectedChartStock?.ticker === stock.ticker ? "var(--accent-dim)" : "transparent",
+                            border: `1px solid ${selectedChartStock?.ticker === stock.ticker ? "var(--accent-bd)" : "var(--bd-100)"}`,
                             borderRadius: 999, cursor: "pointer", padding: "3px 9px",
                             fontFamily: "var(--ff-mono)", transition:"all .14s",
                           }}>{stock.ticker}</button>
@@ -1631,7 +1657,7 @@ export default function Index() {
                           <button key={r} onClick={() => setDashboardCandleRange(r)} style={{
                             fontSize:9.5, fontWeight:700, padding:"3px 8px", borderRadius:5,
                             background: dashboardCandleRange === r ? "var(--bg-card)" : "transparent",
-                            color: dashboardCandleRange === r ? "var(--blue)" : "var(--tx-400)",
+                             color: dashboardCandleRange === r ? "var(--accent)" : "var(--tx-400)",
                             border:"none", cursor:"pointer", fontFamily:"var(--ff-mono)",
                             boxShadow: dashboardCandleRange === r ? "var(--sh-1)" : "none",
                           }}>{r}</button>
@@ -1686,7 +1712,7 @@ export default function Index() {
                       ] as const).map(st => (
                         <button key={st.id} onClick={() => setTradesSubTab(st.id)} style={{
                           fontSize:12.5, fontWeight: tradesSubTab === st.id ? 700 : 500,
-                          color: tradesSubTab === st.id ? "var(--blue)" : "var(--tx-400)",
+                           color: tradesSubTab === st.id ? "var(--accent)" : "var(--tx-400)",
                           padding:"8px 16px 9px", borderRadius:"7px 7px 0 0",
                           border: tradesSubTab === st.id ? "1px solid var(--bd-100)" : "1px solid transparent",
                           borderBottom: tradesSubTab === st.id ? "1px solid var(--bg-card)" : "1px solid transparent",
@@ -1695,7 +1721,7 @@ export default function Index() {
                           display:"flex", alignItems:"center", gap:6, transition:"all .12s",
                         }}>
                           {st.label}
-                          <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:17, height:17, borderRadius:"50%", fontSize:8.5, fontWeight:700, background: tradesSubTab === st.id ? "var(--blue-dim)" : "var(--bd-50)", color: tradesSubTab === st.id ? "var(--blue)" : "var(--tx-400)", fontFamily:"var(--ff-mono)" }}>{st.count}</span>
+                           <span style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:17, height:17, borderRadius:"50%", fontSize:8.5, fontWeight:700, background: tradesSubTab === st.id ? "var(--accent-dim)" : "var(--bd-50)", color: tradesSubTab === st.id ? "var(--accent)" : "var(--tx-400)", fontFamily:"var(--ff-mono)" }}>{st.count}</span>
                         </button>
                       ))}
                     </div>

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState, useCallback } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Check, X, Clock } from "lucide-react";
+import { Eye, EyeOff, Loader2, Check, X } from "lucide-react";
 import LogoMark from "@/components/LogoMark";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -63,21 +63,6 @@ const Login = () => {
     setNotice(null);
   }, [location.pathname]);
 
-  if (isAuthenticated) {
-    return <Navigate to={from} replace />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#f4f1ea] dark:bg-[#10161f] flex items-center justify-center">
-        <div className="flex items-center gap-3 text-sm text-[#3d4a5c] dark:text-[#c9c2b4]">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Restoring your session
-        </div>
-      </div>
-    );
-  }
-
   const switchMode = useCallback((next: Mode) => {
     if (transitioning || submitting) return;
     
@@ -101,6 +86,42 @@ const Login = () => {
       setTimeout(() => setTransitioning(false), 350);
     }, 50);
   }, [mode, transitioning, submitting, navigate, location.state]);
+
+  const handleResendConfirmation = useCallback(async () => {
+    if (!lastSignupEmail || resendLoading) return;
+    
+    setResendLoading(true);
+    setResendError(null);
+    setResendSuccess(null);
+    
+    try {
+      const result = await resendConfirmationEmail(lastSignupEmail);
+      if (result === null) {
+        setResendSuccess("Confirmation email resent. Check your inbox.");
+      } else {
+        setResendError(friendlyError(result));
+      }
+    } catch (err) {
+      setResendError(friendlyError(err instanceof Error ? err.message : "Unable to resend"));
+    } finally {
+      setResendLoading(false);
+    }
+  }, [lastSignupEmail, resendLoading, resendConfirmationEmail]);
+
+  if (isAuthenticated) {
+    return <Navigate to={from} replace />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#f4f1ea] dark:bg-[#10161f] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-sm text-[#3d4a5c] dark:text-[#c9c2b4]">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Restoring your session
+        </div>
+      </div>
+    );
+  }
 
   function validate(): string | null {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Enter a valid email address.";
@@ -154,27 +175,6 @@ const Login = () => {
     }
   }
 
-  const handleResendConfirmation = useCallback(async () => {
-    if (!lastSignupEmail || resendLoading) return;
-    
-    setResendLoading(true);
-    setResendError(null);
-    setResendSuccess(null);
-    
-    try {
-      const result = await resendConfirmationEmail(lastSignupEmail);
-      if (result === null) {
-        setResendSuccess("Confirmation email resent. Check your inbox.");
-      } else {
-        setResendError(friendlyError(result));
-      }
-    } catch (err) {
-      setResendError(friendlyError(err instanceof Error ? err.message : "Unable to resend"));
-    } finally {
-      setResendLoading(false);
-    }
-  }, [lastSignupEmail, resendLoading, resendConfirmationEmail]);
-
   const title = mode === "signup" ? "Create your account" : mode === "reset" ? "Reset your password" : "Welcome back";
   const action = mode === "signup" ? "Create account" : mode === "reset" ? "Send reset link" : "Sign in";
   
@@ -182,7 +182,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-[#f4f1ea] text-[#142033] dark:bg-[#0a0f1a] dark:text-[#f3efe6]">
-      <style jsx>{ `
+      <style>{`
         @media (prefers-reduced-motion: reduce) {
           * {
             transition-duration: 0.01ms !important;
@@ -199,7 +199,7 @@ const Login = () => {
             padding: 0 1rem;
           }
         }
-      ` }</style>
+      `}</style>
       <div className="mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[1.1fr_0.9fr]">
         {/* Hero Section with Market Visuals */}
         <section className="hidden flex-col justify-between px-8 py-8 lg:flex hero-visuals">
