@@ -13,6 +13,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<string | null>;
   signUpWithEmail: (email: string, password: string) => Promise<string | null>;
+  resendConfirmationEmail: (email: string) => Promise<string | null>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   signOutUser: () => Promise<void>;
@@ -65,6 +66,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return "CONFIRM_EMAIL";
   };
 
+  const resendConfirmationEmail = async (email: string): Promise<string | null> => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/login` },
+      });
+
+      if (error) return error.message;
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : "Failed to resend confirmation email";
+    }
+  };
+
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/login`,
@@ -92,13 +108,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isLoading: loading,
         isAuthenticated: !!user,
         isConfigured,
-        signIn,
-        signInWithGoogle,
-        signInWithEmail,
-        signUpWithEmail,
-        resetPassword,
-        signOut,
-        signOutUser: signOut,
+         signIn,
+         signInWithGoogle,
+         signInWithEmail,
+         signUpWithEmail,
+         resendConfirmationEmail,
+         resetPassword,
+         signOut,
+         signOutUser: signOut,
       }}
     >
       {children}
