@@ -1,14 +1,14 @@
 import { PortfolioStock } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
-import * as XLSX from "xlsx";
-
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 interface ExportPortfolioProps {
   stocks: PortfolioStock[];
 }
 
 const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
+    // xlsx is ~400 KB minified; load it only when the user actually exports.
+    const XLSX = await import("xlsx");
     const data = stocks.map(s => ({
       Ticker: s.ticker,
       "Stock Name": s.stockName,
@@ -46,15 +46,49 @@ const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
     URL.revokeObjectURL(url);
   };
 
+  const active = stocks.filter(s => s.status === "Active").length;
+
   return (
-    <div className="flex items-center gap-2">
-      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-border" onClick={exportToCSV}>
-        <Download className="h-3.5 w-3.5" /> Export CSV
-      </Button>
-      <Button variant="outline" size="sm" className="gap-1.5 text-xs border-border" onClick={exportToExcel}>
-        <Download className="h-3.5 w-3.5" /> Export XLSX
-      </Button>
-    </div>
+    <section className="glass-card overflow-hidden" aria-labelledby="zf-export-title">
+      <div className="zf-panel-head">
+        <div>
+          <h2 id="zf-export-title" className="zf-panel-title">Export portfolio</h2>
+          <p className="zf-panel-sub">
+            {stocks.length} positions · {active} open · {stocks.length - active} closed
+          </p>
+        </div>
+      </div>
+      {stocks.length === 0 ? (
+        <div className="zf-empty-state">
+          <div className="zf-empty-icon" aria-hidden="true"><Download /></div>
+          <h3 className="zf-empty-title">Nothing to export yet</h3>
+          <p className="zf-empty-body">Add positions to your portfolio, then download them here as CSV or XLSX.</p>
+        </div>
+      ) : (
+        <div className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5">
+          <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2.5">
+              <FileText className="h-4 w-4 text-primary" aria-hidden="true" />
+              <h3 className="text-sm font-semibold">CSV</h3>
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">Plain text, opens anywhere. Core fields for each position.</p>
+            <Button variant="outline" size="sm" className="mt-auto gap-1.5 self-start text-xs border-border" onClick={exportToCSV}>
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </Button>
+          </div>
+          <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
+            <div className="flex items-center gap-2.5">
+              <FileSpreadsheet className="h-4 w-4 text-primary" aria-hidden="true" />
+              <h3 className="text-sm font-semibold">Excel (XLSX)</h3>
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">Includes 52-week low, invested value, current value and P&amp;L.</p>
+            <Button variant="outline" size="sm" className="mt-auto gap-1.5 self-start text-xs border-border" onClick={exportToExcel}>
+              <Download className="h-3.5 w-3.5" /> Export XLSX
+            </Button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 };
 

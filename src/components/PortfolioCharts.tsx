@@ -8,12 +8,12 @@ import {
 } from "recharts";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
+import { fetchCandles } from "@/lib/market-data/client";
 import { useEffect, useRef, useState } from "react";
 
-// ── Palette ──────────────────────────────────────────────────────────────────
 const PALETTE = [
-  "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6",
-  "#ec4899", "#06b6d4", "#f97316", "#84cc16",
+  "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))", "hsl(var(--chart-5))",
 ];
 
 // ── Custom Tooltip ────────────────────────────────────────────────────────────
@@ -61,24 +61,26 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
         if (!isMounted) return;
 
         const isDark = document.documentElement.classList.contains("dark");
+        const styles = getComputedStyle(document.documentElement);
+        const token = (name: string) => `hsl(${styles.getPropertyValue(name).trim()})`;
+        const gridColor = isDark ? "#ffffff0d" : "#0000000d";
+        const borderColor = isDark ? "#ffffff14" : "#00000014";
 
         chart = createChart(containerRef.current!, {
           width: containerRef.current!.clientWidth,
-          height: 260,
+          height: 280,
           layout: {
-            textColor: isDark ? "#94a3b8" : "#64748b",
+            textColor: token("--muted-foreground"),
             background: { type: ColorType.Solid, color: "transparent" },
           },
           grid: {
-            vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-            horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
+            vertLines: { color: gridColor },
+            horzLines: { color: gridColor },
           },
           crosshair: { mode: 1 },
-          rightPriceScale: {
-            borderColor: isDark ? "#ffffff14" : "#00000014",
-          },
+          rightPriceScale: { borderColor },
           timeScale: {
-            borderColor: isDark ? "#ffffff14" : "#00000014",
+            borderColor,
             timeVisible: range === "1d",
             secondsVisible: false,
           },
@@ -88,12 +90,12 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
 
         // Use the v5.1 API: addSeries(CandlestickSeries, options)
         const series = chart.addSeries(CandlestickSeries, {
-          upColor: "#10b981",
-          downColor: "#ef4444",
-          borderUpColor: "#10b981",
-          borderDownColor: "#ef4444",
-          wickUpColor: "#10b981",
-          wickDownColor: "#ef4444",
+          upColor: token("--profit"),
+          downColor: token("--loss"),
+          borderUpColor: token("--profit"),
+          borderDownColor: token("--loss"),
+          wickUpColor: token("--profit"),
+          wickDownColor: token("--loss"),
         });
 
         if (isMounted) {
@@ -138,38 +140,17 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
     setLoading(true);
     setError(null);
 
-    const intervalMap: Record<CandleRange, string> = {
-      "1d": "5m",
-      "5d": "15m",
-      "1mo": "1d",
-    };
-    const interval = intervalMap[range];
-
-    fetch(
-      `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.NS?range=${range}&interval=${interval}`
-    )
-      .then((r) => r.json())
-      .then((data) => {
-        const result = data?.chart?.result?.[0];
-        if (!result) {
-          setError("No chart data returned for this ticker.");
-          setLoading(false);
-          return;
-        }
-
-        const timestamps: number[] = result.timestamp ?? [];
-        const quote = result.indicators?.quote?.[0] ?? {};
-
-        const candles = timestamps
-          .map((t, i) => ({
-            time: t as any,
-            open: quote.open?.[i] ?? 0,
-            high: quote.high?.[i] ?? 0,
-            low: quote.low?.[i] ?? 0,
-            close: quote.close?.[i] ?? 0,
-          }))
-          .filter((c) => c.open > 0 && c.close > 0)
-          .filter((c, i, arr) => i === 0 || c.time > arr[i - 1].time);
+    // Candles come from the API, never straight from a provider: a browser
+    // request to the provider is CORS-blocked and would leak the symbol list.
+    fetchCandles(ticker, range)
+      .then((envelope) => {
+        const candles = (envelope.candles ?? []).map(({ time, open, high, low, close }) => ({
+          time,
+          open,
+          high,
+          low,
+          close,
+        }));
 
         if (candles.length === 0) {
           setError("No candle data available for this range.");
@@ -177,7 +158,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
           return;
         }
 
-        seriesRef.current.setData(candles);
+        seriesRef.current?.setData(candles);
         chartRef.current?.timeScale().fitContent();
         setLoading(false);
       })
@@ -191,7 +172,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
     return (
       <div
         style={{
-          height: 260,
+          height: 280,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -225,7 +206,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
           </span>
         </div>
       )}
-      <div ref={containerRef} style={{ width: "100%", height: 260 }} />
+      <div ref={containerRef} style={{ width: "100%", height: 280 }} />
     </div>
   );
 }
@@ -269,7 +250,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
   }));
 
   const axisStyle = {
-    fill: "hsl(220 12% 52%)",
+    fill: "hsl(var(--muted-foreground))",
     fontSize: 10,
     fontFamily: "'Geist Mono', monospace",
   };
@@ -285,7 +266,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
     <div className="flex flex-col gap-4">
 
       {/* ── Candlestick Chart — full width ── */}
-      <div className="glass-card p-4">
+      <div className="glass-card p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground">
@@ -299,9 +280,10 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
           <div className="flex flex-wrap items-center gap-2">
             {/* Ticker selector */}
             <select
+              aria-label="Chart ticker"
               value={selectedTicker}
               onChange={(e) => setSelectedTicker(e.target.value)}
-              className="text-xs font-mono bg-secondary border border-border rounded-md px-2 py-1.5 text-foreground outline-none focus:ring-2 focus:ring-primary/30"
+              className="h-9 rounded-lg border border-border bg-secondary px-3 text-xs font-medium font-mono text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
             >
               {(activeStocks.length > 0 ? activeStocks : stocks).map((s) => (
                 <option key={s.ticker} value={s.ticker}>
@@ -311,15 +293,17 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
             </select>
 
             {/* Range pills */}
-            <div className="flex gap-1 bg-secondary/60 rounded-md p-0.5">
+            <div className="flex gap-1 rounded-lg bg-secondary/60 p-1" role="group" aria-label="Chart range">
               {RANGES.map((r) => (
                 <button
                   key={r}
+                  type="button"
+                  aria-pressed={candleRange === r}
                   onClick={() => setCandleRange(r)}
-                  className={`text-[10px] font-mono px-2.5 py-1 rounded transition-all ${
+                  className={`min-h-7 rounded-md px-2.5 py-1 text-[10px] font-mono transition-colors ${
                     candleRange === r
-                      ? "bg-primary text-primary-foreground font-bold shadow"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary text-primary-foreground font-semibold shadow-sm"
+                      : "text-muted-foreground hover:bg-background/70 hover:text-foreground"
                   }`}
                 >
                   {RANGE_LABELS[r]}
@@ -348,7 +332,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
             range={candleRange}
           />
         ) : (
-          <div className="flex items-center justify-center h-[260px] text-muted-foreground text-sm font-mono">
+          <div className="flex h-[280px] items-center justify-center px-6 text-center text-sm text-muted-foreground">
             Add stocks to your portfolio to view the candlestick chart.
           </div>
         )}
@@ -358,7 +342,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* P&L Bar Chart */}
-        <div className="glass-card p-4">
+        <div className="glass-card p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">P&L per Stock</h3>
@@ -371,7 +355,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
             <BarChart data={plData} barSize={16}>
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="hsl(220 14% 89% / 0.5)"
+                stroke="hsl(var(--border) / 0.55)"
                 vertical={false}
               />
               <XAxis
@@ -392,7 +376,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
                 {plData.map((entry, i) => (
                   <Cell
                     key={i}
-                    fill={entry.pl >= 0 ? "#10b981" : "#ef4444"}
+                    fill={entry.pl >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"}
                     fillOpacity={0.85}
                   />
                 ))}
@@ -402,7 +386,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
         </div>
 
         {/* Allocation Donut */}
-        <div className="glass-card p-4">
+        <div className="glass-card p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Allocation</h3>
@@ -412,7 +396,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center gap-5 min-[420px]:flex-row">
             <ResponsiveContainer width={130} height={130}>
               <PieChart>
                 <Pie

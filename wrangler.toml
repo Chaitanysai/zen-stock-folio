@@ -1,0 +1,36 @@
+# Cloudflare Pages configuration.
+#
+# Inert until a staging deploy is explicitly approved: this file creates no
+# resource by itself. Pages serves `dist/` and automatically bundles the
+# Pages Functions in `functions/` (routes: functions/api/<path>.ts -> /api/<path>).
+name = "zenfolio"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Non-secret configuration only. Secrets are set with
+#   wrangler pages secret put <NAME>
+# and locally in `.dev.vars` (gitignored).
+#
+# ALLOWED_ORIGINS: comma-separated allowlist for cross-origin requests.
+# Leave empty for a same-origin-only deployment — same-origin SPA calls send no
+# Origin header and need no CORS grant.
+# ALLOWED_ORIGINS = "https://zenfolio.pages.dev,http://localhost:8080"
+
+# Public Firebase web API key (same value as VITE_FIREBASE_API_KEY). This is
+# NOT a secret: it ships in the browser bundle and access is enforced by
+# Firebase Auth and firestore.rules. Pages Functions use it for Identity
+# Toolkit token verification, so it must be present in every deployment.
+FIREBASE_API_KEY = "AIzaSyDcKFGeZv2ov8M7SYdv-Q4H3JPhpOhncXQ"
+
+# --- EOD price cache --------------------------------------------------------
+# Cloudflare KV binding for the EOD price cache. Created 2026-10-27 for the
+# `zenfolio` Pages project. One namespace per Pages project (preview and
+# production deployments of the same project share it); the cache is
+# disposable market data, so sharing cannot leak user state.
+#
+# Without this binding `functions/api/_lib/kvPriceCache.ts` is a full no-op and
+# the API serves live data only.
+[[kv_namespaces]]
+binding = "PRICE_CACHE"
+id = "27cfa83891f2434682e05d9684c69e47"

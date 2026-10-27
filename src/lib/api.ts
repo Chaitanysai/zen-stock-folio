@@ -7,15 +7,22 @@
  *   Serverless functions in /api must be called with RELATIVE paths (e.g. /api/ai).
  *   Never use an absolute base URL — it causes CORS failures and mis-routing on Vercel.
  *   Do NOT use import.meta.env.VITE_API_URL for internal /api calls.
+ *
+ * Authentication: every internal request goes through `apiFetch`, which attaches
+ * `Authorization: Bearer <Firebase ID token>` when a Firebase user is signed in.
+ * Anonymous calls carry no token and the Functions answer 401, so a missing
+ * session fails closed rather than silently reading as an authorised request.
  */
+
+import { getApiAuthToken } from "@/lib/auth/token";
 
 /**
  * Returns the path for an internal API route.
- * Always relative so Vercel routes the request to the correct serverless function.
+ * Always relative so Vercel/Pages routes the request to the correct function.
  *
  * @example
  *   fetch(getApiUrl("/api/ai"), { method: "POST", ... })
- *   // → fetch("/api/ai", ...)     ✅ correct on Vercel
+ *   // → fetch("/api/ai", ...)     ✅ correct on Vercel/Cloudflare Pages
  */
 export const getApiUrl = (path: string): string => {
   return path;
@@ -28,8 +35,28 @@ export const getApiUrl = (path: string): string => {
 export const getApiUnavailableMessage = (feature: string): string =>
   `${feature} is temporarily unavailable. Please try again in a moment.`;
 
+/**
+ * Copies the caller's headers and adds the bearer token when one is available.
+ * Tokens are sent ONLY in the Authorization header — never in the URL, query
+ * string, or a request body, where they would land in logs and referrers.
+ */
+export const withAuthHeaders = async (headers?: HeadersInit): Promise<Headers> => {
+  const next = new Headers(headers);
+  const token = await getApiAuthToken();
+  if (token) next.set("Authorization", `Bearer ${token}`);
+  return next;
+};
 
-// ── Optional: typed fetch wrapper with built-in error logging ─────────────────
+/**
+ * fetch() for internal /api/* routes with the auth header applied.
+ * Use this instead of a raw fetch() for every internal endpoint.
+ */
+export const apiFetch = async (path: string, init: RequestInit = {}): Promise<Response> => {
+  const headers = await withAuthHeaders(init.headers);
+  return fetch(getApiUrl(path), { ...init, headers });
+};
+
+// ── Typed fetch wrapper with built-in error logging ───────────────────────────
 
 interface FetchApiOptions extends RequestInit {
   /** Extra label shown in console errors to identify the call site */
@@ -37,8 +64,9 @@ interface FetchApiOptions extends RequestInit {
 }
 
 /**
- * Thin wrapper around fetch() for /api/* calls.
+ * Thin wrapper around apiFetch() for /api/* calls.
  * - Always uses a relative URL via getApiUrl()
+ * - Attaches the provider's bearer token when one exists
  * - Logs the HTTP status + response body on failure for easier debugging
  * - Throws an Error with the server's error message (if JSON) or the status text
  *
@@ -55,14 +83,13 @@ export async function fetchApi<T = unknown>(
   options: FetchApiOptions = {}
 ): Promise<T> {
   const { label = path, ...init } = options;
-  const url = getApiUrl(path);
 
   let res: Response;
   try {
-    res = await fetch(url, init);
-  } catch (networkErr: any) {
+    res = await apiFetch(path, init);
+  } catch (networkErr: unknown) {
     console.error(`[fetchApi] Network error for "${label}":`, networkErr);
-    throw new Error(`Network error — could not reach ${url}`);
+    throw new Error(`Network error — could not reach ${getApiUrl(path)}`);
   }
 
   if (!res.ok) {
@@ -75,7 +102,6 @@ export async function fetchApi<T = unknown>(
       // Body wasn't JSON — keep the status string
     }
     console.error(`[fetchApi] "${label}" failed — ${serverMessage}`, {
-      url,
       status: res.status,
     });
     throw new Error(serverMessage);
@@ -83,7 +109,7 @@ export async function fetchApi<T = unknown>(
 
   try {
     return (await res.json()) as T;
-  } catch (parseErr: any) {
+  } catch (parseErr: unknown) {
     console.error(`[fetchApi] JSON parse error for "${label}":`, parseErr);
     throw new Error("Invalid JSON response from server");
   }

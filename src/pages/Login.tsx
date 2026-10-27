@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useState, useCallback } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Check, X } from "lucide-react";
+import { FormEvent, useEffect, useRef, useState, useCallback } from "react";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Eye, EyeOff, Loader2, Check, X, Chrome } from "lucide-react";
 import LogoMark from "@/components/LogoMark";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ function friendlyError(message: string) {
   if (text.includes("network") || text.includes("fetch")) {
     return "We couldn't reach the service. Check your connection and try again.";
   }
-  if (text.includes("not configured") || text.includes("vite_supabase")) {
+  if (text.includes("not configured")) {
     return "Sign-in is temporarily unavailable. Please try again later.";
   }
   return "Something went wrong. Please try again.";
@@ -40,7 +40,7 @@ function friendlyError(message: string) {
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, isLoading, signIn, signUpWithEmail, resendConfirmationEmail, resetPassword, isConfigured } = useAuth();
+  const { isAuthenticated, isLoading, signIn, signUpWithEmail, signInWithGoogle, resendConfirmationEmail, resetPassword, isConfigured } = useAuth();
   const [mode, setMode] = useState<Mode>(location.pathname === "/signup" ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,11 +49,15 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
   const [resendError, setResendError] = useState<string | null>(null);
   const [lastSignupEmail, setLastSignupEmail] = useState<string | null>(null);
+  // Forgot/Back buttons unmount when the mode flips, so focus moves to the new heading.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusHeadingOnSwitch = useRef(false);
 
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || "/";
 
@@ -63,9 +67,16 @@ const Login = () => {
     setNotice(null);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!focusHeadingOnSwitch.current) return;
+    focusHeadingOnSwitch.current = false;
+    headingRef.current?.focus();
+  }, [mode]);
+
   const switchMode = useCallback((next: Mode) => {
     if (transitioning || submitting) return;
     
+    focusHeadingOnSwitch.current = next === "reset" || mode === "reset";
     setTransitioning(true);
     setError(null);
     setNotice(null);
@@ -114,9 +125,9 @@ const Login = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#f4f1ea] dark:bg-[#10161f] flex items-center justify-center">
-        <div className="flex items-center gap-3 text-sm text-[#3d4a5c] dark:text-[#c9c2b4]">
-          <Loader2 className="h-4 w-4 animate-spin" />
+      <div className="atmosphere-bg flex min-h-screen items-center justify-center px-4">
+        <div className="glass-elevated flex items-center gap-3 rounded-2xl px-5 py-4 text-sm text-muted-foreground" role="status">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
           Restoring your session
         </div>
       </div>
@@ -129,6 +140,24 @@ const Login = () => {
     if (password.length < 8) return "Use a password of at least 8 characters.";
     if (mode === "signup" && password !== confirm) return "Passwords do not match.";
     return null;
+  }
+
+  async function handleGoogleSignIn() {
+    if (googleLoading || submitting || transitioning) return;
+
+    setGoogleLoading(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      await signInWithGoogle();
+      // Resolves silently if the popup is closed without signing in;
+      // a successful sign-in navigates via the auth state change.
+    } catch (authError) {
+      setError(friendlyError(authError instanceof Error ? authError.message : "Unable to continue"));
+    } finally {
+      setGoogleLoading(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -180,280 +209,307 @@ const Login = () => {
   
   const showResend = mode === "signin" && lastSignupEmail && !notice?.includes("Account created");
 
+  const brand = (size: number, text: string) => (
+    <Link
+      to="/"
+      aria-label="ZenFolio home"
+      className="inline-flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
+      <LogoMark size={size} />
+      <span className={`${text} font-bold tracking-tight`}>ZenFolio</span>
+    </Link>
+  );
+
   return (
-    <div className="min-h-screen bg-[#f4f1ea] text-[#142033] dark:bg-[#0a0f1a] dark:text-[#f3efe6]">
-      <style>{`
-        @media (prefers-reduced-motion: reduce) {
-          * {
-            transition-duration: 0.01ms !important;
-            animation-duration: 0.01ms !important;
-          }
-        }
-        @media (max-width: 1024px) {
-          .hero-visuals {
-            display: none;
-          }
-        }
-        @media (max-width: 640px) {
-          .auth-section {
-            padding: 0 1rem;
-          }
-        }
-      `}</style>
-      <div className="mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[1.1fr_0.9fr]">
-        {/* Hero Section with Market Visuals */}
-        <section className="hidden flex-col justify-between px-8 py-8 lg:flex hero-visuals">
-          <div className="flex items-center gap-3">
-            <LogoMark size={40} />
-            <span className="text-xl font-bold tracking-tight">ZenFolio</span>
-          </div>
-          
-          {/* Market Visuals */}
-          <div className="relative flex-1 flex items-center justify-center">
-            <LoginHeroVisuals className="absolute inset-0" />
-            <div className="relative z-10 max-w-md space-y-6">
-              <p className="font-serif text-5xl leading-[1.05] tracking-tight text-[#142033] dark:text-[#f3efe6]">
-                Your market. Your strategy. Your next move.
+    <div className="atmosphere-bg min-h-screen text-foreground">
+      <div className="mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[1.05fr_0.95fr]">
+        {/* Desktop hero */}
+        <section className="hidden flex-col justify-between px-10 py-8 lg:flex">
+          {brand(40, "text-xl")}
+
+          <div className="max-w-lg space-y-10 py-10">
+            <div className="space-y-5">
+              <p className="font-serif text-5xl leading-[1.05] tracking-tight xl:text-6xl">
+                Your market. Your strategy. <span className="italic text-primary">Your next move.</span>
               </p>
-              <p className="text-base leading-7 text-[#5c5346] dark:text-[#a89fa8]">
-                A clearer view of your investments, watchlists, and market opportunities—all in one focused workspace.
+              <p className="max-w-md text-base leading-7 text-muted-foreground">
+                A clearer view of your investments, watchlists, and market opportunities, all in one focused workspace.
               </p>
             </div>
+            <LoginHeroVisuals className="relative max-w-md" />
           </div>
-          
-          <p className="text-xs tracking-wide text-[#7a7164] dark:text-[#8d8476]">Portfolio · Watchlist · Market context</p>
+
+          <p className="text-xs tracking-wide text-muted-foreground">Portfolio &middot; Watchlist &middot; Market context</p>
         </section>
 
-        {/* Authentication Section */}
-        <section className="flex items-center justify-center px-4 py-8 sm:px-6 lg:px-8 auth-section">
-          <div className="w-full max-w-[420px]">
-            <div className="mb-8 flex items-center justify-between">
-              <div className="flex items-center gap-3 lg:hidden">
-                <LogoMark size={36} />
-                <span className="text-lg font-bold tracking-tight">ZenFolio</span>
-              </div>
-              <div className="ml-auto">
-                <ThemeToggle />
-              </div>
-            </div>
+        {/* Authentication */}
+        <section className="flex flex-col px-4 py-5 sm:px-6 lg:px-10 lg:py-8">
+          <header className="flex items-center justify-between gap-3 lg:justify-end lg:gap-2">
+            <Link
+              to="/"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background -ml-3"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Back to home
+            </Link>
+            <ThemeToggle />
+          </header>
 
-              {/* Premium Auth Card with transition */}
-              <div className="rounded-2xl border border-[#e2dacb]/80 bg-white/60 p-6 shadow-[0_20px_60px_-30px_rgba(20,32,51,0.55)] backdrop-blur-lg dark:border-[#2a3546]/60 dark:bg-[#17202c]/80 sm:p-8 transition-all duration-300 ease-out">
-              {mode !== "reset" && (
-                <div className="mb-6 grid grid-cols-2 rounded-full bg-[#efe8db] dark:bg-[#101820]/80 p-1 text-sm border border-[#e2dacb]/50 dark:border-[#2a3546]/50">
-                  <button
-                    type="button"
-                    className={`rounded-full px-3 py-2 transition-all duration-300 ease-out ${
-                      mode === "signin" 
-                        ? "bg-[#142033] text-[#f4efe6] shadow-md" 
-                        : "text-[#5c5346] dark:text-[#c4bbaa] hover:bg-[#142033]/10 dark:hover:bg-[#f3efe6]/10"
-                    }`}
-                    onClick={() => switchMode("signin")}
-                    disabled={transitioning}
-                    aria-pressed={mode === "signin"}
-                  >
-                    Sign in
-                  </button>
-                  <button
-                    type="button"
-                    className={`rounded-full px-3 py-2 transition-all duration-300 ease-out ${
-                      mode === "signup" 
-                        ? "bg-[#142033] text-[#f4efe6] shadow-md" 
-                        : "text-[#5c5346] dark:text-[#c4bbaa] hover:bg-[#142033]/10 dark:hover:bg-[#f3efe6]/10"
-                    }`}
-                    onClick={() => switchMode("signup")}
-                    disabled={transitioning}
-                    aria-pressed={mode === "signup"}
-                  >
-                    Create account
-                  </button>
+          <main className="flex flex-1 items-center justify-center py-6 sm:py-8">
+            <div className="w-full max-w-[420px]">
+              {/* Brand + compact hero below desktop */}
+              <div className="mb-6 lg:hidden">
+                {brand(36, "text-lg")}
+                <div className="mt-6 hidden space-y-4 md:block">
+                  <p className="font-serif text-4xl leading-[1.05] tracking-tight">
+                    Your market. Your strategy. <span className="italic text-primary">Your next move.</span>
+                  </p>
+                  <LoginHeroVisuals compact />
                 </div>
-              )}
-
-              {/* Animated heading */}
-              <div className="mb-1">
-                <h1 className="text-2xl font-bold tracking-tight transition-all duration-300 ease-out">
-                  {title}
-                </h1>
               </div>
-              
-              <p className="mt-1 mb-6 text-sm text-[#6b6256] dark:text-[#b7ad9d] transition-all duration-300 ease-out">
-                {mode === "reset"
-                  ? "We'll email a link to choose a new password."
-                  : mode === "signup"
-                  ? "Create your ZenFolio account to get started."
-                  : "Sign in to access your portfolio and market data."}
-              </p>
 
-              <form className="space-y-5" onSubmit={handleSubmit} noValidate>
-                {/* Email Input */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-sm font-medium text-[#142033] dark:text-[#f3efe6]">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    className="h-11 bg-white/80 dark:bg-[#17202c]/80 border-[#e2dacb]/80 dark:border-[#2a3546]/80 focus:border-[#C4A574] focus:ring-2 focus:ring-[#C4A574]/20 transition-all duration-200"
-                    disabled={submitting || transitioning}
-                    required
-                  />
+              <div className="glass-elevated rounded-2xl p-6 shadow-[var(--glass-highlight),var(--shadow-3)] sm:p-8">
+                {mode !== "reset" && (
+                  <div className="relative mb-6 grid grid-cols-2 rounded-full border border-[hsl(var(--glass-border))] bg-muted/70 p-1 text-sm">
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-full bg-[image:var(--grad-primary)] shadow-[0_4px_14px_-6px_hsl(var(--primary)/.7)] transition-transform duration-300 [transition-timing-function:var(--ease-out)] ${
+                        mode === "signup" ? "translate-x-full" : "translate-x-0"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      className={`relative z-10 rounded-full px-3 py-2 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                        mode === "signin" ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      onClick={() => switchMode("signin")}
+                      aria-pressed={mode === "signin"}
+                    >
+                      Sign in
+                    </button>
+                    <button
+                      type="button"
+                      className={`relative z-10 rounded-full px-3 py-2 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                        mode === "signup" ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      onClick={() => switchMode("signup")}
+                      aria-pressed={mode === "signup"}
+                    >
+                      Create account
+                    </button>
+                  </div>
+                )}
+
+                <div key={mode} className="animate-fade-up">
+                  <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold tracking-tight focus:outline-none">
+                    {title}
+                  </h1>
+                  <p className="mb-6 mt-1.5 text-sm text-muted-foreground">
+                    {mode === "reset"
+                      ? "We'll email a link to choose a new password."
+                      : mode === "signup"
+                      ? "Create your ZenFolio account to get started."
+                      : "Sign in to access your portfolio and market data."}
+                  </p>
                 </div>
 
                 {mode !== "reset" && (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="password" className="text-sm font-medium text-[#142033] dark:text-[#f3efe6]">
-                        Password
-                      </Label>
-                      {mode === "signin" && (
-                        <button 
-                          type="button" 
-                          className="text-xs text-[#8a6a32] dark:text-[#c4bbaa] hover:text-[#C4A574] transition-colors"
-                          onClick={() => switchMode("reset")}
-                        >
-                          Forgot password?
-                        </button>
+                  <div className="mb-5 space-y-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 w-full gap-2 rounded-full"
+                      onClick={handleGoogleSignIn}
+                      disabled={googleLoading || submitting || transitioning || !isConfigured}
+                    >
+                      {googleLoading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Please wait...
+                        </>
+                      ) : (
+                        <>
+                          <Chrome className="h-4 w-4" />
+                          Continue with Google
+                        </>
                       )}
+                    </Button>
+                    <div className="flex items-center gap-3">
+                      <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                      <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                        or continue with email
+                      </span>
+                      <span className="h-px flex-1 bg-border" aria-hidden="true" />
                     </div>
-                    <div className="relative">
+                  </div>
+                )}
+
+                <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="email" className="text-sm font-medium">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className="h-11"
+                      disabled={submitting || transitioning}
+                      required
+                    />
+                  </div>
+
+                  {mode !== "reset" && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="password" className="text-sm font-medium">
+                          Password
+                        </Label>
+                        {mode === "signin" && (
+                          <button
+                            type="button"
+                            className="rounded-sm text-xs font-medium text-primary underline-offset-4 hover:underline"
+                            onClick={() => switchMode("reset")}
+                          >
+                            Forgot password?
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <Input
+                          id="password"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                          value={password}
+                          onChange={(event) => setPassword(event.target.value)}
+                          className="h-11 pr-11"
+                          disabled={submitting || transitioning}
+                          required
+                          minLength={8}
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent/70 hover:text-foreground"
+                          onClick={() => setShowPassword((value) => !value)}
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                          disabled={submitting || transitioning}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {mode === "signup" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="confirm" className="text-sm font-medium">
+                        Confirm password
+                      </Label>
                       <Input
-                        id="password"
-                        name="password"
+                        id="confirm"
+                        name="confirm"
                         type={showPassword ? "text" : "password"}
-                        autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        className="h-11 pr-11 bg-white/80 dark:bg-[#17202c]/80 border-[#e2dacb]/80 dark:border-[#2a3546]/80 focus:border-[#C4A574] focus:ring-2 focus:ring-[#C4A574]/20 transition-all duration-200"
+                        autoComplete="new-password"
+                        value={confirm}
+                        onChange={(event) => setConfirm(event.target.value)}
+                        className="h-11"
                         disabled={submitting || transitioning}
                         required
                         minLength={8}
                       />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b6256] dark:text-[#b7ad9d] hover:text-[#C4A574] transition-colors"
-                        onClick={() => setShowPassword((value) => !value)}
-                        aria-label={showPassword ? "Hide password" : "Show password"}
-                        disabled={submitting || transitioning}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {mode === "signup" && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="confirm" className="text-sm font-medium text-[#142033] dark:text-[#f3efe6]">
-                      Confirm password
-                    </Label>
-                    <Input
-                      id="confirm"
-                      name="confirm"
-                      type={showPassword ? "text" : "password"}
-                      autoComplete="new-password"
-                      value={confirm}
-                      onChange={(event) => setConfirm(event.target.value)}
-                      className="h-11 bg-white/80 dark:bg-[#17202c]/80 border-[#e2dacb]/80 dark:border-[#2a3546]/80 focus:border-[#C4A574] focus:ring-2 focus:ring-[#C4A574]/20 transition-all duration-200"
-                      disabled={submitting || transitioning}
-                      required
-                      minLength={8}
-                    />
-                  </div>
-                )}
+                  {/* Status messages */}
+                  <div className="space-y-3 empty:hidden">
+                    {!isConfigured && (
+                      <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+                        Sign-in is temporarily unavailable. Please try again later.
+                      </p>
+                    )}
+                    {error && (
+                      <p className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+                        <X className="h-4 w-4 flex-shrink-0" />
+                        {error}
+                      </p>
+                    )}
+                    {notice && (
+                      <p className="flex items-center gap-2 rounded-lg border border-profit/25 bg-profit/10 px-3 py-2 text-sm text-profit" role="status">
+                        <Check className="h-4 w-4 flex-shrink-0" />
+                        {notice}
+                      </p>
+                    )}
 
-                {/* Status Messages */}
-                <div className="space-y-3">
-                  {!isConfigured && (
-                    <p className="rounded-lg border border-[#e7c7c2] bg-[#fdf4f2] px-3 py-2 text-sm text-[#8a3b32] dark:bg-[#2a1a1a]/30 dark:border-[#8a3b32]/30 dark:text-[#ff6b6b]" role="alert">
-                      Sign-in is temporarily unavailable. Please try again later.
-                    </p>
-                  )}
-                  {error && (
-                    <p className="rounded-lg border border-[#e7c7c2] bg-[#fdf4f2] px-3 py-2 text-sm text-[#8a3b32] dark:bg-[#2a1a1a]/30 dark:border-[#8a3b32]/30 dark:text-[#ff6b6b] flex items-center gap-2" role="alert">
-                      <X className="h-4 w-4 flex-shrink-0" />
-                      {error}
-                    </p>
-                  )}
-                  {notice && (
-                    <p className="rounded-lg border border-[#d5e4d4] bg-[#f3f8f2] px-3 py-2 text-sm text-[#245c38] dark:bg-[#1a2a1a]/30 dark:border-[#245c38]/30 dark:text-[#22c55e] flex items-center gap-2" role="status">
-                      <Check className="h-4 w-4 flex-shrink-0" />
-                      {notice}
-                    </p>
-                  )}
-                  
-                  {/* Resend confirmation email */}
-                  {showResend && (
-                    <div className="rounded-lg border border-[#C4A574]/30 bg-[#C4A574]/5 px-3 py-2 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[#8a6a32] dark:text-[#c4bbaa]">
-                          Didn't receive the email?
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleResendConfirmation}
-                          disabled={resendLoading}
-                          className="text-xs font-medium text-[#C4A574] hover:text-[#142033] dark:hover:text-[#f3efe6] transition-colors flex items-center gap-1"
-                        >
-                          {resendLoading ? (
-                            <>
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Sending...
-                            </>
-                          ) : (
-                            "Resend"
-                          )}
-                        </button>
+                    {showResend && (
+                      <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-foreground/80">Didn't receive the email?</span>
+                          <button
+                            type="button"
+                            onClick={handleResendConfirmation}
+                            disabled={resendLoading}
+                            className="flex items-center gap-1 rounded-sm text-xs font-semibold text-primary underline-offset-4 hover:underline disabled:opacity-60"
+                          >
+                            {resendLoading ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              "Resend"
+                            )}
+                          </button>
+                        </div>
+                        {resendSuccess && (
+                          <p className="mt-1 flex items-center gap-1 text-xs text-profit">
+                            <Check className="h-3 w-3" />
+                            {resendSuccess}
+                          </p>
+                        )}
+                        {resendError && (
+                          <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
+                            <X className="h-3 w-3" />
+                            {resendError}
+                          </p>
+                        )}
                       </div>
-                      {resendSuccess && (
-                        <p className="text-[#15803d] text-xs mt-1 flex items-center gap-1">
-                          <Check className="h-3 w-3" />
-                          {resendSuccess}
-                        </p>
-                      )}
-                      {resendError && (
-                        <p className="text-[#c94444] text-xs mt-1 flex items-center gap-1">
-                          <X className="h-3 w-3" />
-                          {resendError}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
 
-                {/* Submit Button */}
-                <Button 
-                  type="submit" 
-                  className="h-11 w-full rounded-full bg-[#142033] text-[#f4efe6] hover:bg-[#1d2c45] active:bg-[#2a3546] transition-all duration-200 shadow-lg shadow-[#142033]/20 hover:shadow-xl hover:shadow-[#142033]/30 disabled:opacity-70 disabled:cursor-not-allowed"
-                  disabled={submitting || transitioning || !isConfigured}
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Please wait...
-                    </>
-                  ) : (
-                    action
-                  )}
-                </Button>
-              </form>
+                  <Button
+                    type="submit"
+                    className="h-11 w-full rounded-full text-[15px] font-semibold"
+                    disabled={submitting || transitioning || !isConfigured}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Please wait...
+                      </>
+                    ) : (
+                      action
+                    )}
+                  </Button>
+                </form>
 
-              {mode === "reset" && (
-                <button 
-                  type="button" 
-                  className="mt-4 text-sm text-[#8a6a32] dark:text-[#c4bbaa] hover:text-[#C4A574] transition-colors"
-                  onClick={() => switchMode("signin")}
-                >
-                  Back to sign in
-                </button>
-              )}
+                {mode === "reset" && (
+                  <button
+                    type="button"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline"
+                    onClick={() => switchMode("signin")}
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+                    Back to sign in
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          </main>
         </section>
       </div>
     </div>

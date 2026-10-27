@@ -6,95 +6,144 @@
 
 @layer base {
   :root {
-    /* ── FOLIO: Amber × Navy — Light ── */
-    --background:    36 20% 96%;
-    --foreground:    222 30% 10%;
+    /* ── ZenFolio: Indigo × Midnight — Light ──
+       Shares its palette with src/styles/dashboard.css so portalled
+       shadcn surfaces (dialogs, selects, toasts) match the dashboard. */
+    --background:    230 33% 96%;
+    --foreground:    230 32% 12%;
     --card:          0 0% 100%;
-    --card-foreground: 222 30% 10%;
+    --card-foreground: 230 32% 12%;
     --popover:       0 0% 100%;
-    --popover-foreground: 222 30% 10%;
-    --primary:       38 92% 48%;
-    --primary-foreground: 222 30% 8%;
-    --secondary:     36 16% 92%;
-    --secondary-foreground: 222 25% 20%;
-    --muted:         36 14% 93%;
-    --muted-foreground: 222 12% 50%;
-    --accent:        38 80% 93%;
-    --accent-foreground: 38 92% 30%;
-    --destructive:   4 84% 52%;
+    --popover-foreground: 230 32% 12%;
+    --primary:       246 66% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary:     230 30% 95%;
+    --secondary-foreground: 230 20% 24%;
+    --muted:         230 26% 94%;
+    --muted-foreground: 230 12% 40%;
+    --accent:        244 70% 96%;
+    --accent-foreground: 246 60% 40%;
+    --destructive:   356 70% 44%;
     --destructive-foreground: 0 0% 100%;
-    --border:        36 14% 87%;
-    --input:         36 14% 92%;
-    --ring:          38 92% 48%;
-    --radius:        0.625rem;
+    --border:        230 24% 89%;
+    --input:         230 16% 58%;   /* control boundary: ≥3:1 on canvas + glass */
+    --ring:          246 66% 52%;
+    --radius:        0.75rem;
 
-    --profit:        152 70% 34%;
-    --profit-foreground: 152 70% 10%;
-    --loss:          4 84% 52%;
-    --loss-foreground: 4 84% 96%;
-    --warning:       38 92% 48%;
-    --warning-foreground: 38 92% 10%;
+    --profit:        156 72% 27%;
+    --profit-foreground: 156 72% 10%;
+    --loss:          356 70% 44%;
+    --loss-foreground: 356 70% 96%;
+    --warning:       32 92% 34%;
+    --warning-foreground: 32 92% 10%;
 
-    /* Chart palette — amber first */
-    --chart-1: 38 92% 48%;
-    --chart-2: 152 70% 34%;
-    --chart-3: 4 84% 52%;
-    --chart-4: 222 70% 52%;
-    --chart-5: 280 65% 52%;
+    /* Chart palette — indigo first; green/red stay reserved for P&L */
+    --chart-1: 246 72% 58%;
+    --chart-2: 206 84% 50%;
+    --chart-3: 186 70% 38%;
+    --chart-4: 276 56% 56%;
+    --chart-5: 36 86% 50%;
 
-    /* Sidebar — deep navy */
-    --sidebar-background: 222 38% 10%;
-    --sidebar-foreground: 220 20% 78%;
-    --sidebar-primary: 38 88% 56%;
-    --sidebar-primary-foreground: 222 38% 8%;
-    --sidebar-accent: 222 32% 17%;
-    --sidebar-accent-foreground: 38 80% 70%;
-    --sidebar-border: 222 26% 17%;
-    --sidebar-ring: 38 88% 56%;
+    /* Motion tokens (shared) */
+    --dur-fast: 120ms;
+    --dur: 200ms;
+    --dur-slow: 320ms;
+    --ease-out: cubic-bezier(.16, 1, .3, 1);
+
+    /* ── Glass system (mirrors src/styles/dashboard.css; global so portalled
+       surfaces match). Data/overlay surfaces stay mostly opaque for legibility. ── */
+    --glass-surface:   0 0% 100% / .78;   /* panels, cards on canvas   */
+    --glass-elevated:  0 0% 100% / .90;   /* popovers, menus, toasts   */
+    --glass-overlay:   0 0% 100% / .96;   /* dialogs, sheets           */
+    --glass-border:    230 30% 30% / .12;
+    --glass-border-strong: 230 30% 30% / .20;
+    --glass-highlight: inset 0 1px 0 hsl(0 0% 100% / .75);
+    --blur-sm: 8px;
+    --blur-md: 14px;
+    --blur-lg: 22px;
+    --shadow-1: 0 1px 2px hsl(232 40% 20% / .05), 0 1px 1px hsl(232 40% 20% / .03);
+    --shadow-2: 0 8px 24px -10px hsl(232 40% 20% / .16);
+    --shadow-3: 0 24px 56px -24px hsl(232 40% 20% / .28);
+    --scrim: 230 32% 10%;
+    --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(246 66% 52% / .55);
+    --grad-primary: linear-gradient(180deg, hsl(246 70% 57%) 0%, hsl(246 66% 49%) 100%);
+    --grad-primary-hover: linear-gradient(180deg, hsl(246 74% 60%) 0%, hsl(246 70% 52%) 100%);
+    --atmosphere:
+      radial-gradient(60rem 34rem at 6% -10%,  hsl(248 90% 70% / .18), transparent 60%),
+      radial-gradient(46rem 28rem at 104% 0%,  hsl(196 90% 60% / .12), transparent 60%),
+      radial-gradient(40rem 30rem at 60% 115%, hsl(262 80% 72% / .10), transparent 60%);
+
+    /* Sidebar — midnight */
+    --sidebar-background: 230 30% 8%;
+    --sidebar-foreground: 228 20% 80%;
+    --sidebar-primary: 244 92% 76%;
+    --sidebar-primary-foreground: 230 30% 8%;
+    --sidebar-accent: 232 26% 15%;
+    --sidebar-accent-foreground: 244 92% 82%;
+    --sidebar-border: 232 22% 16%;
+    --sidebar-ring: 244 92% 76%;
   }
 
   .dark {
-    --background: 222 30% 7%;
-    --foreground: 36 18% 92%;
-    --card: 222 28% 10%;
-    --card-foreground: 36 16% 90%;
-    --popover: 222 30% 12%;
-    --popover-foreground: 36 16% 90%;
-    --primary: 38 90% 54%;
-    --primary-foreground: 222 30% 7%;
-    --secondary: 222 24% 15%;
-    --secondary-foreground: 36 16% 70%;
-    --muted: 222 22% 14%;
-    --muted-foreground: 222 14% 52%;
-    --accent: 38 55% 18%;
-    --accent-foreground: 38 90% 72%;
-    --destructive: 4 76% 58%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 222 20% 19%;
-    --input: 222 22% 14%;
-    --ring: 38 90% 54%;
+    --background: 230 30% 5%;
+    --foreground: 228 40% 96%;
+    --card: 230 25% 9%;
+    --card-foreground: 228 30% 92%;
+    --popover: 230 26% 11%;
+    --popover-foreground: 228 30% 92%;
+    --primary: 244 92% 76%;
+    --primary-foreground: 230 30% 8%;
+    --secondary: 230 22% 14%;
+    --secondary-foreground: 228 18% 80%;
+    --muted: 230 22% 13%;
+    --muted-foreground: 228 12% 62%;
+    --accent: 244 40% 18%;
+    --accent-foreground: 244 92% 84%;
+    --destructive: 356 72% 63%;
+    --destructive-foreground: 230 30% 8%;   /* white fails 4.5:1 on this fill */
+    --border: 230 20% 17%;
+    --input: 230 16% 44%;   /* control boundary: ≥3:1 on canvas + glass */
+    --ring: 244 92% 76%;
 
-    --profit: 152 58% 48%;
+    --profit: 152 62% 56%;
     --profit-foreground: 152 58% 92%;
-    --loss: 4 76% 58%;
-    --loss-foreground: 4 76% 94%;
-    --warning: 38 88% 54%;
+    --loss: 356 86% 68%;
+    --loss-foreground: 356 76% 94%;
+    --warning: 38 92% 62%;
     --warning-foreground: 38 88% 94%;
 
-    --chart-1: 38 90% 54%;
-    --chart-2: 152 58% 48%;
-    --chart-3: 4 76% 58%;
-    --chart-4: 220 78% 62%;
-    --chart-5: 280 62% 62%;
+    --chart-1: 244 92% 72%;
+    --chart-2: 206 90% 64%;
+    --chart-3: 186 70% 52%;
+    --chart-4: 276 70% 70%;
+    --chart-5: 38 92% 62%;
 
-    --sidebar-background: 222 36% 6%;
-    --sidebar-foreground: 220 18% 75%;
-    --sidebar-primary: 38 88% 56%;
-    --sidebar-primary-foreground: 222 36% 6%;
-    --sidebar-accent: 222 30% 13%;
-    --sidebar-accent-foreground: 38 80% 70%;
-    --sidebar-border: 222 26% 14%;
-    --sidebar-ring: 38 88% 56%;
+    --glass-surface:   230 26% 10% / .72;
+    --glass-elevated:  230 26% 11% / .92;
+    --glass-overlay:   230 26% 11% / .96;
+    --glass-border:    230 40% 100% / .09;
+    --glass-border-strong: 230 40% 100% / .15;
+    --glass-highlight: inset 0 1px 0 hsl(0 0% 100% / .06);
+    --shadow-1: 0 1px 2px hsl(0 0% 0% / .30);
+    --shadow-2: 0 12px 28px -12px hsl(0 0% 0% / .55);
+    --shadow-3: 0 28px 64px -24px hsl(0 0% 0% / .70);
+    --scrim: 230 40% 3%;
+    --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(244 92% 76% / .65);
+    --grad-primary: linear-gradient(180deg, hsl(244 94% 80%) 0%, hsl(246 84% 72%) 100%);
+    --grad-primary-hover: linear-gradient(180deg, hsl(244 96% 84%) 0%, hsl(246 88% 76%) 100%);
+    --atmosphere:
+      radial-gradient(56rem 32rem at 4% -12%,  hsl(250 85% 55% / .22), transparent 60%),
+      radial-gradient(44rem 26rem at 104% -4%, hsl(190 85% 45% / .11), transparent 60%),
+      radial-gradient(42rem 30rem at 55% 118%, hsl(262 70% 45% / .14), transparent 60%);
+
+    --sidebar-background: 230 32% 5%;
+    --sidebar-foreground: 228 18% 76%;
+    --sidebar-primary: 244 92% 76%;
+    --sidebar-primary-foreground: 230 32% 5%;
+    --sidebar-accent: 232 26% 12%;
+    --sidebar-accent-foreground: 244 92% 82%;
+    --sidebar-border: 232 22% 13%;
+    --sidebar-ring: 244 92% 76%;
   }
 }
 
@@ -124,18 +173,51 @@
   .border-loss   { border-color: hsl(var(--loss)); }
 
   /* ── Page background ── */
-  .mesh-bg {
+  .mesh-bg,
+  .atmosphere-bg {
     background-color: hsl(var(--background));
-    background-image:
-      radial-gradient(ellipse 70% 50% at 15% 0%,   hsl(38 90% 60% / 0.07) 0%, transparent 50%),
-      radial-gradient(ellipse 50% 40% at 85% 10%,  hsl(152 70% 50% / 0.05) 0%, transparent 50%),
-      radial-gradient(ellipse 40% 35% at 5% 90%,   hsl(222 65% 60% / 0.04) 0%, transparent 50%);
+    background-image: var(--atmosphere);
   }
-  .dark .mesh-bg {
-    background-image:
-      radial-gradient(ellipse 70% 50% at 15% 0%,   hsl(38 88% 50% / 0.10) 0%, transparent 50%),
-      radial-gradient(ellipse 50% 40% at 85% 10%,  hsl(152 58% 40% / 0.07) 0%, transparent 50%),
-      radial-gradient(ellipse 40% 35% at 5% 90%,   hsl(222 60% 50% / 0.06) 0%, transparent 50%);
+  /* Full-page canvases keep the light fixed while content scrolls. */
+  .atmosphere-bg { background-attachment: fixed; }
+
+  /* ── Glass surfaces (level 1 → 3). Opaque fallback lives at file end. ── */
+  .glass-surface,
+  .glass-elevated,
+  .glass-overlay {
+    border: 1px solid hsl(var(--glass-border));
+    -webkit-backdrop-filter: blur(var(--blur-md)) saturate(150%);
+    backdrop-filter: blur(var(--blur-md)) saturate(150%);
+  }
+  .glass-surface {
+    background-color: hsl(var(--glass-surface));
+    box-shadow: var(--glass-highlight), var(--shadow-1);
+  }
+  .glass-elevated {
+    background-color: hsl(var(--glass-elevated));
+    box-shadow: var(--glass-highlight), var(--shadow-2);
+  }
+  .glass-overlay {
+    background-color: hsl(var(--glass-overlay));
+    border-color: hsl(var(--glass-border-strong));
+    box-shadow: var(--glass-highlight), var(--shadow-3);
+    -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(160%);
+    backdrop-filter: blur(var(--blur-lg)) saturate(160%);
+  }
+  /* Fill that always carries white text (used with `text-white` on CTAs).
+     !important so it wins over the Button's default gradient utility. */
+  .gradient-primary {
+    background-color: hsl(246 70% 54%);
+    background-image: linear-gradient(180deg, hsl(248 72% 60%) 0%, hsl(246 70% 52%) 100%) !important;
+  }
+  .gradient-primary:hover {
+    background-image: linear-gradient(180deg, hsl(248 76% 63%) 0%, hsl(246 74% 55%) 100%) !important;
+  }
+
+  .glass-scrim {
+    background-color: hsl(var(--scrim) / .5);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
   }
 
   /* ── STAT CARD ── */
@@ -171,15 +253,18 @@
 
   /* ── GLASS CARD ── */
   .glass-card {
-    background: hsl(var(--card));
-    border: 1px solid hsl(var(--border));
+    background-color: hsl(var(--glass-surface));
+    border: 1px solid hsl(var(--glass-border));
     border-radius: var(--radius);
+    box-shadow: var(--glass-highlight), var(--shadow-1);
+    -webkit-backdrop-filter: blur(var(--blur-md)) saturate(150%);
+    backdrop-filter: blur(var(--blur-md)) saturate(150%);
     overflow: hidden;
     transition: box-shadow 0.22s ease, border-color 0.22s ease;
   }
   .glass-card:hover {
     border-color: hsl(var(--primary) / 0.28);
-    box-shadow: 0 12px 40px hsl(var(--primary) / 0.08);
+    box-shadow: var(--glass-highlight), 0 12px 40px -12px hsl(var(--primary) / 0.18);
   }
 
   /* ── HEADER GLASS ── */
@@ -293,20 +378,15 @@
   }
 
   /* Dark mode table */
-  .dark .wc-ctnr th {
-    background: hsl(222 28% 12%) !important;
-    color: hsl(222 14% 46%) !important;
-    border-color: hsl(var(--border)) !important;
+  .dark .wc-ctnr th,
+  .dark .wc-ctnr thead {
+    background: hsl(var(--card)) !important;
   }
   .dark .wc-ctnr td {
-    color: hsl(36 16% 72%) !important;
-    border-color: hsl(var(--border)) !important;
+    color: hsl(var(--secondary-foreground)) !important;
   }
   .dark .wc-ctnr tr:hover > td {
-    background: hsl(38 30% 13%) !important;
-  }
-  .dark .wc-ctnr thead {
-    background: hsl(222 28% 12%) !important;
+    background: hsl(var(--accent) / .7) !important;
   }
 
   /* ── Typography helpers ── */
@@ -360,8 +440,12 @@
     transition-duration: 160ms;
     transition-timing-function: ease;
   }
-  button, a, input, select, textarea {
-    transition-duration: 100ms !important;
+  /* Scoped to no-preference: a layered !important would otherwise beat the
+     unlayered reduced-motion override at the end of this file. */
+  @media (prefers-reduced-motion: no-preference) {
+    button, a, input, select, textarea {
+      transition-duration: 100ms !important;
+    }
   }
   .animate-fade-up, [style*="animation"], [style*="transform"] {
     transition-property: none !important;
@@ -381,3 +465,30 @@
 
 #root { overflow: visible; }
 * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+/* Tabular figures wherever the codebase marks numbers as mono */
+.font-mono, .tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* Readability fallback: no blur support or reduced transparency → opaque glass. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root, .dark {
+    --glass-surface: var(--card); --glass-elevated: var(--popover); --glass-overlay: var(--popover);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root, .dark {
+    --glass-surface: var(--card); --glass-elevated: var(--popover); --glass-overlay: var(--popover);
+  }
+}
+
+/* Honour reduced-motion app-wide (Radix/tailwindcss-animate, toasts, hovers). */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+  button:active { transform: none; }
+}

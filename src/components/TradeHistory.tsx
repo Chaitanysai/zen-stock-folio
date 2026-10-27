@@ -32,8 +32,8 @@ const TradeHistory = ({ stocks }: TradeHistoryProps) => {
   });
 
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden">
-      <div className="p-4 border-b border-border flex items-center justify-between">
+    <div className="glass-card overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 sm:px-5">
         <div className="flex items-center gap-2">
           <History className="h-4 w-4 text-primary" />
           <div>
@@ -47,7 +47,8 @@ const TradeHistory = ({ stocks }: TradeHistoryProps) => {
               key={p}
               variant={filter === p ? "default" : "ghost"}
               size="sm"
-              className="text-xs h-7 px-2.5"
+              className="text-xs h-8 px-2.5"
+              aria-pressed={filter === p}
               onClick={() => setFilter(p)}
             >
               {p === "7d" ? "7 Days" : p === "30d" ? "30 Days" : "All Time"}
@@ -55,11 +56,22 @@ const TradeHistory = ({ stocks }: TradeHistoryProps) => {
           ))}
         </div>
       </div>
+      {filtered.length === 0 ? (
+        <div className="zf-empty-state">
+          <div className="zf-empty-icon" aria-hidden="true"><History /></div>
+          <h3 className="zf-empty-title">No completed trades in this period</h3>
+          <p className="zf-empty-body">
+            {closedTrades.length === 0
+              ? "Closed positions appear here with their realised P&L and holding time."
+              : "Try a longer period to see earlier closed trades."}
+          </p>
+        </div>
+      ) : (
       <div className="overflow-x-auto">
-        <Table>
+        <Table className="min-w-[860px] [font-variant-numeric:tabular-nums]">
           <TableHeader>
             <TableRow className="hover:bg-transparent border-border">
-              <TableHead className="table-header">Ticker</TableHead>
+              <TableHead className="table-header zf-sticky-col">Ticker</TableHead>
               <TableHead className="table-header">Stock Name</TableHead>
               <TableHead className="table-header text-right">Entry (₹)</TableHead>
               <TableHead className="table-header text-right">Exit (₹)</TableHead>
@@ -71,32 +83,25 @@ const TradeHistory = ({ stocks }: TradeHistoryProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground text-sm py-8">
-                  No completed trades in this period
-                </TableCell>
-              </TableRow>
-            ) : (
-              filtered.map(stock => {
+            {filtered.map(stock => {
                 const pl = calcProfitLoss(stock);
                 const plPct = ((stock.exitPrice! - stock.entryPrice) / stock.entryPrice) * 100;
                 const days = calcHoldingDays(stock.entryDate, stock.exitDate);
                 return (
                   <TableRow key={stock.ticker} className="border-border hover:bg-accent/50">
-                    <TableCell className="font-mono font-semibold text-primary text-sm">{stock.ticker}</TableCell>
+                    <TableCell className="zf-sticky-col font-mono font-semibold text-primary text-sm">{stock.ticker}</TableCell>
                     <TableCell className="text-sm truncate max-w-[140px]">{stock.stockName}</TableCell>
                     <TableCell className="text-right font-mono text-sm">₹{stock.entryPrice.toFixed(1)}</TableCell>
                     <TableCell className="text-right font-mono text-sm">₹{stock.exitPrice?.toFixed(2)}</TableCell>
                     <TableCell className="text-right font-mono text-sm">{stock.quantity}</TableCell>
                     <TableCell className="text-right">
                       <span className={`font-mono text-sm font-medium ${pl >= 0 ? "text-profit" : "text-loss"}`}>
-                        {pl >= 0 ? "+" : ""}₹{pl.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                        {pl >= 0 ? "+" : "−"}₹{Math.abs(pl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <span className={`font-mono text-sm ${plPct >= 0 ? "text-profit" : "text-loss"}`}>
-                        {plPct >= 0 ? "+" : ""}{plPct.toFixed(2)}%
+                        {plPct >= 0 ? "+" : "−"}{Math.abs(plPct).toFixed(2)}%
                       </span>
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm text-muted-foreground">{days}d</TableCell>
@@ -107,11 +112,11 @@ const TradeHistory = ({ stocks }: TradeHistoryProps) => {
                     </TableCell>
                   </TableRow>
                 );
-              })
-            )}
+              })}
           </TableBody>
         </Table>
       </div>
+      )}
     </div>
   );
 };

@@ -25,7 +25,7 @@ const TradeAnalytics = ({ stocks }: TradeAnalyticsProps) => {
     },
     {
       label: "Avg Profit / Trade",
-      value: `₹${analytics.avgProfit.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+      value: `${analytics.avgProfit > 0 ? "+" : ""}₹${analytics.avgProfit.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
       icon: TrendingUp,
       color: "text-profit",
       bg: "bg-profit/10",
@@ -33,7 +33,7 @@ const TradeAnalytics = ({ stocks }: TradeAnalyticsProps) => {
     },
     {
       label: "Avg Loss / Trade",
-      value: `₹${analytics.avgLoss.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+      value: `${analytics.avgLoss > 0 ? "−" : ""}₹${analytics.avgLoss.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
       icon: TrendingDown,
       color: "text-loss",
       bg: "bg-loss/10",
@@ -54,7 +54,7 @@ const TradeAnalytics = ({ stocks }: TradeAnalyticsProps) => {
     },
     {
       label: "Largest Win",
-      value: `₹${analytics.largestWin.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+      value: `${analytics.largestWin > 0 ? "+" : ""}₹${analytics.largestWin.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
       icon: Trophy,
       color: "text-profit",
       bg: "bg-profit/10",
@@ -62,7 +62,7 @@ const TradeAnalytics = ({ stocks }: TradeAnalyticsProps) => {
     },
     {
       label: "Largest Loss",
-      value: `₹${Math.abs(analytics.largestLoss).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+      value: `${analytics.largestLoss < 0 ? "−" : ""}₹${Math.abs(analytics.largestLoss).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
       icon: Skull,
       color: "text-loss",
       bg: "bg-loss/10",

@@ -3,48 +3,51 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PortfolioSnapshot } from "./usePortfolioSync";
 
 /**
- * Simulated Postgres + RLS. `currentUser` stands in for `auth.uid()`:
- *  - SELECT only returns a row when it belongs to the current user
- *  - UPSERT is rejected unless the payload's user_id is the current user
- *    (this is the `WITH CHECK (auth.uid() = user_id)` clause)
+ * Simulated Firestore-backed store. `currentUser` stands in for the uid whose
+ * Firebase ID token the request carries:
+ *  - a read returns the document only when it belongs to the caller
+ *  - a write aimed at another uid is rejected (security rules answer 403)
+ *  - a failed read is reported as an error, never as an empty account
  */
 const db = vi.hoisted(() => ({
   rows: new Map<string, unknown>(),
   currentUser: null as string | null,
-  /** Forces the DB to hand back a foreign row, to test client-side defence. */
-  forceLeakRow: null as { user_id: string; snapshot: unknown } | null,
+  /** Forces a genuine read failure (NOT the "document missing" case). */
+  loadError: null as string | null,
+  /** Counts successful writes so a blocked save can be proven to never land. */
+  writes: 0,
 }));
 
-vi.mock("@/lib/supabase", () => ({
-  supabase: {
-    from: () => ({
-      select: () => ({
-        eq: (_column: string, value: string) => ({
-          single: async () => {
-            if (db.forceLeakRow) return { data: db.forceLeakRow, error: null };
-            if (!db.currentUser || value !== db.currentUser) {
-              return { data: null, error: { message: "no rows returned" } };
-            }
-            if (!db.rows.has(value)) {
-              return { data: null, error: { message: "no rows returned" } };
-            }
-            return { data: { user_id: value, snapshot: db.rows.get(value) }, error: null };
-          },
-        }),
-      }),
-      upsert: async (payload: { user_id: string; snapshot: unknown }) => {
-        if (!db.currentUser || payload.user_id !== db.currentUser) {
-          return { error: { message: "new row violates row-level security policy" } };
-        }
-        db.rows.set(payload.user_id, payload.snapshot);
-        return { error: null };
-      },
-    }),
-  },
+vi.mock("@/lib/data", () => ({
+  getPortfolioDataStore: async () => ({
+    name: "firestore",
+    async loadSnapshot(userId: string) {
+      if (db.loadError) return { status: "error", error: db.loadError };
+      if (!db.currentUser || userId !== db.currentUser || !db.rows.has(userId)) {
+        return { status: "ok", snapshot: null };
+      }
+      return { status: "ok", snapshot: db.rows.get(userId) };
+    },
+    async saveSnapshot(userId: string, snapshot: unknown) {
+      if (!db.currentUser || userId !== db.currentUser) {
+        return "You can only write to your own portfolio.";
+      }
+      db.rows.set(userId, snapshot);
+      db.writes += 1;
+      return null;
+    },
+    async loadDisplayName() {
+      return null;
+    },
+    async saveDisplayName() {
+      return null;
+    },
+  }),
 }));
 
 import {
   clearLocalPortfolioCache,
+  CLOUD_UNAVAILABLE_MESSAGE,
   displayNameKeyFor,
   GUEST_STORAGE_KEY,
   LEGACY_STORAGE_KEY,
@@ -73,7 +76,8 @@ beforeEach(() => {
   window.localStorage.clear();
   db.rows.clear();
   db.currentUser = null;
-  db.forceLeakRow = null;
+  db.loadError = null;
+  db.writes = 0;
 });
 
 describe("cache scoping", () => {
@@ -101,21 +105,21 @@ describe("no cross-scope fallback", () => {
     window.localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(snapshotFor("LEGACY")));
     db.currentUser = USER_A;
 
-    await expect(syncFor(USER_A).current.load()).resolves.toBeNull();
+    await expect(syncFor(USER_A).current.load()).resolves.toEqual({ status: "ready", snapshot: null });
   });
 
   it("never adopts the guest cache into an account", async () => {
     window.localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(snapshotFor("GUESTCO")));
     db.currentUser = USER_A;
 
-    await expect(syncFor(USER_A).current.load()).resolves.toBeNull();
+    await expect(syncFor(USER_A).current.load()).resolves.toEqual({ status: "ready", snapshot: null });
   });
 
   it("never adopts another account's cache", async () => {
     window.localStorage.setItem(userStorageKey(USER_A), JSON.stringify(snapshotFor("INFY")));
     db.currentUser = USER_B;
 
-    await expect(syncFor(USER_B).current.load()).resolves.toBeNull();
+    await expect(syncFor(USER_B).current.load()).resolves.toEqual({ status: "ready", snapshot: null });
   });
 });
 
@@ -128,30 +132,28 @@ describe("two-user server isolation", () => {
     expect(await saveToServer(USER_B, snapshotFor("HDFCBANK"))).toBeNull();
 
     db.currentUser = USER_A;
-    expect(await loadFromServer(USER_A)).toMatchObject({ stocks: [{ ticker: "TCS" }] });
-    expect(await loadFromServer(USER_B)).toBeNull();
+    const rowA = await loadFromServer(USER_A);
+    expect(rowA.status).toBe("ok");
+    expect(rowA.status === "ok" && rowA.snapshot).toMatchObject({ stocks: [{ ticker: "TCS" }] });
+    expect(await loadFromServer(USER_B)).toEqual({ status: "ok", snapshot: null });
 
     db.currentUser = USER_B;
-    expect(await loadFromServer(USER_B)).toMatchObject({ stocks: [{ ticker: "HDFCBANK" }] });
-    expect(await loadFromServer(USER_A)).toBeNull();
+    const rowB = await loadFromServer(USER_B);
+    expect(rowB.status).toBe("ok");
+    expect(rowB.status === "ok" && rowB.snapshot).toMatchObject({ stocks: [{ ticker: "HDFCBANK" }] });
+    expect(await loadFromServer(USER_A)).toEqual({ status: "ok", snapshot: null });
   });
 
-  it("rejects a write aimed at another user's row", async () => {
+  it("rejects a write aimed at another user's document", async () => {
     db.currentUser = USER_A;
     await saveToServer(USER_A, snapshotFor("TCS"));
 
     db.currentUser = USER_B;
     const error = await saveToServer(USER_A, snapshotFor("HIJACK"));
 
-    expect(error).toMatch(/row-level security/i);
+    expect(error).toBeTruthy();
     expect(JSON.stringify(db.rows.get(USER_A))).toContain("TCS");
     expect(JSON.stringify(db.rows.get(USER_A))).not.toContain("HIJACK");
-  });
-
-  it("discards a foreign row even if the database leaks one", async () => {
-    db.forceLeakRow = { user_id: USER_A, snapshot: snapshotFor("TCS") };
-
-    await expect(loadFromServer(USER_B)).resolves.toBeNull();
   });
 });
 
@@ -186,7 +188,7 @@ describe("logout and account switching", () => {
     clearLocalPortfolioCache();
 
     db.currentUser = USER_B;
-    await expect(syncFor(USER_B).current.load()).resolves.toBeNull();
+    await expect(syncFor(USER_B).current.load()).resolves.toEqual({ status: "ready", snapshot: null });
   });
 
   it("keeps the previous account's data out even without a cache clear", async () => {
@@ -194,7 +196,7 @@ describe("logout and account switching", () => {
     await syncFor(USER_A).current.save(snapshotFor("TCS"));
 
     db.currentUser = USER_B;
-    await expect(syncFor(USER_B).current.load()).resolves.toBeNull();
+    await expect(syncFor(USER_B).current.load()).resolves.toEqual({ status: "ready", snapshot: null });
   });
 
   it("restores each account's own data on sign-in", async () => {
@@ -204,13 +206,69 @@ describe("logout and account switching", () => {
     await syncFor(USER_B).current.save(snapshotFor("HDFCBANK"));
 
     db.currentUser = USER_A;
-    await expect(syncFor(USER_A).current.load()).resolves.toMatchObject({
-      stocks: [{ ticker: "TCS" }],
-    });
+    const restoredA = await syncFor(USER_A).current.load();
+    expect(restoredA.status).toBe("ready");
+    expect(restoredA.snapshot).toMatchObject({ stocks: [{ ticker: "TCS" }] });
 
     db.currentUser = USER_B;
-    await expect(syncFor(USER_B).current.load()).resolves.toMatchObject({
-      stocks: [{ ticker: "HDFCBANK" }],
-    });
+    const restoredB = await syncFor(USER_B).current.load();
+    expect(restoredB.status).toBe("ready");
+    expect(restoredB.snapshot).toMatchObject({ stocks: [{ ticker: "HDFCBANK" }] });
+  });
+});
+
+describe("first-load hydration gate", () => {
+  it("refuses a cloud write before the initial read completes", async () => {
+    db.currentUser = USER_A;
+
+    await expect(syncFor(USER_A).current.save(snapshotFor("EARLY"))).resolves.toBe(
+      CLOUD_UNAVAILABLE_MESSAGE,
+    );
+
+    expect(db.writes).toBe(0);
+    // The edit is not lost — it is kept on this device.
+    expect(window.localStorage.getItem(userStorageKey(USER_A))).toContain("EARLY");
+  });
+
+  it("shows the device cache but never overwrites cloud data after a failed read", async () => {
+    window.localStorage.setItem(userStorageKey(USER_A), JSON.stringify(snapshotFor("LOCALONLY")));
+    db.currentUser = USER_A;
+    db.loadError = "permission denied";
+
+    const hook = syncFor(USER_A);
+    const loaded = await hook.current.load();
+
+    expect(loaded.status).toBe("degraded");
+    expect(loaded.snapshot).toMatchObject({ stocks: [{ ticker: "LOCALONLY" }] });
+
+    await expect(hook.current.save(snapshotFor("NEW"))).resolves.toBe(CLOUD_UNAVAILABLE_MESSAGE);
+    expect(db.writes).toBe(0);
+  });
+
+  it("becomes writable once a successful read has completed", async () => {
+    db.currentUser = USER_A;
+    await saveToServer(USER_A, snapshotFor("SERVER"));
+
+    const hook = syncFor(USER_A);
+    const loaded = await hook.current.load();
+    expect(loaded.status).toBe("ready");
+    expect(loaded.snapshot).toMatchObject({ stocks: [{ ticker: "SERVER" }] });
+    await expect(hook.current.save(snapshotFor("UPDATED"))).resolves.toBeNull();
+
+    expect(db.writes).toBe(2);
+  });
+
+  it("does not let the previous account's readiness authorise a write for the next", async () => {
+    db.currentUser = USER_A;
+    const { result, rerender } = renderHook(
+      ({ id }: { id: string | undefined }) => usePortfolioSync(id),
+      { initialProps: { id: USER_A as string | undefined } },
+    );
+    await result.current.load();
+
+    rerender({ id: USER_B });
+    // No load() has run for USER_B.
+    await expect(result.current.save(snapshotFor("LEAK"))).resolves.toBe(CLOUD_UNAVAILABLE_MESSAGE);
+    expect(db.writes).toBe(0);
   });
 });

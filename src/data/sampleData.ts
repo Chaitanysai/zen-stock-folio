@@ -1,4 +1,4 @@
-export interface PortfolioStock {
+﻿export interface PortfolioStock {
   ticker: string;
   stockName: string;
   sector?: string;
@@ -57,6 +57,18 @@ export interface PriceAlert {
   direction: "above" | "below" | "between";
   triggered: boolean;
   createdAt: string;
+  /** Set the first time the threshold is crossed while the app is open. */
+  triggeredAt?: string;
+  /** User acknowledged a triggered alert; it stays terminal and hidden. */
+  dismissedAt?: string;
+  /**
+   * Upper bound for a `between` alert. Optional and additive so every alert
+   * saved before ranges existed still parses; a `between` alert without it is
+   * reported as invalid rather than evaluated against a guessed bound.
+   */
+  targetPriceUpper?: number;
+  /** Whether evaluation is active. Absent means enabled (legacy default). */
+  enabled?: boolean;
 }
 
 export const SECTOR_MAP: Record<string, string> = {
@@ -139,9 +151,9 @@ export function getTargetStatus(strategy: TradeStrategy): string {
 
 export function getSLRiskIndicator(strategy: TradeStrategy): { label: string; emoji: string; level: "safe" | "risk" | "hit" } {
   const slDistance = ((strategy.livePrice - strategy.stopLoss) / strategy.stopLoss) * 100;
-  if (strategy.livePrice < strategy.stopLoss) return { label: "Stop Loss Hit", emoji: "❌", level: "hit" };
-  if (slDistance < 2) return { label: "Risk", emoji: "⚠️", level: "risk" };
-  return { label: "Safe (Above SL)", emoji: "✅", level: "safe" };
+  if (strategy.livePrice < strategy.stopLoss) return { label: "Stop Loss Hit", emoji: "âŒ", level: "hit" };
+  if (slDistance < 2) return { label: "Risk", emoji: "âš ï¸", level: "risk" };
+  return { label: "Safe (Above SL)", emoji: "âœ…", level: "safe" };
 }
 
 export function getProgressPercent(strategy: TradeStrategy): number {
@@ -151,10 +163,10 @@ export function getProgressPercent(strategy: TradeStrategy): number {
 }
 
 export function getWatchlistStatus(stock: WatchlistStock): { label: string; emoji: string; level: "entry" | "target" | "sl" | "neutral" } {
-  if (stock.cmp < stock.stopLoss) return { label: "SL Hit", emoji: "❌", level: "sl" };
-  if (stock.cmp >= stock.entryZoneLow && stock.cmp <= stock.entryZoneHigh) return { label: "Entry Opportunity", emoji: "🟢", level: "entry" };
-  if (stock.cmp > stock.target1) return { label: "Target Hit", emoji: "🎯", level: "target" };
-  return { label: "Watching", emoji: "👀", level: "neutral" };
+  if (stock.cmp < stock.stopLoss) return { label: "SL Hit", emoji: "âŒ", level: "sl" };
+  if (stock.cmp >= stock.entryZoneLow && stock.cmp <= stock.entryZoneHigh) return { label: "Entry Opportunity", emoji: "ðŸŸ¢", level: "entry" };
+  if (stock.cmp > stock.target1) return { label: "Target Hit", emoji: "ðŸŽ¯", level: "target" };
+  return { label: "Watching", emoji: "ðŸ‘€", level: "neutral" };
 }
 
 export function calcHoldingDays(entryDate: string, exitDate?: string): number {
@@ -219,9 +231,9 @@ export function getSectorAllocation(stocks: PortfolioStock[]): { sector: string;
   })).sort((a, b) => b.value - a.value);
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // F&O DATA TYPES + SAMPLE DATA
-// ════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 export type FnOInstrumentType = "FUT" | "CE" | "PE";
 export type FnOStatus = "Open" | "Closed Profit" | "Closed Loss" | "Expired";
@@ -248,7 +260,7 @@ export interface FnOTrade {
 
 // NSE standard lot sizes (as of 2025)
 export const LOT_SIZES: Record<string, number> = {
-  // ── Nifty 50 & large-cap F&O stocks (NSE lot sizes as of 2025-26) ──
+  // â”€â”€ Nifty 50 & large-cap F&O stocks (NSE lot sizes as of 2025-26) â”€â”€
   RELIANCE:      250,
   TCS:           150,
   INFY:          300,
@@ -269,14 +281,14 @@ export const LOT_SIZES: Record<string, number> = {
   ASIANPAINT:    200,
   ULTRACEMCO:    200,
   ONGC:          3850,
-  // ── IT & Midcap tech ──
+  // â”€â”€ IT & Midcap tech â”€â”€
   OFSS:          75,       // Oracle Financial Services
   MPHASIS:       275,
   LTTS:          150,
   PERSISTENT:    150,
   COFORGE:       150,
   TECHM:         600,
-  // ── Banking & Finance ──
+  // â”€â”€ Banking & Finance â”€â”€
   FEDERALBNK:    5000,
   INDUSINDBK:    500,
   BANDHANBNK:    2500,
@@ -289,13 +301,13 @@ export const LOT_SIZES: Record<string, number> = {
   HDFCLIFE:      1100,
   SBILIFE:       750,
   ICICIGI:       375,
-  // ── Auto & EV ──
+  // â”€â”€ Auto & EV â”€â”€
   HEROMOTOCO:    300,
   BAJAJAUTO:     250,
   EICHERMOT:     175,
   MM:            700,
   TVSMOTOR:      700,
-  // ── Energy & Infra ──
+  // â”€â”€ Energy & Infra â”€â”€
   POWERGRID:     3850,
   NTPC:          3000,
   COALINDIA:     4200,
@@ -306,13 +318,13 @@ export const LOT_SIZES: Record<string, number> = {
   ADANIGREEN:    500,
   ADANITRANS:    500,
   TORNTPOWER:    500,
-  // ── Pharma & Healthcare ──
+  // â”€â”€ Pharma & Healthcare â”€â”€
   DRREDDY:       125,
   CIPLA:         650,
   DIVISLAB:      300,
   BIOCON:        2500,
   APOLLOHOSP:    250,
-  // ── FMCG & Consumer ──
+  // â”€â”€ FMCG & Consumer â”€â”€
   HINDUNILVR:    300,
   NESTLEIND:     40,
   BRITANNIA:     200,
@@ -320,15 +332,15 @@ export const LOT_SIZES: Record<string, number> = {
   DABUR:         2750,
   MARICO:        2000,
   GODREJCP:      1000,
-  // ── Metals & Materials ──
+  // â”€â”€ Metals & Materials â”€â”€
   HINDALCO:      1700,
   JSWSTEEL:      1350,
   VEDL:          4000,
   NMDC:          7500,
   SAIL:          7500,
-  // ── Telecom & Media ──
+  // â”€â”€ Telecom & Media â”€â”€
   BHARTIARTL:    475,
-  // ── Index derivatives (unit = 1 per lot) ──
+  // â”€â”€ Index derivatives (unit = 1 per lot) â”€â”€
   NIFTY:         50,
   BANKNIFTY:     15,
   FINNIFTY:      40,
@@ -352,8 +364,8 @@ export function calcFnOPnL(trade: FnOTrade): number {
 
 // Helper: calc F&O invested (margin approximation)
 export function calcFnOInvested(trade: FnOTrade): number {
-  // Options: premium paid = entry × lots × lotSize
-  // Futures: margin ≈ 15% of notional (approximate)
+  // Options: premium paid = entry Ã— lots Ã— lotSize
+  // Futures: margin â‰ˆ 15% of notional (approximate)
   if (trade.instrumentType === "FUT") {
     return trade.entryPrice * trade.lots * trade.lotSize * 0.15;
   }
@@ -363,15 +375,28 @@ export function calcFnOInvested(trade: FnOTrade): number {
 // Helper: format expiry to display
 export function fmtExpiry(expiry: string): string {
   try {
-    const parts = expiry.split("-");
-    if (parts.length === 3) {
+    const parts = expiry.trim().split(/[-/\s]+/).filter(Boolean);
+    if (parts.length !== 3) return expiry;
+
+    // "YYYY-MM-DD"
+    if (parts[0].length === 4) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
       const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-      const d = parseInt(parts[0]);
-      const m = parseInt(parts[1]) - 1;
-      const y = parts[2].slice(-2);
-      return `${d} ${months[m]} '${y}`;
+      if (!months[month] || !Number.isFinite(day)) return expiry;
+      return `${day} ${months[month]} '${String(year).slice(-2)}`;
     }
-    return expiry;
+
+    const months = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
+    const day = parseInt(parts[0], 10);
+    // Accept a numeric month (02) or a month name (Feb / February).
+    const monthName = parts[1].toLowerCase().slice(0, 3);
+    const month = /^\d+$/.test(parts[1]) ? parseInt(parts[1], 10) - 1 : months.indexOf(monthName);
+    const year = Number(parts[2]);
+    // An unparseable part is echoed rather than rendered as "undefined".
+    if (!months[month] || !Number.isFinite(day) || !Number.isFinite(year)) return expiry;
+    return `${day} ${months[month][0].toUpperCase()}${months[month].slice(1)} '${String(year).slice(-2)}`;
   } catch { return expiry; }
 }
 
@@ -404,7 +429,7 @@ export const fnOTradesData: FnOTrade[] = [
     entryDate: "15-Mar-2025",
     exitDate: "25-Mar-2025",
     status: "Closed Loss",
-    notes: "Earnings play — went against",
+    notes: "Earnings play â€” went against",
   },
   {
     id: "fno-3",
@@ -433,7 +458,7 @@ export const fnOTradesData: FnOTrade[] = [
     entryDate: "05-Apr-2025",
     status: "Open",
     ltp: 2490.0,
-    notes: "Swing trade — Q4 results play",
+    notes: "Swing trade â€” Q4 results play",
   },
   {
     id: "fno-5",

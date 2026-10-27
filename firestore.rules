@@ -1,0 +1,52 @@
+rules_version = '2';
+
+// ZenFolio — owner-only user data.
+//
+// Layout (must match src/lib/data/firestorePortfolioStore.ts):
+//   portfolios/{uid} -> one whole-portfolio snapshot per user
+//                       { uid, snapshot, updatedAt }
+//   users/{uid}      -> profile metadata
+//                       { uid, displayName, updatedAt }
+//
+// The document ID is the owner's auth uid. Every read and write requires
+// request.auth.uid == uid, and every create/update additionally requires the
+// payload's `uid` field to equal the document ID — the Firestore analogue of
+// the `WITH CHECK (auth.uid() = user_id)` clause the Supabase RLS policy
+// carried, so an owner cannot re-point a document at (or forge ownership
+// for) another account.
+//
+// There are intentionally NO other matches: no public collections, no
+// list-only grants, no wildcard fallback. Price caching lives in Cloudflare
+// KV (server-side), not Firestore.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /portfolios/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid;
+      allow update: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && resource.data.uid == uid;
+      allow delete: if isOwner(uid);
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid;
+      allow update: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && resource.data.uid == uid;
+      allow delete: if isOwner(uid);
+    }
+  }
+}

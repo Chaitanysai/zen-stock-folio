@@ -43,12 +43,11 @@ const DropdownMenuSubContent = React.forwardRef<
       // 🔥 FIX: layering
       "z-[9999]",
 
-      // ✨ premium glass
-      "min-w-[10rem] rounded-xl border border-white/10",
-      "bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl shadow-2xl",
+      // glass surface (global tokens, mostly opaque for legibility)
+      "min-w-[10rem] rounded-xl glass-elevated text-popover-foreground",
 
       // animation
-      "animate-in fade-in zoom-in-95 duration-150",
+      "duration-150 ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-[0.97] data-[state=closed]:zoom-out-[0.97]",
 
       "p-1",
       className
@@ -70,12 +69,11 @@ const DropdownMenuContent = React.forwardRef<
         // 🔥 CRITICAL FIX
         "z-[9999]",
 
-        // ✨ PREMIUM UI
-        "min-w-[12rem] rounded-xl border border-white/10",
-        "bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl shadow-2xl",
+        // glass surface (global tokens, mostly opaque for legibility)
+        "min-w-[12rem] rounded-xl glass-elevated text-popover-foreground",
 
-        // smooth animation
-        "animate-in fade-in zoom-in-95 duration-150",
+        // smooth enter/exit
+        "duration-150 ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-[0.97] data-[state=closed]:zoom-out-[0.97] data-[side=bottom]:slide-in-from-top-1 data-[side=top]:slide-in-from-bottom-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1",
 
         "p-1",
         className
@@ -97,7 +95,7 @@ const DropdownMenuItem = React.forwardRef<
     className={cn(
       "flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer",
       "outline-none transition-all",
-      "hover:bg-black/5 dark:hover:bg-white/10",
+      "hover:bg-accent/60",
       "focus:bg-accent focus:text-accent-foreground",
       "data-[disabled]:opacity-50 data-[disabled]:pointer-events-none",
       inset && "pl-8",
@@ -183,7 +181,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    className={cn("-mx-1 my-1 h-px bg-border/70", className)}
     {...props}
   />
 ));

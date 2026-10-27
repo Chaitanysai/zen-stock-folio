@@ -14,7 +14,7 @@ import {
   DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2, TrendingUp, TrendingDown, Upload, Plus } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Wallet } from "lucide-react";
 import AddTransactionDialog from "@/components/AddTransactionDialog";
 import ImportTradesDialog from "@/components/ImportTradesDialog";
 import EditTransactionDialog from "@/components/EditTransactionDialog";
@@ -107,9 +107,9 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
 
   return (
     <>
-      <div className="glass-card overflow-hidden wc-ctnr">
+      <div className="glass-card overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 border-b border-border sm:px-5">
           <div>
             <h2 className="text-base font-semibold text-foreground tracking-tight">
               Portfolio Holdings
@@ -118,7 +118,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
               {stocks.length} positions · All values in ₹ INR
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {selected.size > 0 && (
               <Button
                 variant="destructive"
@@ -136,18 +136,28 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
         </div>
 
         {/* Table */}
+        {stocks.length === 0 ? (
+          <div className="zf-empty-state">
+            <div className="zf-empty-icon" aria-hidden="true"><Wallet /></div>
+            <h3 className="zf-empty-title">No positions yet</h3>
+            <p className="zf-empty-body">
+              Add a trade or import your history from a CSV or XLSX file. Live prices and P&amp;L show up here once you do.
+            </p>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[1320px] [font-variant-numeric:tabular-nums]">
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="w-10 pl-5">
                   <Checkbox
                     checked={stocks.length > 0 && selected.size === stocks.length}
                     onCheckedChange={toggleAll}
+                    aria-label="Select all positions"
                   />
                 </TableHead>
                 <TableHead className="w-8" />
-                <TableHead>Ticker</TableHead>
+                <TableHead className="zf-sticky-col">Ticker</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Entry Date</TableHead>
                 <TableHead className="text-right">Avg Cost</TableHead>
@@ -183,12 +193,13 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
                       <Checkbox
                         checked={selected.has(stock.ticker)}
                         onCheckedChange={() => toggleSelect(stock.ticker)}
+                        aria-label={`Select ${stock.ticker}`}
                       />
                     </TableCell>
                     <TableCell className="w-8 p-1">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md" aria-label={`Actions for ${stock.ticker}`}>
                             <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -206,7 +217,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
                       </DropdownMenu>
                     </TableCell>
 
-                    <TableCell>
+                    <TableCell className="zf-sticky-col">
                       <span className="font-mono font-bold text-primary text-[13px] tracking-tight">
                         {stock.ticker}
                       </span>
@@ -242,7 +253,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
                           changePct >= 0 ? "text-profit" : "text-loss"
                         }`}
                       >
-                        {changePct >= 0 ? "+" : ""}{changePct.toFixed(2)}%
+                        {changePct >= 0 ? "+" : "−"}{Math.abs(changePct).toFixed(2)}%
                       </span>
                     </TableCell>
                     <TableCell className="text-right font-mono text-[12px] text-muted-foreground">
@@ -265,6 +276,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
             </TableBody>
           </Table>
         </div>
+        )}
       </div>
 
       {/* Dialogs */}
@@ -285,7 +297,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-white">
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -302,7 +314,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete }: Portfolio
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmBulkDelete} className="bg-destructive text-white">
+            <AlertDialogAction onClick={confirmBulkDelete} className="bg-destructive text-destructive-foreground">
               Delete All
             </AlertDialogAction>
           </AlertDialogFooter>

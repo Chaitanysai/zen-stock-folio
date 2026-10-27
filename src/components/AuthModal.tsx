@@ -21,17 +21,35 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
 
   const handleEmailSubmit = async () => {
     setError(null); setSuccess(null); setLoading(true);
-    const err = mode === "signin"
-      ? await signInWithEmail(email, password)
-      : await signUpWithEmail(email, password);
-    setLoading(false);
-    if (err === "CONFIRM_EMAIL" || (mode === "signup" && !err)) {
-      setSuccess("Check your email to confirm your account, then sign in.");
-    } else if (err) setError(err);
-    else onOpenChange(false);
+    try {
+      const err = mode === "signin"
+        ? await signInWithEmail(email, password)
+        : await signUpWithEmail(email, password);
+      if (err === "CONFIRM_EMAIL" || (mode === "signup" && !err)) {
+        setSuccess("Check your email to confirm your account, then sign in.");
+      } else if (err) setError(err);
+      else onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGoogle = async () => { setError(null); await signInWithGoogle(); };
+  const handleGoogle = async () => {
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+      // A successful popup sign-in closes the modal via the auth state change;
+      // a user-cancelled popup resolves without a session and simply stays open.
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -45,7 +63,7 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3 pt-2">
-          <Button variant="outline" className="w-full gap-2" onClick={handleGoogle}>
+          <Button variant="outline" className="w-full gap-2" onClick={handleGoogle} disabled={loading}>
             <Chrome className="h-4 w-4" /> Continue with Google
           </Button>
           <div className="relative">

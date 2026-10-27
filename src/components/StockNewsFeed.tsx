@@ -1,28 +1,18 @@
-/**
- * StockNewsFeed.tsx — News feed for portfolio holdings
- * Drop into: src/components/StockNewsFeed.tsx
- *
- * Usage:
- *   import StockNewsFeed from "@/components/StockNewsFeed";
- *   <StockNewsFeed stocks={portfolioStocks} />
- *
- * Features:
- *  - Per-ticker news tabs with live sentiment dot
- *  - Sentiment summary bar (Positive / Neutral / Negative counts)
- *  - Skeleton loading states
- *  - Auto-refresh every 5 min
- *  - Graceful mock-data fallback while /api/news isn't wired up
- *  - Full dark mode support (matches your existing .dark CSS variables)
- */
-
-import { useState, useEffect, useCallback, useRef } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Newspaper, RefreshCw, ExternalLink, TrendingUp,
-  TrendingDown, Minus, Clock, Wifi, WifiOff,
+  Newspaper,
+  RefreshCw,
+  ExternalLink,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Clock,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import type { PortfolioStock } from "@/data/sampleData";
+import { apiFetch } from "@/lib/api";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 export interface NewsItem {
   id: string;
   ticker: string;
@@ -38,109 +28,55 @@ interface Props {
   stocks: PortfolioStock[];
 }
 
-// ─── Theme tokens — mirrors your existing T object in AIInsights.tsx ──────────
-const T = {
-  navy:     "#1c3557",
-  navyPale: "#eef4fc",
-  navyBd:   "rgba(28,53,87,.12)",
-  navyTint: "rgba(28,53,87,.06)",
-  bg:       "#ffffff",
-  bgSurf:   "#f8f9fc",
-  bgPage:   "#f4f6f9",
-  bdMid:    "#e5e7eb",
-  bdSoft:   "#f0f2f5",
-  txHi:     "#111827",
-  txMed:    "#4b5563",
-  txLo:     "#6b7280",
-  txGhost:  "#9ca3af",
-  profit:   "#059669",
-  profitBg: "#ecfdf5",
-  profitBd: "#a7f3d0",
-  loss:     "#dc2626",
-  lossBg:   "#fef2f2",
-  lossBd:   "#fecaca",
-  warn:     "#d97706",
-  shadow:   "0 4px 16px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04)",
-};
+const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function timeAgo(iso: string): string {
-  const diff  = Date.now() - new Date(iso).getTime();
-  const mins  = Math.floor(diff / 60000);
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
   const hours = Math.floor(mins / 60);
-  const days  = Math.floor(hours / 24);
-  if (mins  < 1)  return "just now";
-  if (mins  < 60) return `${mins}m ago`;
+  const days = Math.floor(hours / 24);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
   if (hours < 24) return `${hours}h ago`;
   return `${days}d ago`;
 }
 
-function sentimentConfig(s: NewsItem["sentiment"]) {
-  if (s === "positive") return { Icon: TrendingUp,   color: T.profit, bg: T.profitBg, bd: T.profitBd, label: "Positive" };
-  if (s === "negative") return { Icon: TrendingDown, color: T.loss,   bg: T.lossBg,   bd: T.lossBd,   label: "Negative" };
-  return                       { Icon: Minus,        color: T.txLo,   bg: T.bgSurf,   bd: T.bdMid,    label: "Neutral"  };
-}
-
-// ─── Mock news generator (fallback until /api/news is wired up) ───────────────
-function getMockNews(tickers: string[]): NewsItem[] {
-  const sources   = ["Economic Times", "Moneycontrol", "Business Standard", "Mint", "NDTV Profit"];
-  const templates = [
-    { h: "{t} Q3 results: Net profit surges 28% YoY, beats estimates",     s: "positive" as const },
-    { h: "{t} announces ₹500 Cr buyback; board approves at premium",        s: "positive" as const },
-    { h: "Analysts upgrade {t} to 'Buy'; raise target to ₹{p}",            s: "positive" as const },
-    { h: "{t} board approves 1:2 bonus share issue for shareholders",       s: "positive" as const },
-    { h: "{t} Q3 profit misses estimates; margins under pressure",           s: "negative" as const },
-    { h: "Promoters of {t} offload 2.4% stake via open market block deal",  s: "negative" as const },
-    { h: "{t} faces regulatory scrutiny; SEBI initiates inquiry",            s: "negative" as const },
-    { h: "{t} revises FY25 guidance downward amid weak demand outlook",      s: "negative" as const },
-    { h: "{t} trading flat ahead of quarterly earnings release",              s: "neutral"  as const },
-    { h: "Mutual funds increase {t} stake by 1.1% in December quarter",     s: "neutral"  as const },
-    { h: "{t} AGM: Management signals cautious optimism for H2 FY25",       s: "neutral"  as const },
-    { h: "{t} secures major export contract worth ₹{p} Cr",                 s: "positive" as const },
-  ];
-  const summaries: Record<NewsItem["sentiment"], string> = {
-    positive: "Strong fundamentals and improving business metrics are driving investor confidence. Analysts remain bullish on the medium-term outlook.",
-    negative: "Weak quarterly performance and macro headwinds have dented investor sentiment. Analysts advise caution in the near term.",
-    neutral:  "Markets await further clarity on business trajectory. No major catalysts expected in the short term. Investors remain watchful.",
+function sentimentConfig(sentiment: NewsItem["sentiment"]) {
+  if (sentiment === "positive") {
+    return {
+      Icon: TrendingUp,
+      classes: "border-profit/30 bg-profit/10 text-profit",
+      dot: "bg-profit",
+      label: "Positive",
+    };
+  }
+  if (sentiment === "negative") {
+    return {
+      Icon: TrendingDown,
+      classes: "border-loss/30 bg-loss/10 text-loss",
+      dot: "bg-loss",
+      label: "Negative",
+    };
+  }
+  return {
+    Icon: Minus,
+    classes: "border-border bg-muted text-muted-foreground",
+    dot: "bg-muted-foreground",
+    label: "Neutral",
   };
-
-  const items: NewsItem[] = [];
-  let id = 0;
-  tickers.forEach((ticker, ti) => {
-    const shuffled = [...templates].sort(() => Math.random() - 0.5).slice(0, 3);
-    shuffled.forEach((tmpl, ni) => {
-      const price = Math.floor(Math.random() * 3000 + 200);
-      items.push({
-        id:          `mock-${++id}`,
-        ticker,
-        headline:    tmpl.h.replace("{t}", ticker).replace("{p}", String(price)),
-        summary:     summaries[tmpl.s],
-        source:      sources[(ti + ni) % sources.length],
-        url:         "#",
-        publishedAt: new Date(Date.now() - (id * 47 + ni * 180) * 60000).toISOString(),
-        sentiment:   tmpl.s,
-      });
-    });
-  });
-  return items.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 }
 
-// ─── Skeleton loader ──────────────────────────────────────────────────────────
 function NewsSkeleton() {
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      {[1, 2, 3, 4].map(i => (
-        <div key={i} style={{ padding: "16px 20px", borderBottom: `1px solid ${T.bdSoft}` }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 9, background: T.bgSurf, flexShrink: 0,
-              animation: "news-pulse 1.4s ease infinite",
-              animationDelay: `${i * 120}ms`,
-            }} />
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ height: 13, borderRadius: 6, background: T.bgSurf, width: "85%", animation: "news-pulse 1.4s ease infinite", animationDelay: `${i * 100}ms` }} />
-              <div style={{ height: 13, borderRadius: 6, background: T.bgSurf, width: "65%", animation: "news-pulse 1.4s ease infinite", animationDelay: `${i * 80}ms`  }} />
-              <div style={{ height: 11, borderRadius: 6, background: T.bgSurf, width: "38%", animation: "news-pulse 1.4s ease infinite", animationDelay: `${i * 60}ms`  }} />
+    <div className="flex flex-col" aria-hidden="true">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="border-b border-border/50 px-4 py-4 last:border-b-0 sm:px-5">
+          <div className="flex items-start gap-3 motion-safe:animate-pulse">
+            <div className="h-9 w-9 shrink-0 rounded-lg bg-muted" />
+            <div className="flex flex-1 flex-col gap-2">
+              <div className="h-3.5 w-11/12 rounded bg-muted" />
+              <div className="h-3.5 w-8/12 rounded bg-muted" />
+              <div className="h-3 w-5/12 rounded bg-muted" />
             </div>
           </div>
         </div>
@@ -149,410 +85,286 @@ function NewsSkeleton() {
   );
 }
 
-// ─── Single news card ─────────────────────────────────────────────────────────
 function NewsCard({ item, showTicker }: { item: NewsItem; showTicker: boolean }) {
-  const [hovered, setHovered] = useState(false);
-  const sc = sentimentConfig(item.sentiment);
-  const { Icon } = sc;
+  const sentiment = sentimentConfig(item.sentiment);
+  const { Icon } = sentiment;
+  const hasLink = item.url !== "#";
 
   return (
     <a
-      href={item.url === "#" ? undefined : item.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="news-card"
-      style={{
-        display: "block",
-        padding: "15px 20px",
-        borderBottom: `1px solid ${T.bdSoft}`,
-        background: hovered ? T.bgSurf : T.bg,
-        transition: "background .13s",
-        cursor: item.url === "#" ? "default" : "pointer",
-        textDecoration: "none",
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      href={hasLink ? item.url : undefined}
+      target={hasLink ? "_blank" : undefined}
+      rel={hasLink ? "noopener noreferrer" : undefined}
+      className={`group block border-b border-border/50 bg-card/40 px-4 py-4 transition-colors last:border-b-0 hover:bg-muted/30 sm:px-5 ${hasLink ? focusRing : ""}`}
     >
-      <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-
-        {/* Sentiment icon */}
-        <div style={{
-          width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-          background: sc.bg, border: `1px solid ${sc.bd}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          marginTop: 1,
-        }}>
-          <Icon size={16} color={sc.color} />
+      <div className="flex items-start gap-3">
+        <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${sentiment.classes}`}>
+          <Icon size={16} aria-hidden="true" />
         </div>
 
-        {/* Content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-
-          {/* Badges row */}
-          <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 6, flexWrap: "wrap" }}>
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
             {showTicker && (
-              <span style={{
-                fontSize: 10, fontWeight: 800, padding: "2px 7px", borderRadius: 5,
-                background: T.navyPale, color: T.navy, border: `1px solid ${T.navyBd}`,
-                letterSpacing: ".04em",
-              }}>
+              <span className="rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs font-bold tracking-wide text-primary">
                 {item.ticker}
               </span>
             )}
-            <span style={{
-              fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 5,
-              background: sc.bg, color: sc.color, border: `1px solid ${sc.bd}`,
-            }}>
-              {sc.label}
+            <span className={`rounded-md border px-2 py-0.5 text-xs font-semibold ${sentiment.classes}`}>
+              {sentiment.label}
             </span>
-            <span style={{
-              fontSize: 10, color: T.txGhost, marginLeft: "auto",
-              display: "flex", alignItems: "center", gap: 3,
-            }}>
-              <Clock size={9} /> {timeAgo(item.publishedAt)}
-            </span>
+            <time
+              dateTime={item.publishedAt}
+              className="ml-auto flex items-center gap-1 text-xs text-muted-foreground tabular-nums"
+            >
+              <Clock size={11} aria-hidden="true" /> {timeAgo(item.publishedAt)}
+            </time>
           </div>
 
-          {/* Headline */}
-          <div className="news-headline" style={{
-            fontSize: 13, fontWeight: 600, color: T.txHi, lineHeight: 1.45, marginBottom: 5,
-          }}>
+          <h3 className="text-sm font-semibold leading-6 text-card-foreground">
             {item.headline}
-            {item.url !== "#" && hovered && (
-              <ExternalLink size={11} color={T.txGhost} style={{ display: "inline", marginLeft: 5, verticalAlign: "middle" }} />
+            {hasLink && (
+              <ExternalLink
+                size={12}
+                className="ml-1.5 inline align-middle text-muted-foreground opacity-60 transition-opacity group-hover:opacity-100 motion-reduce:transition-none"
+                aria-hidden="true"
+              />
             )}
-          </div>
-
-          {/* Summary */}
-          <div className="news-summary" style={{
-            fontSize: 11.5, color: T.txLo, lineHeight: 1.55,
-            display: "-webkit-box", WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical", overflow: "hidden",
-          }}>
-            {item.summary}
-          </div>
-
-          {/* Source */}
-          <div className="news-source" style={{ marginTop: 6, fontSize: 10.5, color: T.txGhost, fontWeight: 500 }}>
-            {item.source}
-          </div>
+          </h3>
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{item.summary}</p>
+          <p className="mt-1.5 text-xs font-medium text-muted-foreground">{item.source}</p>
         </div>
       </div>
     </a>
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
 export default function StockNewsFeed({ stocks }: Props) {
-  const activeTickers = [...new Set(
-    stocks.filter(s => s.status === "Active").map(s => s.ticker)
-  )].slice(0, 8);
+  const activeTickersKey = [...new Set(
+    stocks.filter((s) => s.status === "Active").map((s) => s.ticker),
+  )].slice(0, 8).join(",");
+  const activeTickers = useMemo(
+    () => activeTickersKey ? activeTickersKey.split(",") : [],
+    [activeTickersKey],
+  );
 
-  const [news,         setNews]         = useState<NewsItem[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState<string | null>(null);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTicker, setActiveTicker] = useState<string>("ALL");
-  const [lastUpdated,  setLastUpdated]  = useState<Date | null>(null);
-  const [isMock,       setIsMock]       = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchNews = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/news", {
+      const res = await apiFetch("/api/news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tickers: activeTickers }),
         signal: AbortSignal.timeout(8000),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setNews(data.items ?? []);
-        setIsMock(false);
-      } else {
-        throw new Error(`API ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`API ${res.status}`);
+      const data = await res.json();
+      setNews(data.items ?? []);
+      setLastUpdated(new Date());
     } catch {
-      setNews(getMockNews(activeTickers));
-      setIsMock(true);
+      setNews([]);
+      setError("Live news could not be loaded. Check your connection and try again.");
     } finally {
       setLoading(false);
-      setLastUpdated(new Date());
     }
-  }, [activeTickers.join(",")]);
+  }, [activeTickers]);
 
   useEffect(() => {
-    if (activeTickers.length === 0) { setLoading(false); return; }
+    if (activeTickers.length === 0) {
+      setLoading(false);
+      return;
+    }
     fetchNews();
     timerRef.current = setInterval(() => fetchNews(true), 5 * 60 * 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [fetchNews]);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [fetchNews, activeTickers.length]);
 
-  const sentCounts = news.reduce((acc, n) => {
-    acc[n.sentiment] = (acc[n.sentiment] ?? 0) + 1;
+  const sentCounts = news.reduce((acc, item) => {
+    acc[item.sentiment] = (acc[item.sentiment] ?? 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   const overallSentiment: NewsItem["sentiment"] =
-    (sentCounts.positive ?? 0) > (sentCounts.negative ?? 0) ? "positive"
-    : (sentCounts.negative ?? 0) > (sentCounts.positive ?? 0) ? "negative"
-    : "neutral";
+    (sentCounts.positive ?? 0) > (sentCounts.negative ?? 0)
+      ? "positive"
+      : (sentCounts.negative ?? 0) > (sentCounts.positive ?? 0)
+        ? "negative"
+        : "neutral";
 
-  const osc = sentimentConfig(overallSentiment);
-
+  const overall = sentimentConfig(overallSentiment);
   const filtered = activeTicker === "ALL"
     ? news
-    : news.filter(n => n.ticker === activeTicker);
+    : news.filter((item) => item.ticker === activeTicker);
 
   function tickerSentiment(ticker: string): NewsItem["sentiment"] {
-    const t   = news.filter(n => n.ticker === ticker);
-    if (!t.length) return "neutral";
-    const pos = t.filter(n => n.sentiment === "positive").length;
-    const neg = t.filter(n => n.sentiment === "negative").length;
-    return pos > neg ? "positive" : neg > pos ? "negative" : "neutral";
+    const tickerNews = news.filter((item) => item.ticker === ticker);
+    if (!tickerNews.length) return "neutral";
+    const positive = tickerNews.filter((item) => item.sentiment === "positive").length;
+    const negative = tickerNews.filter((item) => item.sentiment === "negative").length;
+    return positive > negative ? "positive" : negative > positive ? "negative" : "neutral";
   }
 
   if (activeTickers.length === 0) {
     return (
-      <div style={{
-        background: T.bg, border: `1px solid ${T.bdMid}`,
-        borderRadius: 14, boxShadow: T.shadow, padding: "48px 24px", textAlign: "center",
-      }}>
-        <Newspaper size={32} color={T.txGhost} style={{ margin: "0 auto 12px" }} />
-        <div style={{ fontSize: 14, fontWeight: 600, color: T.txMed }}>No active holdings</div>
-        <div style={{ fontSize: 12, color: T.txGhost, marginTop: 4 }}>
-          Add stocks to your portfolio to see news here.
-        </div>
-      </div>
+      <section className="rounded-xl border border-border/70 bg-card/85 px-6 py-12 text-center shadow-sm backdrop-blur-md">
+        <Newspaper size={32} className="mx-auto mb-3 text-muted-foreground" aria-hidden="true" />
+        <h2 className="text-sm font-semibold text-card-foreground">No active holdings</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Add stocks to your portfolio to see news here.</p>
+      </section>
     );
   }
 
   return (
-    <>
-      <style>{`
-        @keyframes news-pulse {
-          0%, 100% { opacity: .45; }
-          50%       { opacity: .90; }
-        }
-        @keyframes news-spin {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        .news-scroll::-webkit-scrollbar { width: 4px; }
-        .news-scroll::-webkit-scrollbar-thumb { background: ${T.bdMid}; border-radius: 4px; }
-
-        /* ── Dark mode ── */
-        .dark .news-wrap            { background: hsl(220 42% 14%) !important; border-color: hsl(218 32% 21%) !important; }
-        .dark .news-header          { background: hsl(220 42% 12%) !important; border-color: hsl(218 32% 19%) !important; }
-        .dark .news-tabs            { background: hsl(220 42% 12%) !important; border-color: hsl(218 32% 19%) !important; }
-        .dark .news-card            { background: hsl(220 42% 14%) !important; border-color: hsl(218 32% 18%) !important; }
-        .dark .news-card:hover      { background: hsl(220 42% 17%) !important; }
-        .dark .news-footer          { background: hsl(220 42% 12%) !important; border-color: hsl(218 32% 19%) !important; }
-        .dark .news-headline        { color: hsl(215 25% 90%) !important; }
-        .dark .news-summary         { color: hsl(215 18% 62%) !important; }
-        .dark .news-source          { color: hsl(215 15% 50%) !important; }
-        .dark .news-tab-btn         { color: hsl(215 18% 58%) !important; background: transparent !important; border-color: transparent !important; }
-        .dark .news-tab-btn.on      { background: hsl(213 52% 20%) !important; color: hsl(210 82% 74%) !important; border-color: hsl(213 50% 30% / .5) !important; }
-        .dark .news-tab-btn:hover   { background: hsl(213 42% 18%) !important; color: hsl(210 72% 72%) !important; }
-        .dark .news-sentbar         { border-color: hsl(218 32% 19%) !important; }
-        .dark .news-sentbar-pos     { background: hsl(160 26% 13%) !important; }
-        .dark .news-sentbar-neu     { background: hsl(220 32% 15%) !important; }
-        .dark .news-sentbar-neg     { background: hsl(0 26% 13%) !important; }
-        .dark .news-sentbar-pos .news-sentlbl { color: hsl(150 52% 50%) !important; }
-        .dark .news-sentbar-pos .news-sentval { color: hsl(150 52% 54%) !important; }
-        .dark .news-sentbar-neu .news-sentlbl { color: hsl(215 18% 52%) !important; }
-        .dark .news-sentbar-neu .news-sentval { color: hsl(215 20% 64%) !important; }
-        .dark .news-sentbar-neg .news-sentlbl { color: hsl(2 62% 52%) !important; }
-        .dark .news-sentbar-neg .news-sentval { color: hsl(2 70% 58%) !important; }
-        .dark .news-empty-title     { color: hsl(215 22% 70%) !important; }
-        .dark .news-empty-sub       { color: hsl(215 16% 50%) !important; }
-        .dark .news-footer span     { color: hsl(215 16% 50%) !important; }
-        .dark .news-scroll::-webkit-scrollbar-thumb { background: hsl(218 32% 24%); }
-      `}</style>
-
-      <div className="news-wrap" style={{
-        background: T.bg, border: `1px solid ${T.bdMid}`,
-        borderRadius: 14, boxShadow: T.shadow,
-        overflow: "hidden", display: "flex", flexDirection: "column",
-      }}>
-
-        {/* Header */}
-        <div className="news-header" style={{
-          padding: "14px 20px", background: T.bgSurf,
-          borderBottom: `1px solid ${T.bdSoft}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          flexShrink: 0,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 10, background: T.navy,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(28,53,87,.3)", flexShrink: 0,
-            }}>
-              <Newspaper size={16} color="white" />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: T.txHi }}>Holdings News</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
-                {isMock ? (
-                  <><WifiOff size={9} color={T.warn} />
-                    <span style={{ fontSize: 10, color: T.warn }}>Mock data · Add NEWS_API_KEY in Vercel to go live</span></>
-                ) : (
-                  <><Wifi size={9} color={T.profit} />
-                    <span style={{ fontSize: 10, color: T.txLo }}>Live · Auto-refreshes every 5 min</span></>
-                )}
-              </div>
+    <section className="flex flex-col overflow-hidden rounded-xl border border-border/70 bg-card/85 shadow-sm backdrop-blur-md" aria-label="Holdings news">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/35 px-4 py-3 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+            <Newspaper size={16} aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-card-foreground">Holdings News</h2>
+            <div className="mt-1 flex items-center gap-1.5" role="status" aria-live="polite">
+              {error ? (
+                <>
+                  <WifiOff size={11} className="shrink-0 text-warning" aria-hidden="true" />
+                  <span className="text-xs text-warning">Live news unavailable</span>
+                </>
+              ) : (
+                <>
+                  <Wifi size={11} className="shrink-0 text-profit" aria-hidden="true" />
+                  <span className="text-xs text-muted-foreground">
+                    {loading && !lastUpdated ? "Connecting to live newsâ€¦" : "Live Â· Auto-refreshes every 5 min"}
+                  </span>
+                </>
+              )}
             </div>
           </div>
+        </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {news.length > 0 && !loading && (
-              <div style={{
-                display: "flex", alignItems: "center", gap: 5,
-                padding: "4px 10px", borderRadius: 20,
-                background: osc.bg, border: `1px solid ${osc.bd}`,
-                fontSize: 10.5, fontWeight: 700, color: osc.color,
-              }}>
-                <osc.Icon size={11} /> {osc.label} overall
-              </div>
-            )}
-            <button
-              onClick={() => fetchNews()}
-              disabled={loading}
-              style={{
-                width: 30, height: 30, borderRadius: 8,
-                background: T.navyTint, border: `1px solid ${T.navyBd}`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: loading ? "default" : "pointer", transition: "all .13s",
-              }}
-              onMouseEnter={e => !loading && ((e.currentTarget as HTMLElement).style.background = T.navyPale)}
-              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = T.navyTint)}
+        <div className="flex items-center gap-2">
+          {news.length > 0 && !loading && !error && (
+            <div className={`flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold ${overall.classes}`}>
+              <overall.Icon size={12} aria-hidden="true" /> {overall.label} overall
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => fetchNews()}
+            disabled={loading}
+            aria-label="Refresh news"
+            title="Refresh news"
+            className={`flex h-10 w-10 items-center justify-center rounded-lg border border-border/70 bg-background/50 text-primary transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
+          >
+            <RefreshCw size={15} className={loading ? "motion-safe:animate-spin" : ""} aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+
+      {!loading && !error && news.length > 0 && (
+        <div className="grid grid-cols-3 border-b border-border/60" aria-label="News sentiment summary">
+          {([
+            { key: "positive", label: "Positive", classes: "bg-profit/10 text-profit" },
+            { key: "neutral", label: "Neutral", classes: "bg-muted/45 text-muted-foreground" },
+            { key: "negative", label: "Negative", classes: "bg-loss/10 text-loss" },
+          ] as const).map((sentiment, index) => (
+            <div
+              key={sentiment.key}
+              className={`px-2 py-2.5 text-center ${sentiment.classes} ${index < 2 ? "border-r border-border/50" : ""}`}
             >
-              <RefreshCw size={13} color={T.navy}
-                style={loading ? { animation: "news-spin 1s linear infinite" } : {}} />
+              <div className="font-mono text-xl font-bold leading-6 tabular-nums">
+                {sentCounts[sentiment.key] ?? 0}
+              </div>
+              <div className="mt-0.5 text-xs font-semibold uppercase tracking-wider">
+                {sentiment.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
+        className="flex shrink-0 items-center gap-1.5 overflow-x-auto border-b border-border/60 bg-muted/35 px-3 py-2 [scrollbar-width:thin] sm:px-4"
+        role="group"
+        aria-label="Filter news by ticker"
+      >
+        {(["ALL", ...activeTickers]).map((ticker) => {
+          const selected = activeTicker === ticker;
+          const sentiment = ticker === "ALL" ? null : sentimentConfig(tickerSentiment(ticker));
+          const count = ticker === "ALL"
+            ? news.length
+            : news.filter((item) => item.ticker === ticker).length;
+          return (
+            <button
+              type="button"
+              key={ticker}
+              onClick={() => setActiveTicker(ticker)}
+              aria-pressed={selected}
+              className={`flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-xs transition-colors ${selected ? "border-primary/25 bg-primary/10 font-semibold text-primary" : "border-transparent font-medium text-muted-foreground hover:bg-muted hover:text-foreground"} ${focusRing}`}
+            >
+              {ticker !== "ALL" && sentiment && (
+                <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${sentiment.dot}`} aria-hidden="true" />
+              )}
+              {ticker}
+              <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums ${selected ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="max-h-[560px] flex-1 overflow-y-auto" aria-busy={loading} aria-label="News articles">
+        {loading ? (
+          <div role="status">
+            <span className="sr-only">Loading live news</span>
+            <NewsSkeleton />
+          </div>
+        ) : error ? (
+          <div className="px-6 py-10 text-center" role="alert">
+            <WifiOff size={26} className="mx-auto mb-3 text-warning" aria-hidden="true" />
+            <h3 className="text-sm font-semibold text-card-foreground">News is unavailable</h3>
+            <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-muted-foreground">{error}</p>
+            <button
+              type="button"
+              onClick={() => fetchNews()}
+              aria-label="Retry loading news"
+              className={`mt-4 inline-flex h-10 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:bg-primary/15 ${focusRing}`}
+            >
+              Retry
             </button>
           </div>
-        </div>
-
-        {/* Sentiment summary bar */}
-        {!loading && news.length > 0 && (
-          <div className="news-sentbar" style={{
-            display: "grid", gridTemplateColumns: "repeat(3,1fr)",
-            borderBottom: `1px solid ${T.bdSoft}`,
-          }}>
-            {([
-              { key: "positive", label: "Positive", color: T.profit, bg: T.profitBg, divClass: "news-sentbar-pos" },
-              { key: "neutral",  label: "Neutral",  color: T.txLo,   bg: T.bgSurf,   divClass: "news-sentbar-neu" },
-              { key: "negative", label: "Negative", color: T.loss,   bg: T.lossBg,   divClass: "news-sentbar-neg" },
-            ] as const).map((s, i) => (
-              <div key={s.key} className={s.divClass} style={{
-                padding: "10px 0", background: s.bg, textAlign: "center",
-                borderRight: i < 2 ? `1px solid ${T.bdSoft}` : "none",
-              }}>
-                <div className="news-sentval" style={{
-                  fontSize: 20, fontWeight: 700, color: s.color,
-                  fontFamily: "'DM Mono',monospace", letterSpacing: "-.5px",
-                }}>
-                  {sentCounts[s.key] ?? 0}
-                </div>
-                <div className="news-sentlbl" style={{
-                  fontSize: 9, fontWeight: 700, textTransform: "uppercase",
-                  letterSpacing: ".1em", color: s.color, opacity: .75, marginTop: 1,
-                }}>
-                  {s.label}
-                </div>
-              </div>
-            ))}
+        ) : filtered.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <Newspaper size={28} className="mx-auto mb-2.5 text-muted-foreground" aria-hidden="true" />
+            <h3 className="text-sm font-semibold text-card-foreground">No news found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Try selecting a different stock or refresh.</p>
           </div>
-        )}
-
-        {/* Ticker tabs */}
-        <div className="news-tabs" style={{
-          display: "flex", alignItems: "center", gap: 4,
-          padding: "10px 16px", background: T.bgSurf,
-          borderBottom: `1px solid ${T.bdSoft}`,
-          overflowX: "auto", flexShrink: 0, scrollbarWidth: "none",
-        }}>
-          {(["ALL", ...activeTickers]).map(t => {
-            const isOn  = activeTicker === t;
-            const tSc   = t === "ALL" ? null : sentimentConfig(tickerSentiment(t));
-            const count = t === "ALL" ? news.length : news.filter(n => n.ticker === t).length;
-            return (
-              <button key={t}
-                className={`news-tab-btn ${isOn ? "on" : ""}`}
-                onClick={() => setActiveTicker(t)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 5,
-                  padding: "5px 11px", borderRadius: 20, whiteSpace: "nowrap",
-                  fontSize: 11.5, fontWeight: isOn ? 700 : 500,
-                  cursor: "pointer", transition: "all .13s", flexShrink: 0,
-                  background: isOn ? T.navyPale : "transparent",
-                  border: `1px solid ${isOn ? T.navyBd : "transparent"}`,
-                  color: isOn ? T.navy : T.txLo,
-                }}>
-                {t !== "ALL" && tSc && (
-                  <span style={{
-                    width: 7, height: 7, borderRadius: "50%",
-                    background: tSc.color, display: "inline-block", flexShrink: 0,
-                  }} />
-                )}
-                {t}
-                <span style={{
-                  minWidth: 16, height: 16, borderRadius: 8, padding: "0 4px",
-                  background: isOn ? T.navyBd : T.bdSoft,
-                  color: isOn ? T.navy : T.txGhost,
-                  fontSize: 9, fontWeight: 700,
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* News list */}
-        <div className="news-scroll" style={{ flex: 1, overflowY: "auto", maxHeight: 560 }}>
-          {loading ? (
-            <NewsSkeleton />
-          ) : error ? (
-            <div style={{ padding: 24, textAlign: "center" }}>
-              <div style={{ fontSize: 12, color: T.loss, marginBottom: 8 }}>{error}</div>
-              <button onClick={() => fetchNews()} style={{
-                fontSize: 11, fontWeight: 600, color: T.navy,
-                background: "none", border: "none", cursor: "pointer", textDecoration: "underline",
-              }}>Retry</button>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div style={{ padding: "48px 24px", textAlign: "center" }}>
-              <Newspaper size={28} color={T.txGhost} style={{ margin: "0 auto 10px" }} />
-              <div className="news-empty-title" style={{ fontSize: 13, color: T.txMed, fontWeight: 600 }}>No news found</div>
-              <div className="news-empty-sub" style={{ fontSize: 11.5, color: T.txGhost, marginTop: 4 }}>
-                Try selecting a different stock or refresh.
-              </div>
-            </div>
-          ) : (
-            filtered.map(item => <NewsCard key={item.id} item={item} showTicker={activeTicker === "ALL"} />)
-          )}
-        </div>
-
-        {/* Footer */}
-        {lastUpdated && !loading && (
-          <div className="news-footer" style={{
-            padding: "8px 20px", borderTop: `1px solid ${T.bdSoft}`,
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            background: T.bgSurf, flexShrink: 0,
-          }}>
-            <span style={{ fontSize: 10, color: T.txGhost, display: "flex", alignItems: "center", gap: 4 }}>
-              <Clock size={9} /> Updated {timeAgo(lastUpdated.toISOString())}
-            </span>
-            <span style={{ fontSize: 10, color: T.txGhost }}>
-              {filtered.length} article{filtered.length !== 1 ? "s" : ""}
-            </span>
-          </div>
+        ) : (
+          filtered.map((item) => (
+            <NewsCard key={item.id} item={item} showTicker={activeTicker === "ALL"} />
+          ))
         )}
       </div>
-    </>
+
+      {lastUpdated && !loading && (
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-muted/35 px-4 py-2 sm:px-5">
+          <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+            <Clock size={11} aria-hidden="true" /> Updated {timeAgo(lastUpdated.toISOString())}
+          </span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {filtered.length} article{filtered.length !== 1 ? "s" : ""}
+          </span>
+        </footer>
+      )}
+    </section>
   );
 }

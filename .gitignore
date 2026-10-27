@@ -12,16 +12,29 @@ dist
 dist-ssr
 *.local
 
-# Environment files may hold credentials; only commit templates such as .env.example
+# Environment files may hold credentials; only the templates are committed.
+# The negation must come AFTER the ignore patterns.
 .env
 .env.*
 !.env.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
 
 # Local Claude Code settings may contain machine-specific permissions
 .claude/settings.local.json
 
-# Supabase CLI local state (not source)
+# Legacy Supabase CLI local state (kept so a stray checkout cannot commit it)
 supabase/.temp/
+
+# Supabase backups and export archives contain user PII and password hashes
+db_cluster-21-10-2026@15-06-23.backup.gz
+ddlxhhvrlufvevgzguqd.storage.zip
+*.backup.gz
+*.storage.zip
+
+# Real-data migration artifacts (mapping template contains account emails)
+.migration/
 
 # Editor directories and files
 .vscode/*
@@ -34,4 +47,3 @@ supabase/.temp/
 *.sln
 *.sw?
 .vercel
-.env*

@@ -6,7 +6,6 @@ import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Download } from "lu
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import * as XLSX from "xlsx";
 
 interface ImportTradesDialogProps {
   onImport: (stocks: PortfolioStock[]) => void;
@@ -155,7 +154,8 @@ const ImportTradesDialog = ({ onImport }: ImportTradesDialogProps) => {
     const ext = file.name.split(".").pop()?.toLowerCase();
 
     try {
-      const buffer = await file.arrayBuffer();
+      // xlsx is ~400 KB minified; load it only when a file is picked.
+      const [XLSX, buffer] = await Promise.all([import("xlsx"), file.arrayBuffer()]);
       const workbook = XLSX.read(buffer, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { raw: false });

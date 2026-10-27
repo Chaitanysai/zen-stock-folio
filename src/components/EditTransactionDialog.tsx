@@ -37,7 +37,7 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
         entryDate: stock.entryDate,
         entryPrice: stock.entryPrice.toString(),
         cmp: stock.cmp.toString(),
-        weekHigh52: stock.weekHigh52.toString(),
+        weekHigh52: stock.weekHigh52?.toString() ?? "",
         quantity: stock.quantity.toString(),
         exitPrice: stock.exitPrice?.toString() || "",
         exitDate: stock.exitDate || "",
@@ -59,7 +59,8 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
       entryDate: form.entryDate,
       entryPrice: parseFloat(form.entryPrice),
       cmp: parseFloat(form.cmp),
-      weekHigh52: parseFloat(form.weekHigh52) || parseFloat(form.cmp),
+      // Blank means "unknown", not "equal to CMP".
+      weekHigh52: parseFloat(form.weekHigh52) || null,
       quantity: parseInt(form.quantity),
       status: form.status,
       ...(form.exitPrice ? { exitPrice: parseFloat(form.exitPrice) } : {}),

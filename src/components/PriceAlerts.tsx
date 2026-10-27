@@ -22,15 +22,17 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
   const [form, setForm] = useState({ ticker: "", type: "target_hit" as PriceAlert["type"], targetPrice: "", direction: "above" as PriceAlert["direction"] });
 
   const handleAdd = () => {
-    if (!form.ticker || !form.targetPrice) {
-      toast({ title: "Missing fields", description: "Please fill ticker and price", variant: "destructive" });
+    const ticker = form.ticker.trim().toUpperCase();
+    const targetPrice = Number(form.targetPrice);
+    if (!ticker || !Number.isFinite(targetPrice) || targetPrice <= 0) {
+      toast({ title: "Invalid alert", description: "Enter a ticker and a target price greater than zero.", variant: "destructive" });
       return;
     }
     const alert: PriceAlert = {
       id: crypto.randomUUID(),
-      ticker: form.ticker.toUpperCase(),
+      ticker,
       type: form.type,
-      targetPrice: parseFloat(form.targetPrice),
+      targetPrice,
       direction: form.direction,
       triggered: false,
       createdAt: new Date().toISOString(),
@@ -41,13 +43,14 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
     toast({ title: "Alert created", description: `Alert set for ${alert.ticker} at ₹${alert.targetPrice}` });
   };
 
-  const triggeredAlerts = alerts.filter(a => a.triggered);
-  const activeAlerts = alerts.filter(a => !a.triggered);
+  const visibleAlerts = alerts.filter(a => !a.dismissedAt);
+  const triggeredAlerts = visibleAlerts.filter(a => a.triggered);
+  const activeAlerts = visibleAlerts.filter(a => !a.triggered);
 
   return (
-    <div className="bg-card rounded-lg border border-border overflow-hidden">
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <div className="glass-card overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 sm:px-5">
+        <div className="flex flex-wrap items-center gap-2">
           <Bell className="h-4 w-4 text-primary" />
           <div>
             <h2 className="text-lg font-semibold">Price Alerts</h2>
@@ -58,20 +61,20 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1.5 text-xs"><Plus className="h-3.5 w-3.5" /> New Alert</Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-card border-border">
+          <DialogContent className="sm:max-w-md bg-card border-border" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="text-foreground">Create Price Alert</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div>
-                <Label className="text-xs text-muted-foreground">Ticker</Label>
-                <Input placeholder="e.g. RELIANCE" value={form.ticker} onChange={e => setForm(p => ({ ...p, ticker: e.target.value }))} className="bg-secondary border-border text-sm font-mono" />
+                <Label htmlFor="alert-ticker" className="text-xs text-muted-foreground">Ticker</Label>
+                <Input id="alert-ticker" placeholder="e.g. RELIANCE" value={form.ticker} onChange={e => setForm(p => ({ ...p, ticker: e.target.value }))} className="bg-secondary border-border text-sm font-mono" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Alert Type</Label>
+                  <Label htmlFor="alert-type" className="text-xs text-muted-foreground">Alert Type</Label>
                   <Select value={form.type} onValueChange={v => setForm(p => ({ ...p, type: v as PriceAlert["type"] }))}>
-                    <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="alert-type" aria-label="Alert type" className="bg-secondary border-border text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-popover border-border">
                       <SelectItem value="target_hit">🎯 Target Hit</SelectItem>
                       <SelectItem value="sl_hit">🛑 Stop Loss Hit</SelectItem>
@@ -80,9 +83,9 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Direction</Label>
+                  <Label htmlFor="alert-direction" className="text-xs text-muted-foreground">Direction</Label>
                   <Select value={form.direction} onValueChange={v => setForm(p => ({ ...p, direction: v as PriceAlert["direction"] }))}>
-                    <SelectTrigger className="bg-secondary border-border text-sm"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="alert-direction" aria-label="Alert direction" className="bg-secondary border-border text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-popover border-border">
                       <SelectItem value="above">Price Above</SelectItem>
                       <SelectItem value="below">Price Below</SelectItem>
@@ -91,8 +94,8 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Target Price (₹)</Label>
-                <Input type="number" step="0.01" placeholder="₹0.00" value={form.targetPrice} onChange={e => setForm(p => ({ ...p, targetPrice: e.target.value }))} className="bg-secondary border-border text-sm font-mono" />
+                <Label htmlFor="alert-target-price" className="text-xs text-muted-foreground">Target Price (₹)</Label>
+                <Input id="alert-target-price" type="number" step="0.01" placeholder="₹0.00" value={form.targetPrice} onChange={e => setForm(p => ({ ...p, targetPrice: e.target.value }))} className="bg-secondary border-border text-sm font-mono" />
               </div>
               <Button onClick={handleAdd} className="w-full">Create Alert</Button>
             </div>
@@ -100,21 +103,25 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
         </Dialog>
       </div>
 
+      <p className="border-b border-border bg-secondary/30 px-4 py-2 text-[11px] text-muted-foreground">
+        Evaluated while this app is open · no background or push notifications. Alerts fire only on quotes received after the alert was created. Symbols outside your portfolio are fetched with your price updates.
+      </p>
+
       <div className="p-4 space-y-3">
         {/* Triggered alerts */}
         {triggeredAlerts.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-xs font-semibold text-warning uppercase tracking-wider">🔔 Triggered</h3>
             {triggeredAlerts.map(a => (
-              <div key={a.id} className="flex items-center justify-between bg-warning/10 border border-warning/30 rounded-lg px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <BellRing className="h-4 w-4 text-warning animate-pulse" />
+              <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <BellRing className="h-4 w-4 shrink-0 text-warning" />
                   <span className="font-mono text-sm font-semibold text-primary">{a.ticker}</span>
                   <span className="text-xs text-muted-foreground">
                     {a.type === "target_hit" ? "🎯 Target" : a.type === "sl_hit" ? "🛑 SL" : "🟢 Entry"} — ₹{a.targetPrice}
                   </span>
                 </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onDismissAlert(a.id)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Dismiss alert for ${a.ticker}`} onClick={() => onDismissAlert(a.id)}>
                   <X className="h-3 w-3" />
                 </Button>
               </div>
@@ -127,8 +134,8 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
           <div className="space-y-2">
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Active Alerts</h3>
             {activeAlerts.map(a => (
-              <div key={a.id} className="flex items-center justify-between bg-secondary/50 rounded-lg border border-border px-3 py-2">
-                <div className="flex items-center gap-2">
+              <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold text-primary">{a.ticker}</span>
                   <Badge variant="outline" className="text-[10px]">
                     {a.type === "target_hit" ? "🎯 Target" : a.type === "sl_hit" ? "🛑 SL" : "🟢 Entry"}
@@ -137,7 +144,7 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
                     {a.direction === "above" ? "≥" : "≤"} ₹{a.targetPrice}
                   </span>
                 </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-loss hover:text-loss" onClick={() => onDeleteAlert(a.id)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-loss hover:text-loss" aria-label={`Delete alert for ${a.ticker}`} onClick={() => onDeleteAlert(a.id)}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
@@ -145,7 +152,16 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
           </div>
         ) : (
           triggeredAlerts.length === 0 && (
-            <p className="text-sm text-muted-foreground text-center py-4">No alerts set. Create one to get notified when prices hit your targets.</p>
+            <div className="zf-empty-state">
+              <div className="zf-empty-icon" aria-hidden="true"><Bell /></div>
+              <h3 className="zf-empty-title">No alerts set</h3>
+              <p className="zf-empty-body">
+                Create one to track a price level while this app is open.
+              </p>
+              <Button size="sm" className="zf-empty-action gap-1.5 text-xs" onClick={() => setAddOpen(true)}>
+                <Plus className="h-3.5 w-3.5" /> Create your first alert
+              </Button>
+            </div>
           )
         )}
       </div>

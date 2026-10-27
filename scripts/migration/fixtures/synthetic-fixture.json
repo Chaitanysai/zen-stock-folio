@@ -1,0 +1,111 @@
+{
+  "note": "Fully synthetic fixture — no value derived from the real backup.",
+  "users": [
+    {
+      "supabaseUid": "11111111-1111-1111-1111-111111111111",
+      "email": "user-1@example.test",
+      "passwordHash": "$2b$10$x0IXGLoS4x0RonbX0JfHqeS.CNUDhd9uZZkF3Y.uvLCyD5EViXRla",
+      "confirmed": true,
+      "provider": "email"
+    },
+    {
+      "supabaseUid": "22222222-2222-2222-2222-222222222222",
+      "email": "user-2@example.test",
+      "passwordHash": "$2b$10$5Rb578whp5XiIHWnRZOUtuI8YDtVEqHs7fVmr2cTYy4q3tpnqF5y6",
+      "confirmed": true,
+      "provider": "email"
+    },
+    {
+      "supabaseUid": "33333333-3333-3333-3333-333333333333",
+      "email": "user-3@example.test",
+      "confirmed": true,
+      "provider": "google"
+    },
+    {
+      "supabaseUid": "44444444-4444-4444-4444-444444444444",
+      "email": "user-4@example.test",
+      "confirmed": false,
+      "provider": "email"
+    }
+  ],
+  "snapshots": [
+    {
+      "supabaseUid": "11111111-1111-1111-1111-111111111111",
+      "snapshot": {
+        "stocks": [
+          {
+            "ticker": "SYNTH1",
+            "stockName": "Synthetic SYNTH1",
+            "sector": "Technology",
+            "entryDate": "01-Jan-2026",
+            "entryPrice": 100,
+            "cmp": 110,
+            "quantity": 10,
+            "status": "Active",
+            "weekHigh52": 120,
+            "weekLow52": 90
+          },
+          {
+            "ticker": "SYNTH2",
+            "stockName": "Synthetic SYNTH2",
+            "sector": "Technology",
+            "entryDate": "01-Jan-2026",
+            "entryPrice": 101,
+            "cmp": 111,
+            "quantity": 11,
+            "status": "Active",
+            "weekHigh52": 121,
+            "weekLow52": 91
+          }
+        ],
+        "trades": [],
+        "watchlist": [],
+        "alerts": [],
+        "fnoTrades": []
+      }
+    },
+    {
+      "supabaseUid": "22222222-2222-2222-2222-222222222222",
+      "snapshot": {
+        "stocks": [
+          {
+            "ticker": "SYNTH3",
+            "stockName": "Synthetic SYNTH3",
+            "sector": "Technology",
+            "entryDate": "01-Jan-2026",
+            "entryPrice": 100,
+            "cmp": 110,
+            "quantity": 10,
+            "status": "Active",
+            "weekHigh52": 120,
+            "weekLow52": 90
+          }
+        ],
+        "trades": [],
+        "watchlist": [],
+        "alerts": [],
+        "fnoTrades": []
+      }
+    },
+    {
+      "supabaseUid": "44444444-4444-4444-4444-444444444444",
+      "snapshot": {
+        "stocks": [],
+        "trades": [],
+        "watchlist": [],
+        "alerts": [],
+        "fnoTrades": []
+      }
+    }
+  ],
+  "profiles": [
+    {
+      "supabaseUid": "11111111-1111-1111-1111-111111111111",
+      "displayName": "Fixture Alice"
+    },
+    {
+      "supabaseUid": "33333333-3333-3333-3333-333333333333",
+      "displayName": "Fixture Google User"
+    }
+  ]
+}

@@ -1,9 +1,12 @@
 import { getSectorAllocation, PortfolioStock } from "@/data/sampleData";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { PieChart as PieChartIcon } from "lucide-react";
 
+// Categorical sector colours come from the shared chart tokens (indigo-led,
+// theme-aware) so green/red stay reserved for gains and losses.
 const PALETTE = [
-  "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6",
-  "#ec4899", "#ef4444", "#f97316", "#06b6d4",
+  "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--muted-foreground))",
 ];
 
 const CustomTooltip = ({ active, payload }: any) => {
@@ -30,10 +33,14 @@ const SectorDiversification = ({ stocks }: SectorDiversificationProps) => {
 
   if (sectorData.length === 0) {
     return (
-      <div className="glass-card p-6 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          No active positions for sector analysis
-        </p>
+      <div className="glass-card">
+        <div className="zf-empty-state">
+          <div className="zf-empty-icon" aria-hidden="true"><PieChartIcon /></div>
+          <h3 className="zf-empty-title">No active positions for sector analysis</h3>
+          <p className="zf-empty-body">
+            Once you hold open positions, their invested value is grouped by sector here.
+          </p>
+        </div>
       </div>
     );
   }
@@ -108,7 +115,7 @@ const SectorDiversification = ({ stocks }: SectorDiversificationProps) => {
                 {/* Bar */}
                 <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full transition-all duration-700"
+                    className="h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none"
                     style={{
                       width: `${s.percentage}%`,
                       backgroundColor: PALETTE[i % PALETTE.length],

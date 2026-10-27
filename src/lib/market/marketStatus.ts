@@ -12,11 +12,11 @@
  */
 
 import {
-  CalendarCoverage,
+  type CalendarCoverage,
   getCalendarCoverage,
   getHolidayName,
   getSpecialSession,
-} from "./nseHolidays";
+} from "./nseHolidays.ts";
 
 export const IST_TIME_ZONE = "Asia/Kolkata";
 
