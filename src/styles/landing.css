@@ -330,6 +330,12 @@
   font: 600 10px/1 'Geist Mono', monospace;
   color: var(--zl-up-tx); background: hsl(var(--profit) / .10); border: 1px solid hsl(var(--profit) / .26);
 }
+.zl-pv-badge[data-tone="muted"] {
+  color: hsl(var(--muted-foreground)); background: hsl(var(--foreground) / .05); border-color: var(--zl-bd-hi);
+}
+/* Alert sits on the rail's bottom edge, level with the last holdings row, so the
+   column has no dead corner under the watchlist entries. */
+.zl-pv-wl .zl-pv-alert { margin-top: auto; }
 .zl-pv-alert {
   display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px;
   font: 500 10.5px/1.3 'Geist Mono', monospace; color: hsl(var(--muted-foreground));

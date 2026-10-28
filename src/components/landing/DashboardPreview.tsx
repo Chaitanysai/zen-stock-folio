@@ -15,6 +15,13 @@ const HOLDINGS: Row[] = [
   { tick: "INFY", abbr: "INF", sector: "IT", value: "₹74,900", pnl: "−₹2,480", up: false },
 ];
 
+// Two entries so the rail spans the same height as the holdings table; the
+// values match the app's own sample watchlist.
+const WATCHLIST = [
+  { tick: "TATAMOTORS", zone: "Entry ₹910–940", status: "In zone", muted: false },
+  { tick: "IRCTC", zone: "Entry ₹830–850", status: "Watching", muted: true },
+];
+
 // Hand-shaped sample series (viewBox 0 0 320 96)
 const LINE =
   "M0 74 C 18 70, 30 76, 46 66 S 76 58, 92 62 S 120 50, 138 52 S 168 40, 186 46 S 214 30, 232 34 S 262 22, 280 26 S 306 14, 320 12";
@@ -117,14 +124,16 @@ export default function DashboardPreview() {
             </div>
 
             <div className="zl-pv-wl">
-              <div className="zl-pv-wl-chip">
-                <div style={{ minWidth: 0 }}>
-                  <div className="zl-pv-card-lbl">Watchlist</div>
-                  <div className="zl-pv-wl-name" style={{ marginTop: 4 }}>TATAMOTORS</div>
-                  <div className="zl-pv-wl-zone">Entry ₹910–940</div>
+              {WATCHLIST.map((w) => (
+                <div key={w.tick} className="zl-pv-wl-chip">
+                  <div style={{ minWidth: 0 }}>
+                    <div className="zl-pv-card-lbl">Watchlist</div>
+                    <div className="zl-pv-wl-name" style={{ marginTop: 4 }}>{w.tick}</div>
+                    <div className="zl-pv-wl-zone">{w.zone}</div>
+                  </div>
+                  <span className="zl-pv-badge" data-tone={w.muted ? "muted" : undefined}>● {w.status}</span>
                 </div>
-                <span className="zl-pv-badge">● In zone</span>
-              </div>
+              ))}
               <div className="zl-pv-alert">
                 <BellRing aria-hidden="true" />
                 <span>Alert: INFY ≤ ₹1,480</span>
