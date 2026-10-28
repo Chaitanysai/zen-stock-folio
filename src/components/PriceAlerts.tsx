@@ -75,7 +75,7 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
                   <Label htmlFor="alert-type" className="text-xs text-muted-foreground">Alert Type</Label>
                   <Select value={form.type} onValueChange={v => setForm(p => ({ ...p, type: v as PriceAlert["type"] }))}>
                     <SelectTrigger id="alert-type" aria-label="Alert type" className="bg-secondary border-border text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-popover border-border">
+                    <SelectContent>
                       <SelectItem value="target_hit">🎯 Target Hit</SelectItem>
                       <SelectItem value="sl_hit">🛑 Stop Loss Hit</SelectItem>
                       <SelectItem value="entry_zone">🟢 Entry Zone</SelectItem>
@@ -86,7 +86,7 @@ const PriceAlerts = ({ alerts, onAddAlert, onDeleteAlert, onDismissAlert }: Pric
                   <Label htmlFor="alert-direction" className="text-xs text-muted-foreground">Direction</Label>
                   <Select value={form.direction} onValueChange={v => setForm(p => ({ ...p, direction: v as PriceAlert["direction"] }))}>
                     <SelectTrigger id="alert-direction" aria-label="Alert direction" className="bg-secondary border-border text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-popover border-border">
+                    <SelectContent>
                       <SelectItem value="above">Price Above</SelectItem>
                       <SelectItem value="below">Price Below</SelectItem>
                     </SelectContent>

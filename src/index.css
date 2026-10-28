@@ -80,13 +80,20 @@
     --glass:                0 0% 100% / .62;
     --glass-surface:        0 0% 100% / .86;
     --glass-elevated:       0 0% 100% / .94;
-    --glass-overlay:        0 0% 100% / .97;
+    --glass-overlay:        0 0% 100% / .92;
     --glass-border:         30 20% 30% / .14;
     --glass-border-strong:  30 20% 30% / .22;
     --glass-highlight:      inset 0 1px 0 hsl(0 0% 100% / .8);
     --blur-sm: 8px;
     --blur-md: 14px;
     --blur-lg: 16px;
+    --blur-pop: 18px;
+
+    /* Floating panels (menus, popovers, tooltips, search results): translucent,
+       blurred behind the panel only. Opaque enough to read over charts and cards. */
+    --glass-pop:            0 0% 100% / .84;
+    --glass-pop-border:     30 20% 30% / .16;
+    --shadow-pop: 0 1px 2px hsl(24 30% 20% / .06), 0 10px 24px -8px hsl(24 30% 20% / .18), 0 28px 56px -20px hsl(24 30% 20% / .26);
 
     /* ── Elevation ── */
     --shadow-1: 0 1px 2px hsl(24 30% 20% / .05), 0 1px 1px hsl(24 30% 20% / .03);
@@ -111,6 +118,12 @@
     --dur: 200ms;
     --dur-slow: 320ms;
     --ease-out: cubic-bezier(.16, 1, .3, 1);
+    --dur-route: 260ms;
+
+    /* -- Layers: scrim + dialogs < menus/popovers < tooltips (all above the page chrome) -- */
+    --z-overlay: 100;
+    --z-pop: 110;
+    --z-tip: 120;
 
     /* ── Sidebar (shadcn sidebar component) ── */
     --sidebar-background: 40 20% 97%;
@@ -214,10 +227,13 @@
     --glass:                24 8% 12% / .62;
     --glass-surface:        24 8% 11% / .82;
     --glass-elevated:       24 8% 12.5% / .94;
-    --glass-overlay:        24 8% 12.5% / .97;
+    --glass-overlay:        24 8% 12.5% / .90;
     --glass-border:         36 30% 100% / .09;
     --glass-border-strong:  36 30% 100% / .15;
     --glass-highlight:      inset 0 1px 0 hsl(0 0% 100% / .06);
+    --glass-pop:            24 8% 12.5% / .78;
+    --glass-pop-border:     36 30% 100% / .12;
+    --shadow-pop: 0 1px 2px hsl(0 0% 0% / .40), 0 10px 24px -8px hsl(0 0% 0% / .55), 0 28px 56px -20px hsl(0 0% 0% / .70);
 
     --shadow-1: 0 1px 2px hsl(0 0% 0% / .35);
     --shadow-2: 0 14px 32px -14px hsl(0 0% 0% / .60);
@@ -299,8 +315,16 @@
     background-color: hsl(var(--glass-overlay));
     border-color: hsl(var(--glass-border-strong));
     box-shadow: var(--glass-highlight), var(--shadow-3);
-    -webkit-backdrop-filter: blur(var(--blur-lg)) saturate(160%);
-    backdrop-filter: blur(var(--blur-lg)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(160%);
+    backdrop-filter: blur(var(--blur-pop)) saturate(160%);
+  }
+  /* Floating panels: shared by every menu, popover, select, tooltip and search list. */
+  .glass-pop {
+    background-color: hsl(var(--glass-pop));
+    border: 1px solid hsl(var(--glass-pop-border));
+    box-shadow: var(--glass-highlight), var(--shadow-pop);
+    -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(165%);
+    backdrop-filter: blur(var(--blur-pop)) saturate(165%);
   }
   /* Fill that always carries white text (used with `text-white` on CTAs).
      !important so it wins over the Button's default gradient utility. */
@@ -312,10 +336,9 @@
     background-image: linear-gradient(135deg, hsl(17 84% 47%) 0%, hsl(12 82% 40%) 100%) !important;
   }
 
+  /* Tint only. The dialog panel carries the blur; the page behind stays sharp. */
   .glass-scrim {
-    background-color: hsl(var(--scrim) / .5);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
+    background-color: hsl(var(--scrim) / .46);
   }
 
   /* â”€â”€ STAT CARD â”€â”€ */
@@ -494,10 +517,7 @@
   }
 
   /* â”€â”€ Dropdown â”€â”€ */
-  [data-radix-popper-content-wrapper] {
-    z-index: 999999 !important;
-    position: fixed !important;
-  }
+  /* Popper wrappers copy z-index from the panel itself (--z-pop / --z-tip in the ui primitives). */
 
   /* â”€â”€ Animations â”€â”€ */
   @keyframes fadeUp {
@@ -570,12 +590,12 @@
 /* Readability fallback: no blur support or reduced transparency â†’ opaque glass. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root, .dark {
-    --glass-surface: var(--card); --glass-elevated: var(--popover); --glass-overlay: var(--popover);
+    --glass-surface: var(--card); --glass-elevated: var(--popover); --glass-overlay: var(--popover); --glass-pop: var(--popover);
   }
 }
 @media (prefers-reduced-transparency: reduce) {
   :root, .dark {
-    --glass-surface: var(--card); --glass-elevated: var(--popover); --glass-overlay: var(--popover);
+    --glass-surface: var(--card); --glass-elevated: var(--popover); --glass-overlay: var(--popover); --glass-pop: var(--popover);
   }
 }
 
@@ -590,3 +610,14 @@
   }
   button:active { transform: none; }
 }
+
+/* Route enter: the new page fades up a few pixels. Enter-only, so the previous page is
+   already gone (never overlaps). Skipped on first load; see AppRoutes in App.tsx. */
+@keyframes zf-route-in {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.zf-route { animation: zf-route-in var(--dur-route) var(--ease-out) backwards; }
+@media (prefers-reduced-motion: reduce) { .zf-route { animation: none; } }
+
+.zf-route h1:focus, .zf-route h1:focus-visible { outline: none; box-shadow: none; }

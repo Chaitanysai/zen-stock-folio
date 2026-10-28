@@ -65,10 +65,25 @@ const emit = (next: AuthUser | null) =>
     changeCallbacks.forEach((cb) => cb(next));
   });
 
+/**
+ * Like Firebase's onAuthStateChanged, the listener reports the resolved state
+ * once right after subscribing (null for a signed-out visitor).
+ * `getCurrentUser` is Firebase's synchronous `currentUser`, which is null until
+ * the persisted session has been restored, so `restoredAfterNull` models that
+ * window: getCurrentUser answers null, the first listener event carries the user.
+ */
+let restoredAfterNull = false;
+
 const makeProvider = () => {
-  providerMock.getCurrentUser.mockImplementation(async () => currentUser);
+  providerMock.getCurrentUser.mockImplementation(async () => (restoredAfterNull ? null : currentUser));
   providerMock.onAuthStateChanged.mockImplementation((cb: (user: AuthUser | null) => void) => {
     changeCallbacks.push(cb);
+    // Session restore is asynchronous in Firebase (IndexedDB read). Deliver it
+    // on a later task so React commits the in-between render, as it would in
+    // the browser; a microtask would be batched into the same render and hide
+    // exactly the flash this test exists to catch.
+    if (restoredAfterNull) setTimeout(() => cb(currentUser), 40);
+    else queueMicrotask(() => cb(currentUser));
     return () => {};
   });
 };
@@ -77,6 +92,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   changeCallbacks.length = 0;
   currentUser = null;
+  restoredAfterNull = false;
   makeProvider();
   window.localStorage.clear();
 });
@@ -177,8 +193,46 @@ describe("AuthContext auth-state handling", () => {
     });
 
     const { unmount } = renderAuth();
-    await waitFor(() => expect(captured?.loading).toBe(false));
+    await waitFor(() => expect(changeCallbacks.length).toBeGreaterThan(0));
     unmount();
     expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  it("stays loading while a persisted session is still being restored (no signed-out flash)", async () => {
+    // Firebase answers currentUser = null before it has restored the session.
+    // The router must not see loading=false + signed out in that window.
+    currentUser = user("user-a");
+    restoredAfterNull = true;
+    const seen: Array<{ loading: boolean; authed: boolean }> = [];
+    const Recorder = () => {
+      const { loading, isAuthenticated } = useAuth();
+      seen.push({ loading, authed: isAuthenticated });
+      return null;
+    };
+    render(
+      <AuthProvider>
+        <Recorder />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(seen[seen.length - 1]).toEqual({ loading: false, authed: true }));
+    expect(seen.some((s) => s.loading === false && s.authed === false)).toBe(false);
+  });
+
+  it("ends loading as signed out only when the listener confirms there is no session", async () => {
+    const seen: Array<{ loading: boolean; authed: boolean }> = [];
+    const Recorder = () => {
+      const { loading, isAuthenticated } = useAuth();
+      seen.push({ loading, authed: isAuthenticated });
+      return null;
+    };
+    render(
+      <AuthProvider>
+        <Recorder />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => expect(seen[seen.length - 1]).toEqual({ loading: false, authed: false }));
+    expect(seen[0].loading).toBe(true);
   });
 });

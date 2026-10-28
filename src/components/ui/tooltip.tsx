@@ -2,6 +2,7 @@ import * as React from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 import { cn } from "@/lib/utils";
+import { panelMotion } from "@/components/ui/overlay";
 
 const TooltipProvider = TooltipPrimitive.Provider;
 
@@ -12,12 +13,14 @@ const TooltipTrigger = TooltipPrimitive.Trigger;
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
+>(({ className, sideOffset = 8, collisionPadding = 8, ...props }, ref) => (
   <TooltipPrimitive.Content
     ref={ref}
     sideOffset={sideOffset}
+    collisionPadding={collisionPadding}
     className={cn(
-      "z-50 overflow-hidden rounded-md glass-elevated px-3 py-1.5 text-sm text-popover-foreground duration-150 ease-out animate-in fade-in-0 zoom-in-[0.97] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-[0.97] data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1",
+      "z-[var(--z-tip)] origin-[var(--radix-tooltip-content-transform-origin)] overflow-hidden rounded-lg glass-pop px-3 py-1.5 text-sm text-popover-foreground",
+      panelMotion,
       className,
     )}
     {...props}

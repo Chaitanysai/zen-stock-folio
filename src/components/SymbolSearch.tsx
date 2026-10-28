@@ -107,6 +107,7 @@ export function SymbolSearch({
         <div
           id="zf-symbol-results"
           role="listbox"
+          className="glass-pop"
           style={{
             position: "absolute",
             top: "calc(100% + 6px)",
@@ -114,10 +115,7 @@ export function SymbolSearch({
             width: 320,
             maxHeight: 320,
             overflowY: "auto",
-            background: "var(--bg-card)",
-            border: "1px solid var(--bd-100)",
-            borderRadius: 10,
-            boxShadow: "var(--sh-2, 0 8px 24px rgba(0,0,0,.12))",
+            borderRadius: 12,
             zIndex: 60,
             padding: 4,
           }}

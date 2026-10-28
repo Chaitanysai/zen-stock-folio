@@ -188,7 +188,7 @@ const WatchlistTable = ({ watchlist, onAdd, onEdit, onDelete }: WatchlistTablePr
                             <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="bg-popover border-border">
+                        <DropdownMenuContent align="start">
                           <DropdownMenuItem onClick={() => openEdit(stock)} className="gap-2 text-xs cursor-pointer">
                             <Pencil className="h-3 w-3" /> Edit
                           </DropdownMenuItem>

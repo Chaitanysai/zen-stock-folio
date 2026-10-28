@@ -2,6 +2,7 @@ import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { COLLISION_PADDING, PANEL_OFFSET, panel, panelMotion } from "@/components/ui/overlay";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -36,20 +37,14 @@ DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
+>(({ className, collisionPadding = COLLISION_PADDING, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent
     ref={ref}
+    collisionPadding={collisionPadding}
     className={cn(
-      // 🔥 FIX: layering
-      "z-[9999]",
-
-      // glass surface (global tokens, mostly opaque for legibility)
-      "min-w-[10rem] rounded-xl glass-elevated text-popover-foreground",
-
-      // animation
-      "duration-150 ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-[0.97] data-[state=closed]:zoom-out-[0.97]",
-
-      "p-1",
+      panel,
+      panelMotion,
+      "min-w-[10rem] origin-[var(--radix-dropdown-menu-content-transform-origin)] p-1",
       className
     )}
     {...props}
@@ -60,22 +55,16 @@ DropdownMenuSubContent.displayName = "DropdownMenuSubContent";
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 6, ...props }, ref) => (
+>(({ className, sideOffset = PANEL_OFFSET, collisionPadding = COLLISION_PADDING, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
+      collisionPadding={collisionPadding}
       className={cn(
-        // 🔥 CRITICAL FIX
-        "z-[9999]",
-
-        // glass surface (global tokens, mostly opaque for legibility)
-        "min-w-[12rem] rounded-xl glass-elevated text-popover-foreground",
-
-        // smooth enter/exit
-        "duration-150 ease-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-[0.97] data-[state=closed]:zoom-out-[0.97] data-[side=bottom]:slide-in-from-top-1 data-[side=top]:slide-in-from-bottom-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1",
-
-        "p-1",
+        panel,
+        panelMotion,
+        "min-w-[12rem] max-h-[var(--radix-dropdown-menu-content-available-height)] max-w-[var(--radix-dropdown-menu-content-available-width)] origin-[var(--radix-dropdown-menu-content-transform-origin)] overflow-y-auto p-1",
         className
       )}
       {...props}
@@ -94,9 +83,9 @@ const DropdownMenuItem = React.forwardRef<
     ref={ref}
     className={cn(
       "flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer",
-      "outline-none transition-all",
+      "outline-none transition-colors duration-100",
       "hover:bg-accent/60",
-      "focus:bg-accent focus:text-accent-foreground",
+      "focus:bg-accent focus:text-accent-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60",
       "data-[disabled]:opacity-50 data-[disabled]:pointer-events-none",
       inset && "pl-8",
       className

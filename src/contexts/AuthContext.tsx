@@ -59,7 +59,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (cancelled) return;
         lastUserIdRef.current = visibleUser(initialUser)?.id ?? null;
         applyUser(initialUser, provider.name);
-        setLoading(false);
+        // A null here is ambiguous: Firebase reports `currentUser === null`
+        // until it has restored the persisted session, so a signed-in user
+        // would briefly read as signed out and the router would render the
+        // landing page (or the login form). Only a resolved user ends loading
+        // here; for null, the first onAuthStateChanged callback below is
+        // authoritative and ends it.
+        if (initialUser) setLoading(false);
 
         // Subscribed after the initial fetch, matching the original
         // getSession-then-onAuthStateChange ordering.

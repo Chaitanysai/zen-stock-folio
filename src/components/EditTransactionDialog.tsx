@@ -120,7 +120,7 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
                 <SelectTrigger className="bg-secondary border-border text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
+                <SelectContent>
                   <SelectItem value="Active">🟢 Active (Open)</SelectItem>
                   <SelectItem value="Sold Profit">✅ Closed (Profit)</SelectItem>
                   <SelectItem value="Sold Loss">❌ Closed (Loss)</SelectItem>

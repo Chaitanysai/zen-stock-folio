@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { lazy, Suspense } from "react";
 import { SessionLoading } from "@/components/ProtectedRoute";
+import { RouteEnter } from "@/components/RouteEnter";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
@@ -22,10 +23,10 @@ const Home = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) return <SessionLoading />;
-  if (!isAuthenticated) return <Landing />;
+  if (!isAuthenticated) return <RouteEnter key="landing"><Landing /></RouteEnter>;
   return (
     <Suspense fallback={<SessionLoading />}>
-      <Index />
+      <RouteEnter key="dashboard"><Index /></RouteEnter>
     </Suspense>
   );
 };
@@ -39,10 +40,10 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Login />} />
+              <Route path="/login" element={<RouteEnter><Login /></RouteEnter>} />
+              <Route path="/signup" element={<RouteEnter><Login /></RouteEnter>} />
               <Route path="/" element={<Home />} />
-              <Route path="*" element={<NotFound />} />
+              <Route path="*" element={<RouteEnter><NotFound /></RouteEnter>} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
