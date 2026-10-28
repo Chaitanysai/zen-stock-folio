@@ -151,9 +151,9 @@ export function getTargetStatus(strategy: TradeStrategy): string {
 
 export function getSLRiskIndicator(strategy: TradeStrategy): { label: string; emoji: string; level: "safe" | "risk" | "hit" } {
   const slDistance = ((strategy.livePrice - strategy.stopLoss) / strategy.stopLoss) * 100;
-  if (strategy.livePrice < strategy.stopLoss) return { label: "Stop Loss Hit", emoji: "âŒ", level: "hit" };
-  if (slDistance < 2) return { label: "Risk", emoji: "âš ï¸", level: "risk" };
-  return { label: "Safe (Above SL)", emoji: "âœ…", level: "safe" };
+  if (strategy.livePrice < strategy.stopLoss) return { label: "Stop Loss Hit", emoji: "❌", level: "hit" };
+  if (slDistance < 2) return { label: "Risk", emoji: "⚠️", level: "risk" };
+  return { label: "Safe (Above SL)", emoji: "✅", level: "safe" };
 }
 
 export function getProgressPercent(strategy: TradeStrategy): number {
@@ -163,10 +163,10 @@ export function getProgressPercent(strategy: TradeStrategy): number {
 }
 
 export function getWatchlistStatus(stock: WatchlistStock): { label: string; emoji: string; level: "entry" | "target" | "sl" | "neutral" } {
-  if (stock.cmp < stock.stopLoss) return { label: "SL Hit", emoji: "âŒ", level: "sl" };
-  if (stock.cmp >= stock.entryZoneLow && stock.cmp <= stock.entryZoneHigh) return { label: "Entry Opportunity", emoji: "ðŸŸ¢", level: "entry" };
-  if (stock.cmp > stock.target1) return { label: "Target Hit", emoji: "ðŸŽ¯", level: "target" };
-  return { label: "Watching", emoji: "ðŸ‘€", level: "neutral" };
+  if (stock.cmp < stock.stopLoss) return { label: "SL Hit", emoji: "❌", level: "sl" };
+  if (stock.cmp >= stock.entryZoneLow && stock.cmp <= stock.entryZoneHigh) return { label: "Entry Opportunity", emoji: "🟢", level: "entry" };
+  if (stock.cmp > stock.target1) return { label: "Target Hit", emoji: "🎯", level: "target" };
+  return { label: "Watching", emoji: "👀", level: "neutral" };
 }
 
 export function calcHoldingDays(entryDate: string, exitDate?: string): number {
