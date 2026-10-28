@@ -10,6 +10,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:functions": "vitest run --config vitest.functions.config.ts",
+    "typecheck:functions": "tsc -p tsconfig.functions.json --noEmit",
     "test:rules": "npx -y firebase-tools@14.11.0 emulators:exec --only firestore \"vitest run src/lib/firestore.rules.test.ts\"",
     "test:migration": "npx -y firebase-tools@14.11.0 emulators:exec --only firestore,auth \"vitest run src/lib/migration/firestoreImport.emulator.test.ts src/lib/migration/authImport.emulator.test.ts\"",
     "migration:parse-backup": "vite-node scripts/migration/parse-backup.ts",

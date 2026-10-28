@@ -1,4 +1,6 @@
-﻿export interface PortfolioStock {
+import type { BrokerStockProvenance } from "@/lib/brokers/contracts";
+
+export interface PortfolioStock {
   ticker: string;
   stockName: string;
   sector?: string;
@@ -13,6 +15,8 @@
   exitDate?: string;
   status: "Active" | "Sold Profit" | "Sold Loss";
   notes?: TradeJournalEntry;
+  /** Present only on rows imported from a broker connection. */
+  broker?: BrokerStockProvenance;
 }
 
 export interface TradeJournalEntry {

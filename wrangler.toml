@@ -34,3 +34,36 @@ FIREBASE_API_KEY = "AIzaSyDcKFGeZv2ov8M7SYdv-Q4H3JPhpOhncXQ"
 [[kv_namespaces]]
 binding = "PRICE_CACHE"
 id = "27cfa83891f2434682e05d9684c69e47"
+
+# --- Broker connection store -------------------------------------------------
+# Server-only KV namespace for broker connection metadata, one-time
+# authorization state, encrypted credential envelopes and the sync ledger.
+# It is NOT created automatically: this file creates no resource. See
+# docs/brokers/setup.md.
+#
+#   wrangler kv namespace create BROKER_STORE
+#
+# This file is the source of truth for Pages configuration, so the binding and
+# the callback origin are declared per environment below. `vars` and
+# `kv_namespaces` are NOT inherited by `env.*`, so the preview section repeats
+# the production values it must keep. Top level stays production-only:
+# binding the broker store to production is a separate release decision.
+#
+# The secret `BROKER_CREDENTIALS_KEYS` cannot live in this file; set it with
+#   npx wrangler pages secret put BROKER_CREDENTIALS_KEYS --project-name zenfolio --env preview
+# Without it (and without the binding below) every broker endpoint fails closed
+# with `setup_required`.
+[env.preview.vars]
+FIREBASE_API_KEY = "AIzaSyDcKFGeZv2ov8M7SYdv-Q4H3JPhpOhncXQ"
+# Origin used for provider callback URLs. The branch alias always serves the
+# newest preview of this branch, so the registered redirect URL stays valid
+# across preview uploads.
+BROKER_PUBLIC_ORIGIN = "https://feat-obsidian-dashboard.zenfolio-7jd.pages.dev"
+
+[[env.preview.kv_namespaces]]
+binding = "PRICE_CACHE"
+id = "27cfa83891f2434682e05d9684c69e47"
+
+[[env.preview.kv_namespaces]]
+binding = "BROKER_STORE"
+id = "a91188ff12e24f2096fc8911de49fb6a"

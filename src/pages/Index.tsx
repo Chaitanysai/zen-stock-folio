@@ -43,6 +43,8 @@ import { dataModeLabel } from "@/lib/market-data/freshness.ts";
 import { computeMetrics, realisedByMonth, toHoldingRow } from "@/lib/dashboard/overview";
 import { greeting, signedPct, stagger } from "@/lib/dashboard/format";
 import { MobileMenu, Rail, TopBar } from "@/components/dashboard/Shell";
+import Brokers from "@/components/dashboard/Brokers";
+import { readBrokerCallback } from "@/lib/brokers/client";
 import { useThemeReveal } from "@/hooks/useThemeReveal";
 import { BalanceCard, PnlCard, StatGrid } from "@/components/dashboard/Summary";
 import { HoldingsCard } from "@/components/dashboard/Holdings";
@@ -115,6 +117,12 @@ export default function Index() {
   }, [clearSectionTimers]);
 
   useEffect(() => clearSectionTimers, [clearSectionTimers]);
+
+  // A broker callback lands on `/` with a short status query string; open the
+  // Brokers section so the result is visible, then the section clears the URL.
+  useEffect(() => {
+    if (readBrokerCallback()) goTo("brokers");
+  }, [goTo]);
 
   const { user, signOut, loading: authLoading } = useAuth();
   const [showAuth,   setShowAuth]   = useState(false);
@@ -316,6 +324,9 @@ export default function Index() {
   const handleWatchlistAdd    = useCallback((stock: WatchlistStock) => { void applySnapshot({ watchlist: [...snapshotRef.current.watchlist, stock] }, "Watchlist update"); }, [applySnapshot]);
   const handleWatchlistEdit   = useCallback((originalName: string, updatedStock: WatchlistStock) => { void applySnapshot({ watchlist: snapshotRef.current.watchlist.map((s) => s.stockName === originalName ? updatedStock : s) }, "Watchlist update"); }, [applySnapshot]);
   const handleWatchlistDelete = useCallback((stockName: string) => { void applySnapshot({ watchlist: snapshotRef.current.watchlist.filter((s) => s.stockName !== stockName) }, "Watchlist deletion"); }, [applySnapshot]);
+  const handleBrokerImport = useCallback((nextStocks: PortfolioStock[], label: string) => {
+    void applySnapshot({ stocks: nextStocks }, label);
+  }, [applySnapshot]);
   const handleJournalNotesUpdate = useCallback((ticker: string, notes: TradeJournalEntry) => {
     void applySnapshot(journalNotesPatch(snapshotRef.current, ticker, notes), "Journal update");
   }, [applySnapshot]);
@@ -594,6 +605,7 @@ export default function Index() {
                 {renderedTab === "alerts"    && <PriceAlerts alerts={alerts} onAddAlert={handleAlertAdd} onDeleteAlert={handleAlertDelete} onDismissAlert={handleAlertDismiss} />}
                 {renderedTab === "ai"        && <AIInsights stocks={live} />}
                 {renderedTab === "export"    && <ExportPortfolio stocks={live} />}
+                {renderedTab === "brokers"   && <Brokers stocks={stocks} onImportStocks={handleBrokerImport} />}
               </div>
             )}
           </div>

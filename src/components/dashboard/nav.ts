@@ -1,12 +1,12 @@
 import {
-  Activity, BarChart3, Bell, BookOpen, Brain, Eye, History, LayoutDashboard, Newspaper,
+  Activity, BarChart3, Bell, BookOpen, Brain, Eye, History, LayoutDashboard, Link2, Newspaper,
   PieChart, ScrollText, Wallet, Zap, type LucideIcon,
 } from "lucide-react";
 
 export type ActiveTab =
   | "overview" | "holdings" | "trades" | "watchlist" | "ai"
   | "charts" | "analytics" | "history" | "journal"
-  | "sector" | "alerts" | "export" | "news";
+  | "sector" | "alerts" | "export" | "news" | "brokers";
 
 export interface NavItem {
   id: ActiveTab;
@@ -44,6 +44,7 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { id: "ai", label: "AI Insights", icon: Brain, hint: "An AI review of your portfolio's risk and allocation." },
       { id: "alerts", label: "Alerts", icon: Bell, hint: "Price alerts that fire while the app is open." },
       { id: "export", label: "Export", icon: Zap, hint: "Download your portfolio as CSV or XLSX." },
+      { id: "brokers", label: "Brokers", icon: Link2, hint: "Connect a broker read-only to import holdings and today's activity." },
     ],
   },
 ];
@@ -57,7 +58,7 @@ export const PAGE_TITLES: Record<ActiveTab, string> = {
   overview: "Overview", holdings: "Portfolio holdings", trades: "Trades & F&O",
   watchlist: "Watchlist", ai: "AI insights", charts: "Charts", analytics: "Trade analytics",
   history: "Trade history", journal: "Trade journal", sector: "Sector allocation",
-  alerts: "Price alerts", export: "Export data", news: "Holdings news",
+  alerts: "Price alerts", export: "Export data", news: "Holdings news", brokers: "Broker connections",
 };
 
 export const navItem = (id: ActiveTab): NavItem => NAV_ITEMS.find((i) => i.id === id)!;

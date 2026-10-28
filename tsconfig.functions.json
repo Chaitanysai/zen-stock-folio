@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleDetection": "force",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "skipLibCheck": true,
+    "strict": false,
+    "strictNullChecks": true,
+    "target": "ES2022",
+    "types": ["@cloudflare/workers-types", "vitest/globals"]
+  },
+  "include": ["functions/api/brokers/**/*.ts", "src/lib/brokers/**/*.ts"],
+  "exclude": ["src/lib/brokers/client.ts", "src/lib/brokers/merge.ts", "src/lib/brokers/*.test.ts"]
+}

@@ -76,4 +76,16 @@ export const RATE_LIMITS = {
   search: { limit: 30, windowMs: 60_000 },
   /** /api/health — diagnostics; ?deep=1 probes providers, so keep it tight. */
   health: { limit: 10, windowMs: 60_000 },
+  /** /api/brokers/providers and /connections reads. */
+  brokerRead: { limit: 60, windowMs: 60_000 },
+  /** Connection creation and credential replacement. */
+  brokerWrite: { limit: 20, windowMs: 60_000 },
+  /** Authorization start; each start creates a one-time state record. */
+  brokerAuthorize: { limit: 10, windowMs: 60_000 },
+  /** Unauthenticated provider callback, keyed by client IP. */
+  brokerCallback: { limit: 30, windowMs: 60_000 },
+  /** Connection test; may mint a Groww token. */
+  brokerTest: { limit: 10, windowMs: 60_000 },
+  /** Sync is expensive on both sides; avoid overlapping runs. */
+  brokerSync: { limit: 6, windowMs: 60_000 },
 } as const;

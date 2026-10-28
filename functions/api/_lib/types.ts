@@ -26,6 +26,36 @@ export interface Env {
    * When absent the endpoints degrade gracefully to no-cache mode.
    */
   PRICE_CACHE?: KVNamespace;
+  /**
+   * Broker connection store (server-only). Holds connection metadata, one-time
+   * authorization state and AES-GCM credential envelopes. When absent every
+   * broker endpoint fails closed with `setup_required`.
+   */
+  BROKER_STORE?: KVNamespace;
+  /**
+   * JSON map of key version -> base64 32-byte AES-GCM key, e.g.
+   * `{"1":"<base64>"}`. Server-only; never exposed to the browser.
+   */
+  BROKER_CREDENTIALS_KEYS?: string;
+  /** Version used for new envelopes; defaults to the highest listed version. */
+  BROKER_CREDENTIALS_ACTIVE_KEY_VERSION?: string;
+  /**
+   * Public HTTPS origin used to build callback URLs and post-callback
+   * redirects, e.g. `https://zenfolio-7jd.pages.dev`. Never user-supplied.
+   */
+  BROKER_PUBLIC_ORIGIN?: string;
+  /** `"false"` disables the provider; absent means enabled when storage is ready. */
+  BROKER_ZERODHA_ENABLED?: string;
+  BROKER_GROWW_ENABLED?: string;
+  /**
+   * Shared-app Zerodha mode stays disabled unless written multi-user approval
+   * exists AND this is explicitly `"true"`. Even then it remains
+   * approval-gated and is not implemented in this release.
+   */
+  BROKER_ZERODHA_SHARED_APP?: string;
+  /** Optional shared Kite app credentials. Only relevant to the gated mode. */
+  ZERODHA_API_KEY?: string;
+  ZERODHA_API_SECRET?: string;
 }
 
 /** Minimal shape of a Pages Function handler (runtime-compatible). */
