@@ -152,10 +152,12 @@ const Landing = () => {
         {/* ── Features ── */}
         <section id="features" className="zl-section" aria-labelledby="zl-features-title">
           <div className="zl-wrap">
-            <div className="zl-head zl-reveal">
-              <p className="zl-kicker">Features</p>
-              <h2 id="zl-features-title" className="zl-h2">Everything you track, <em>without</em> the spreadsheet.</h2>
-              <p className="zl-sub">
+            <div className="zl-head zl-head-split zl-reveal">
+              <div>
+                <p className="zl-kicker">Features</p>
+                <h2 id="zl-features-title" className="zl-h2">Everything you track, <em>without</em> the spreadsheet.</h2>
+              </div>
+              <p className="zl-sub zl-head-aside">
                 The tools an active Indian investor reaches for every day, in one workspace that keeps the numbers readable.
               </p>
             </div>
@@ -213,9 +215,14 @@ const Landing = () => {
         {/* ── Workflow ── */}
         <section id="workflow" className="zl-section" aria-labelledby="zl-workflow-title">
           <div className="zl-wrap">
-            <div className="zl-head zl-reveal">
-              <p className="zl-kicker">How it works</p>
-              <h2 id="zl-workflow-title" className="zl-h2">Set up in minutes, <em>not</em> a weekend.</h2>
+            <div className="zl-head zl-head-split zl-reveal">
+              <div>
+                <p className="zl-kicker">How it works</p>
+                <h2 id="zl-workflow-title" className="zl-h2">Set up in minutes, <em>not</em> a weekend.</h2>
+              </div>
+              <p className="zl-sub zl-head-aside">
+                An email address and the holdings you already own are all it takes to get set up.
+              </p>
             </div>
             <ol className="zl-steps">
               {STEPS.map((s, i) => (
@@ -232,7 +239,7 @@ const Landing = () => {
         {/* ── Trust ── */}
         <section id="trust" className="zl-section" aria-labelledby="zl-trust-title">
           <div className="zl-wrap zl-trust">
-            <div className="zl-reveal">
+            <div className="zl-trust-copy zl-reveal">
               <p className="zl-kicker">Your data</p>
               <h2 id="zl-trust-title" className="zl-h2">Built to keep your portfolio <em>yours</em>.</h2>
               <p className="zl-sub">

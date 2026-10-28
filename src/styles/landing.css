@@ -170,12 +170,12 @@
 .zl-mobile-cta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 6px 4px; border-top: 1px solid var(--zl-bd); margin-top: 6px; }
 
 /* ════════ Hero ════════ */
-/* The hero fills the first screen (below the fixed header) and centres its grid in it, so tall
-   monitors don't end in an empty band. Stacked layouts are taller than that and just grow. */
+/* The hero fills the first screen (below the fixed header) up to a cap: a full 100svh left a
+   dead band under the preview on 1080p+ monitors. Stacked layouts are taller and just grow. */
 .zl-hero {
   display: flex; align-items: center;
-  min-height: calc(100svh - var(--zl-nav-h));
-  padding: clamp(28px, 4.2vw, 68px) 0 clamp(32px, 4.8vw, 80px);
+  min-height: min(calc(100svh - var(--zl-nav-h)), 900px);
+  padding: clamp(28px, 4.2vw, 68px) 0 clamp(24px, 2.6vw, 44px);
 }
 .zl-hero > .zl-wrap { width: 100%; }
 /* Copy and preview share the wrap; the preview gets the larger share and grows with it. */
@@ -346,8 +346,10 @@
 .zl-stage-note { margin-top: 14px; text-align: center; font-size: 12px; color: var(--zl-tx-2); }
 
 /* ════════ Sections ════════ */
-.zl-section { padding: clamp(44px, 5.6vw, 84px) 0; position: relative; }
+.zl-section { padding: clamp(40px, 4.8vw, 72px) 0; position: relative; }
 .zl-section + .zl-section { border-top: 1px solid var(--zl-bd); }
+/* The first section tucks up under the hero so the preview caption isn't followed by a void. */
+.zl-hero + .zl-section { padding-top: clamp(36px, 3.4vw, 52px); }
 .zl-kicker {
   font: 600 12px/1 'Geist Mono', monospace; letter-spacing: .14em; text-transform: uppercase;
   color: hsl(var(--brand-ink));
@@ -359,8 +361,11 @@
 }
 .zl-h2 em { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: -.01em; }
 .zl-sub { margin: 16px 0 0; max-width: 38rem; font-size: 16.5px; line-height: 1.6; color: var(--zl-tx-2); }
-.zl-head { margin-bottom: clamp(28px, 3.4vw, 44px); }
-.zl-head-split { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.zl-head { margin-bottom: clamp(24px, 2.8vw, 36px); }
+/* Heading left, supporting line right: the right half of a 1680px wrap was otherwise empty. */
+.zl-head-split { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px 48px; flex-wrap: wrap; }
+.zl-head-split > div { min-width: 0; }
+.zl-head-aside { flex: 0 1 30rem; margin: 0 0 2px; max-width: 30rem; font-size: 16px; line-height: 1.55; }
 
 /* Feature bento: one wide card + four */
 .zl-bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -418,11 +423,12 @@
 
 /* Workflow */
 .zl-steps { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; list-style: none; margin: 0; padding: 0; counter-reset: zl-step; }
-.zl-steps::before {
-  content: ''; position: absolute; left: 24px; right: 24px; top: 28px; height: 1px; z-index: -1;
-  background: linear-gradient(90deg, transparent, var(--zl-bd-hi) 15%, var(--zl-bd-hi) 85%, transparent);
+/* One segment per pair of steps, so the line ends at the 03 badge instead of trailing past it. */
+.zl-step { position: relative; padding: 0 4px; }
+.zl-step:not(:last-child)::before {
+  content: ''; position: absolute; top: 28px; left: 60px; right: -20px; height: 1px;
+  background: var(--zl-bd-hi);
 }
-.zl-step { padding: 0 4px; }
 .zl-step-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 56px; height: 56px; border-radius: 18px;
@@ -434,7 +440,10 @@
 .zl-step p { margin: 8px 0 0; font-size: 14.5px; line-height: 1.6; color: var(--zl-tx-2); max-width: 30ch; }
 
 /* Trust */
-.zl-trust { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(32px, 6vw, 80px); align-items: start; }
+.zl-trust { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(32px, 6vw, 80px); align-items: stretch; }
+.zl-trust-copy { display: flex; flex-direction: column; }
+/* The note settles on the grid's bottom edge instead of leaving a dead lower-left corner. */
+.zl-trust-copy .zl-note { margin-top: auto; padding-top: 20px; }
 .zl-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; border: 1px solid var(--zl-bd); border-radius: var(--zl-r-lg); overflow: hidden; background: var(--zl-glass); }
 .zl-fact { padding: 24px; border-right: 1px solid var(--zl-bd); border-bottom: 1px solid var(--zl-bd); }
 .zl-fact:nth-child(2n) { border-right: none; }
@@ -512,7 +521,10 @@
 }
 @media (max-width: 720px) {
   .zl-steps { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-  .zl-steps::before { left: 28px; right: auto; top: 28px; bottom: 28px; width: 1px; height: auto; background: linear-gradient(180deg, transparent, var(--zl-bd-hi) 10%, var(--zl-bd-hi) 90%, transparent); }
+  .zl-step:not(:last-child)::before {
+    left: 32px; right: auto; top: 59px; bottom: -28px; width: 1px; height: auto;
+    background: var(--zl-bd-hi);
+  }
   .zl-step { display: grid; grid-template-columns: 56px minmax(0, 1fr); column-gap: 18px; }
   .zl-step h3 { margin-top: 4px; }
   .zl-step > :not(.zl-step-num) { grid-column: 2; }
