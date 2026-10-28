@@ -51,9 +51,9 @@ export default function DashboardPreview() {
                 +₹1,62,340 (+14.9%)
               </span>
               <div className="zl-pv-split" aria-hidden="true">
-                <span style={{ width: "62%", background: "hsl(0 0% 100% / .9)" }} />
-                <span style={{ width: "26%", background: "hsl(190 90% 75% / .85)" }} />
-                <span style={{ width: "12%", background: "hsl(270 90% 85% / .7)" }} />
+                <span style={{ width: "62%", background: "hsl(0 0% 100% / .92)" }} />
+                <span style={{ width: "26%", background: "hsl(36 100% 80% / .9)" }} />
+                <span style={{ width: "12%", background: "hsl(0 0% 0% / .35)" }} />
               </div>
             </div>
 

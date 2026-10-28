@@ -55,6 +55,12 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        brand: {
+          DEFAULT: "hsl(var(--brand))",
+          strong: "hsl(var(--brand-strong))",
+          ink: "hsl(var(--brand-ink))",
+          foreground: "hsl(var(--brand-foreground))",
+        },
         profit: "hsl(var(--profit))",
         loss: "hsl(var(--loss))",
         warning: "hsl(var(--warning))",

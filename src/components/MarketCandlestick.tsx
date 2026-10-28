@@ -24,6 +24,7 @@ import {
 import type { Candle, CandlesEnvelope, CandleRange } from "@/lib/market-data/types.ts";
 import { describeProvenance } from "@/lib/market-data/freshness.ts";
 import { fetchCandles, MarketDataApiError } from "@/lib/market-data/client.ts";
+import { candleThemeOptions, chartThemeOptions, readChartColors, useChartColors } from "@/hooks/useChartTheme";
 
 export interface MarketCandlestickProps {
   symbol: string;
@@ -76,36 +77,24 @@ export function MarketCandlestick({ symbol, range, height = 260, showProvenance 
 
   const [state, setState] = useState<PanelState>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const colors = useChartColors();
 
   // Create the chart once per mount; data updates reuse the same series.
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const isDark = document.documentElement.classList.contains("dark");
+    const initial = readChartColors();
+    const themed = chartThemeOptions(initial);
     const chart = createChart(containerRef.current, {
       width: containerRef.current.clientWidth,
       height,
-      layout: {
-        textColor: isDark ? "#94a3b8" : "#64748b",
-        background: { type: ColorType.Solid, color: "transparent" },
-      },
-      grid: {
-        vertLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-        horzLines: { color: isDark ? "#ffffff0d" : "#0000000d" },
-      },
+      ...themed,
+      layout: { ...themed.layout, background: { type: ColorType.Solid, color: "transparent" } },
       crosshair: { mode: 1 },
-      rightPriceScale: { borderColor: isDark ? "#ffffff14" : "#00000014" },
-      timeScale: { borderColor: isDark ? "#ffffff14" : "#00000014", secondsVisible: false },
+      timeScale: { ...themed.timeScale, secondsVisible: false },
     });
 
-    const series = chart.addSeries(CandlestickSeries, {
-      upColor: "#10b981",
-      downColor: "#ef4444",
-      borderUpColor: "#10b981",
-      borderDownColor: "#ef4444",
-      wickUpColor: "#10b981",
-      wickDownColor: "#ef4444",
-    });
+    const series = chart.addSeries(CandlestickSeries, candleThemeOptions(initial));
 
     chartRef.current = chart;
     seriesRef.current = series;
@@ -122,6 +111,12 @@ export function MarketCandlestick({ symbol, range, height = 260, showProvenance 
       seriesRef.current = null;
     };
   }, [height]);
+
+  // Re-theme in place when the theme class changes; data and zoom are kept.
+  useEffect(() => {
+    chartRef.current?.applyOptions(chartThemeOptions(colors));
+    seriesRef.current?.applyOptions?.(candleThemeOptions(colors));
+  }, [colors]);
 
   // Load candles whenever the symbol, range, or retry counter changes.
   useEffect(() => {
@@ -189,7 +184,7 @@ export function MarketCandlestick({ symbol, range, height = 260, showProvenance 
                     padding: "3px 10px",
                     borderRadius: 999,
                     background: "transparent",
-                    color: "var(--accent)",
+                    color: "hsl(var(--brand-ink))",
                     border: "1px solid var(--accent-bd)",
                   }}
                 >

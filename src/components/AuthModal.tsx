@@ -91,11 +91,11 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
             {mode === "signin" ? (
               <>No account?{" "}
                 <button onClick={() => { setMode("signup"); setError(null); }}
-                  className="text-primary underline">Sign up</button></>
+                  className="text-brand-ink underline">Sign up</button></>
             ) : (
               <>Already have one?{" "}
                 <button onClick={() => { setMode("signin"); setError(null); }}
-                  className="text-primary underline">Sign in</button></>
+                  className="text-brand-ink underline">Sign in</button></>
             )}
           </p>
         </div>

@@ -31,7 +31,7 @@ const Home = () => {
 };
 
 const App = () => (
-  <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="theme" disableTransitionOnChange>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>

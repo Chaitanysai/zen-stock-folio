@@ -6,25 +6,24 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 .zl {
-  --zl-glass:     hsl(0 0% 100% / .66);
-  --zl-glass-hi:  hsl(0 0% 100% / .86);
-  --zl-bd:        hsl(230 30% 40% / .14);
-  --zl-bd-hi:     hsl(246 66% 52% / .30);
+  --zl-glass:     hsl(0 0% 100% / .62);
+  --zl-glass-hi:  hsl(0 0% 100% / .88);
+  --zl-bd:        hsl(var(--glass-border));
+  --zl-bd-hi:     hsl(var(--brand) / .38);
   /* Boundary of interactive controls: ≥3:1 against the canvas (WCAG 1.4.11) */
-  --zl-bd-ctl:    hsl(230 12% 54%);
-  /* Small mono labels on tinted chips need a deeper tone than the global tokens */
+  --zl-bd-ctl:    hsl(var(--input));
   --zl-warn-tx:   hsl(32 92% 26%);
   --zl-up-tx:     hsl(156 72% 21%);
-  --zl-hl:        inset 0 1px 0 hsl(0 0% 100% / .75);
-  --zl-sh-1:      0 1px 2px hsl(232 40% 20% / .05);
-  --zl-sh-2:      0 18px 40px -18px hsl(232 40% 20% / .22);
-  --zl-sh-hero:   0 40px 80px -32px hsl(246 70% 40% / .35), 0 12px 24px -12px hsl(232 40% 20% / .18);
-  --zl-tx-2:      hsl(230 16% 32%);
-  /* A step darker than the dashboard's gradients so white text clears 4.5:1 everywhere */
-  --zl-grad-hero: linear-gradient(135deg, hsl(252 68% 48%) 0%, hsl(232 74% 46%) 48%, hsl(214 86% 40%) 100%);
-  --zl-grad-acc:  linear-gradient(135deg, hsl(250 70% 50%) 0%, hsl(222 84% 44%) 100%);
-  --zl-hero-glow: hsl(190 100% 70% / .16);
-  --zl-grad-text: linear-gradient(100deg, hsl(250 70% 52%) 0%, hsl(222 84% 48%) 55%, hsl(190 80% 36%) 100%);
+  --zl-hl:        var(--glass-highlight);
+  --zl-sh-1:      var(--shadow-1);
+  --zl-sh-2:      var(--shadow-2);
+  --zl-sh-hero:   var(--shadow-3), var(--shadow-brand);
+  --zl-tx-2:      hsl(var(--secondary-foreground));
+  /* Brand fills carry white text (≥4.5:1 at every stop) */
+  --zl-grad-hero: var(--grad-brand);
+  --zl-grad-acc:  var(--grad-brand);
+  --zl-hero-glow: hsl(36 100% 78% / .28);
+  --zl-grad-text: linear-gradient(100deg, hsl(14 78% 38%) 0%, hsl(18 84% 46%) 55%, hsl(30 88% 42%) 100%);
   --zl-ring:      0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
   /* Height reserved for the fixed header (12px offset + 60px bar) */
   --zl-nav-h:     72px;
@@ -46,45 +45,29 @@
 }
 
 .dark .zl {
-  --zl-glass:     hsl(230 28% 9% / .58);
-  --zl-glass-hi:  hsl(230 26% 10% / .80);
-  --zl-bd:        hsl(230 40% 100% / .08);
-  --zl-bd-hi:     hsl(244 92% 76% / .28);
-  --zl-bd-ctl:    hsl(230 14% 46%);
+  --zl-glass:     hsl(24 8% 11% / .60);
+  --zl-glass-hi:  hsl(24 8% 12% / .84);
+  --zl-bd:        hsl(var(--glass-border));
+  --zl-bd-hi:     hsl(var(--brand) / .42);
+  --zl-bd-ctl:    hsl(var(--input));
   --zl-warn-tx:   hsl(var(--warning));
   --zl-up-tx:     hsl(var(--profit));
-  --zl-hl:        inset 0 1px 0 hsl(0 0% 100% / .06);
-  --zl-sh-1:      0 1px 2px hsl(0 0% 0% / .3);
-  --zl-sh-2:      0 24px 48px -22px hsl(0 0% 0% / .7);
-  --zl-sh-hero:   0 50px 100px -40px hsl(248 80% 30% / .75), 0 20px 40px -20px hsl(0 0% 0% / .6);
-  --zl-tx-2:      hsl(228 18% 74%);
-  --zl-grad-hero: linear-gradient(135deg, hsl(254 62% 46%) 0%, hsl(234 66% 44%) 50%, hsl(212 78% 40%) 100%);
-  --zl-grad-acc:  linear-gradient(135deg, hsl(250 72% 52%) 0%, hsl(222 84% 46%) 100%);
-  --zl-hero-glow: hsl(190 100% 70% / .22);
-  --zl-grad-text: linear-gradient(100deg, hsl(250 92% 80%) 0%, hsl(214 92% 74%) 55%, hsl(186 72% 64%) 100%);
+  --zl-tx-2:      hsl(var(--secondary-foreground));
+  --zl-hero-glow: hsl(30 100% 70% / .22);
+  --zl-grad-text: linear-gradient(100deg, hsl(18 94% 74%) 0%, hsl(24 96% 70%) 55%, hsl(36 92% 68%) 100%);
 }
 
 /* Atmospheric light, painted once behind everything (static, no animation) */
 .zl-atmos {
   position: absolute; inset: 0 0 auto 0; height: 1400px; z-index: -1; pointer-events: none;
-  background:
-    radial-gradient(48rem 30rem at 12% -6%,  hsl(250 90% 66% / .20), transparent 62%),
-    radial-gradient(40rem 26rem at 96% 4%,   hsl(196 90% 56% / .14), transparent 62%),
-    radial-gradient(36rem 24rem at 62% 46%,  hsl(272 80% 64% / .10), transparent 64%);
-}
-.dark .zl-atmos {
-  background:
-    radial-gradient(52rem 32rem at 10% -8%,  hsl(250 85% 55% / .30), transparent 62%),
-    radial-gradient(42rem 28rem at 98% 2%,   hsl(190 85% 45% / .16), transparent 62%),
-    radial-gradient(40rem 26rem at 62% 46%,  hsl(268 70% 50% / .14), transparent 64%);
+  background: var(--atmosphere);
 }
 /* Faint engineering grid, faded out towards the bottom */
 .zl-atmos::after {
   content: ''; position: absolute; inset: 0;
   background-image:
-    linear-gradient(hsl(var(--foreground) / .045) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--foreground) / .045) 1px, transparent 1px);
-  background-size: 56px 56px;
+    radial-gradient(hsl(var(--dot)) 1px, transparent 1.3px);
+  background-size: 22px 22px;
   -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 0%, transparent 75%);
           mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 0%, transparent 75%);
 }
@@ -95,7 +78,7 @@
 /* Anchor jumps and keyboard focus never land under the fixed header */
 .zl section[id] { scroll-margin-top: var(--zl-nav-h); }
 .zl main a, .zl main button, .zl footer a { scroll-margin-top: calc(var(--zl-nav-h) + 24px); scroll-margin-bottom: 24px; }
-.zl ::selection { background: hsl(246 80% 60% / .28); }
+.zl ::selection { background: hsl(var(--brand) / .28); }
 .zl-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
 .zl-skip {
@@ -118,9 +101,9 @@
 .zl-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
 .zl-btn-primary {
   color: #fff; background: var(--zl-grad-acc);
-  box-shadow: 0 12px 28px -12px hsl(246 80% 50% / .85), inset 0 1px 0 hsl(0 0% 100% / .22);
+  box-shadow: 0 12px 28px -12px hsl(var(--brand-strong) / .85), inset 0 1px 0 hsl(0 0% 100% / .22);
 }
-.zl-btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 16px 32px -12px hsl(246 80% 50% / .95), inset 0 1px 0 hsl(0 0% 100% / .22); }
+.zl-btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 16px 32px -12px hsl(var(--brand-strong) / .95), inset 0 1px 0 hsl(0 0% 100% / .22); }
 .zl-btn-primary:hover svg { transform: translateX(2px); }
 .zl-btn-primary svg { transition: transform 200ms var(--zl-ease); }
 .zl-btn-ghost {
@@ -128,7 +111,7 @@
   border-color: var(--zl-bd-ctl); box-shadow: var(--zl-hl);
   backdrop-filter: blur(var(--zl-blur)); -webkit-backdrop-filter: blur(var(--zl-blur));
 }
-.zl-btn-ghost:hover { border-color: hsl(var(--primary)); background: var(--zl-glass-hi); }
+.zl-btn-ghost:hover { border-color: hsl(var(--brand-ink)); background: var(--zl-glass-hi); }
 .zl-btn-sm { min-height: 38px; padding: 0 16px; font-size: 13px; }
 .zl-btn:focus-visible { box-shadow: var(--zl-ring); border-radius: 999px; }
 
@@ -194,13 +177,13 @@
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 12px 6px 8px; border-radius: 999px;
   font: 600 12px/1 'Geist Mono', monospace; letter-spacing: .02em;
-  color: hsl(var(--accent-foreground));
+  color: hsl(var(--brand-ink));
   background: var(--zl-glass); border: 1px solid var(--zl-bd-hi);
 }
 .zl-eyebrow-dot {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 999px;
-  background: hsl(var(--primary) / .16); color: hsl(var(--primary));
+  background: hsl(var(--brand) / .16); color: hsl(var(--brand-ink));
 }
 .zl-h1 {
   margin: 22px 0 0;
@@ -216,7 +199,7 @@
 .zl-cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 .zl-hero-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 28px 0 0; padding: 0; list-style: none; }
 .zl-hero-meta li { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: hsl(var(--muted-foreground)); }
-.zl-hero-meta svg { width: 15px; height: 15px; color: hsl(var(--primary)); }
+.zl-hero-meta svg { width: 15px; height: 15px; color: hsl(var(--brand-ink)); }
 
 /* Entrance: runs once on load, ≤ 400ms of stagger */
 @keyframes zl-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -234,7 +217,7 @@
 .zl-stage::before {
   /* soft glow under the device */
   content: ''; position: absolute; inset: 8% 6% -6% 6%; z-index: -1;
-  background: radial-gradient(closest-side, hsl(246 90% 60% / .35), transparent);
+  background: radial-gradient(closest-side, hsl(var(--brand) / .30), transparent);
   filter: blur(30px);
 }
 .zl-preview {
@@ -264,13 +247,13 @@
   position: relative; overflow: hidden; isolation: isolate;
   padding: 16px 18px; border-radius: var(--zl-r-md);
   background: var(--zl-grad-hero); color: #fff;
-  box-shadow: 0 18px 36px -20px hsl(246 70% 40% / .8), inset 0 1px 0 hsl(0 0% 100% / .2);
+  box-shadow: 0 18px 36px -20px hsl(var(--brand-strong) / .7), inset 0 1px 0 hsl(0 0% 100% / .2);
 }
 .zl-pv-hero::after {
   content: ''; position: absolute; inset: 0; z-index: -1;
   background:
     radial-gradient(20rem 10rem at 100% 0%, var(--zl-hero-glow), transparent 60%),
-    radial-gradient(14rem 8rem at 0% 100%, hsl(270 100% 75% / .18), transparent 60%);
+    radial-gradient(14rem 8rem at 0% 100%, hsl(36 100% 74% / .20), transparent 60%);
 }
 .zl-pv-lbl { font-size: 11px; font-weight: 600; color: #fff; letter-spacing: .01em; }
 .zl-pv-val { margin-top: 8px; font: 600 clamp(22px, 2.6vw, 30px)/1 'Geist Mono', monospace; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
@@ -288,7 +271,7 @@
   padding: 14px 16px; border-radius: var(--zl-r-md);
   background: hsl(var(--card) / .7); border: 1px solid var(--zl-bd);
 }
-.dark .zl-pv-card { background: hsl(230 26% 12% / .6); }
+.dark .zl-pv-card { background: hsl(var(--card) / .7); }
 .zl-pv-card-lbl { font-size: 11px; font-weight: 600; color: hsl(var(--muted-foreground)); }
 .zl-pv-pnl { margin-top: 8px; font: 600 clamp(18px, 2vw, 22px)/1 'Geist Mono', monospace; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .zl-pv-sub { margin-top: 8px; font: 500 11px/1.3 'Geist Mono', monospace; color: hsl(var(--muted-foreground)); font-variant-numeric: tabular-nums; }
@@ -315,8 +298,8 @@
 .zl-pv-logo {
   display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
   width: 24px; height: 24px; border-radius: 7px;
-  font: 700 8.5px/1 'Geist Mono', monospace; color: hsl(var(--accent-foreground));
-  background: hsl(var(--primary) / .10); border: 1px solid hsl(var(--primary) / .22);
+  font: 700 8.5px/1 'Geist Mono', monospace; color: hsl(var(--brand-ink));
+  background: hsl(var(--brand) / .10); border: 1px solid hsl(var(--brand) / .22);
 }
 .zl-pv-name { font-size: 11.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zl-pv-num { font: 500 11px/1 'Geist Mono', monospace; text-align: right; font-variant-numeric: tabular-nums; color: hsl(var(--foreground) / .85); }
@@ -327,7 +310,7 @@
 .zl-pv-wl-chip {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 10px 12px; border-radius: 12px;
-  background: hsl(var(--primary) / .07); border: 1px solid hsl(var(--primary) / .22);
+  background: hsl(var(--brand) / .07); border: 1px solid hsl(var(--brand) / .22);
 }
 .zl-pv-wl-name { font-size: 12px; font-weight: 650; }
 .zl-pv-wl-zone { margin-top: 3px; font: 500 10.5px/1.2 'Geist Mono', monospace; color: hsl(var(--muted-foreground)); }
@@ -351,7 +334,7 @@
 .zl-section + .zl-section { border-top: 1px solid var(--zl-bd); }
 .zl-kicker {
   font: 600 12px/1 'Geist Mono', monospace; letter-spacing: .14em; text-transform: uppercase;
-  color: hsl(var(--primary));
+  color: hsl(var(--brand-ink));
 }
 .zl-h2 {
   margin: 14px 0 0; max-width: 20ch;
@@ -379,7 +362,7 @@
 .zl-card-icon {
   display: inline-flex; align-items: center; justify-content: center;
   width: 40px; height: 40px; border-radius: 12px;
-  color: hsl(var(--primary)); background: hsl(var(--primary) / .10); border: 1px solid hsl(var(--primary) / .22);
+  color: hsl(var(--brand-ink)); background: hsl(var(--brand) / .10); border: 1px solid hsl(var(--brand) / .22);
 }
 .zl-card-icon svg { width: 19px; height: 19px; }
 .zl-card h3 { margin: 18px 0 0; font-size: 17px; font-weight: 650; letter-spacing: -.015em; }
@@ -395,7 +378,7 @@
   padding: 14px; border-radius: var(--zl-r-md);
   background: hsl(var(--card) / .6); border: 1px solid var(--zl-bd);
 }
-.dark .zl-mini { background: hsl(230 26% 12% / .55); }
+.dark .zl-mini { background: hsl(var(--card) / .65); }
 .zl-mini-row { display: grid; grid-template-columns: 80px minmax(0, 1fr) 64px; gap: 10px; align-items: center; padding: 6px 0; }
 .zl-mini-row span:first-child { font: 600 11px/1 'Geist Mono', monospace; color: hsl(var(--foreground) / .8); }
 .zl-mini-track { height: 7px; border-radius: 99px; background: hsl(var(--foreground) / .07); overflow: hidden; }
@@ -415,7 +398,7 @@
   padding: 7px 12px; border-radius: 999px; font-size: 13px; font-weight: 500;
   background: var(--zl-glass); border: 1px solid var(--zl-bd);
 }
-.zl-also li svg { width: 14px; height: 14px; color: hsl(var(--primary)); }
+.zl-also li svg { width: 14px; height: 14px; color: hsl(var(--brand-ink)); }
 
 /* Workflow */
 .zl-steps { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; list-style: none; margin: 0; padding: 0; counter-reset: zl-step; }
@@ -427,7 +410,7 @@
 .zl-step-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 56px; height: 56px; border-radius: 18px;
-  font: 600 15px/1 'Geist Mono', monospace; color: hsl(var(--primary));
+  font: 600 15px/1 'Geist Mono', monospace; color: hsl(var(--brand-ink));
   background: hsl(var(--background)); border: 1px solid var(--zl-bd-hi);
   box-shadow: 0 0 0 6px hsl(var(--background)), var(--zl-sh-1);
 }
@@ -440,7 +423,7 @@
 .zl-fact { padding: 24px; border-right: 1px solid var(--zl-bd); border-bottom: 1px solid var(--zl-bd); }
 .zl-fact:nth-child(2n) { border-right: none; }
 .zl-fact:nth-last-child(-n+2) { border-bottom: none; }
-.zl-fact svg { width: 20px; height: 20px; color: hsl(var(--primary)); }
+.zl-fact svg { width: 20px; height: 20px; color: hsl(var(--brand-ink)); }
 .zl-fact h3 { margin: 14px 0 0; font-size: 15.5px; font-weight: 650; letter-spacing: -.01em; }
 .zl-fact p { margin: 6px 0 0; font-size: 14px; line-height: 1.55; color: var(--zl-tx-2); }
 .zl-note { margin-top: 20px; font-size: 13px; line-height: 1.6; color: hsl(var(--muted-foreground)); max-width: 36rem; }
@@ -458,17 +441,17 @@
   content: ''; position: absolute; inset: 0; z-index: -1;
   background:
     radial-gradient(36rem 18rem at 100% 0%, var(--zl-hero-glow), transparent 60%),
-    radial-gradient(28rem 16rem at 0% 100%, hsl(270 100% 75% / .20), transparent 60%);
+    radial-gradient(28rem 16rem at 0% 100%, hsl(36 100% 74% / .22), transparent 60%);
 }
 .zl-final h2 { margin: 0; font-size: clamp(28px, 3.4vw, 42px); line-height: 1.08; font-weight: 650; letter-spacing: -.035em; max-width: 20ch; text-wrap: balance; }
 .zl-final h2 em { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; }
 .zl-final p { margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: hsl(0 0% 100% / .86); max-width: 36rem; }
 .zl-final .zl-cta-row { margin-top: 0; }
-.zl-btn-light { color: hsl(246 60% 30%); background: #fff; box-shadow: 0 12px 28px -12px hsl(230 60% 10% / .6); }
+.zl-btn-light { color: hsl(14 78% 28%); background: #fff; box-shadow: 0 12px 28px -12px hsl(14 60% 12% / .6); }
 .zl-btn-light:hover { transform: translateY(-1px); background: hsl(0 0% 100% / .94); }
 .zl-btn-outline-light { color: #fff; border-color: hsl(0 0% 100% / .75); background: hsl(0 0% 100% / .08); }
 .zl-btn-outline-light:hover { background: hsl(0 0% 100% / .16); border-color: #fff; }
-.zl-final .zl-btn:focus-visible { box-shadow: 0 0 0 2px hsl(246 60% 30%), 0 0 0 4px #fff; }
+.zl-final .zl-btn:focus-visible { box-shadow: 0 0 0 2px hsl(14 78% 28%), 0 0 0 4px #fff; }
 
 /* Footer */
 .zl-footer { padding: 48px 0 40px; border-top: 1px solid var(--zl-bd); margin-top: clamp(64px, 9vw, 120px); }

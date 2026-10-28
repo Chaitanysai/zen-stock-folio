@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { PortfolioStock } from "@/data/sampleData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 
 interface ImportTradesDialogProps {
   onImport: (stocks: PortfolioStock[]) => void;
+  /** Custom opener (rendered inside `DialogTrigger asChild`). Defaults to the standard button. */
+  trigger?: ReactNode;
 }
 
 const REQUIRED_FIELDS = ["ticker", "stockName", "entryPrice", "cmp", "quantity"];
@@ -131,7 +133,7 @@ const SAMPLE_CSV = `Ticker,Stock Name,Entry Date,Entry Price,CMP,52W High,Quanti
 RELIANCE,Reliance Industries,10-Jan-2026,2450,2612.35,2856.15,15,,,Active
 INFY,Infosys,12-Dec-2025,1890,1756.4,2012,20,1756.4,28-Feb-2026,Sold Loss`;
 
-const ImportTradesDialog = ({ onImport }: ImportTradesDialogProps) => {
+const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<PortfolioStock[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
@@ -197,9 +199,11 @@ const ImportTradesDialog = ({ onImport }: ImportTradesDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs border-border">
-          <Upload className="h-3.5 w-3.5" /> Import CSV/XLSX
-        </Button>
+        {trigger ?? (
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs border-border">
+            <Upload className="h-3.5 w-3.5" /> Import CSV/XLSX
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[85vh] overflow-y-auto">
         <DialogHeader>

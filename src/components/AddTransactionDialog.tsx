@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, type ReactNode } from "react";
 import { PortfolioStock } from "@/data/sampleData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 
 interface AddTransactionDialogProps {
   onAdd: (stock: PortfolioStock) => void;
+  /** Custom opener (rendered inside `DialogTrigger asChild`). Defaults to the standard button. */
+  trigger?: ReactNode;
 }
 
 const EMPTY_FORM = {
@@ -23,7 +25,7 @@ const EMPTY_FORM = {
   status: "Active" as PortfolioStock["status"],
 };
 
-const AddTransactionDialog = ({ onAdd }: AddTransactionDialogProps) => {
+const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => {
   const [open, setOpen]     = useState(false);
   const [form, setForm]     = useState(EMPTY_FORM);
   const [fetchedCmp, setFetchedCmp]         = useState<number | null>(null);
@@ -111,9 +113,11 @@ const AddTransactionDialog = ({ onAdd }: AddTransactionDialogProps) => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-1.5 text-xs gradient-primary border-0 text-white font-semibold">
-          <Plus className="h-3.5 w-3.5" /> Add Trade
-        </Button>
+        {trigger ?? (
+          <Button size="sm" className="gap-1.5 text-xs gradient-primary border-0 text-white font-semibold">
+            <Plus className="h-3.5 w-3.5" /> Add Trade
+          </Button>
+        )}
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-lg bg-card border-border">

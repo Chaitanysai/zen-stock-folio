@@ -3,6 +3,26 @@
   <head>
     <meta charset="UTF-8" />
 
+    <!-- Theme before first paint. Mirrors next-themes (attribute "class", storage key
+         "theme"): a saved choice wins, the system preference decides only on a first
+         visit. Without this the page would flash the wrong theme until React mounts. -->
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("theme");
+          var dark = saved === "dark" || saved === "light"
+            ? saved === "dark"
+            : window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var root = document.documentElement;
+          root.classList.remove("light", "dark");
+          root.classList.add(dark ? "dark" : "light");
+          root.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {
+          document.documentElement.classList.add("light");
+        }
+      })();
+    </script>
+
     <!-- Mobile viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
@@ -13,7 +33,8 @@
     <meta name="application-name" content="ZenFolio" />
 
     <!-- Theme color matching navy brand -->
-    <meta name="theme-color" content="#0b0d17" />
+    <meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14110f" media="(prefers-color-scheme: dark)" />
 
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />

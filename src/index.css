@@ -1,155 +1,252 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700;800;900&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ════════════════════════════════════════════════════════════════════════════
+   ZenFolio Obsidian — design tokens (single source of truth)
+
+   Colour tokens are HSL triplets so Tailwind (`bg-card`, `text-brand-ink`) and
+   plain CSS (`hsl(var(--card) / .5)`) read the same values. The theme class
+   (`light` / `dark`) is set on <html> by the inline script in index.html before
+   first paint and afterwards by next-themes (localStorage key `theme`).
+
+   Layers (light → dark):
+     page        --background   warm ivory  → obsidian
+     surface 1   --card         white       → graphite
+     surface 2   --surface-2    inset panels, inputs
+     surface 3   --surface-3    tracks, hover fills
+     glass       --glass        nav / toolbar groups only (blur ≤ 16px)
+   Brand: one warm orange. `--brand` for fills without small text,
+   `--brand-ink` for orange text, `--brand-strong` for fills carrying white text.
+   ════════════════════════════════════════════════════════════════════════════ */
 @layer base {
   :root {
-    /* ── ZenFolio: Indigo × Midnight — Light ──
-       Shares its palette with src/styles/dashboard.css so portalled
-       shadcn surfaces (dialogs, selects, toasts) match the dashboard. */
-    --background:    230 33% 96%;
-    --foreground:    230 32% 12%;
-    --card:          0 0% 100%;
-    --card-foreground: 230 32% 12%;
-    --popover:       0 0% 100%;
-    --popover-foreground: 230 32% 12%;
-    --primary:       246 66% 52%;
-    --primary-foreground: 0 0% 100%;
-    --secondary:     230 30% 95%;
-    --secondary-foreground: 230 20% 24%;
-    --muted:         230 26% 94%;
-    --muted-foreground: 230 12% 40%;
-    --accent:        244 70% 96%;
-    --accent-foreground: 246 60% 40%;
-    --destructive:   356 70% 44%;
+    /* ── Surfaces & text ── */
+    --background:           40 20% 95%;
+    --foreground:           24 14% 10%;
+    --card:                 0 0% 100%;
+    --card-foreground:      24 14% 10%;
+    --popover:              0 0% 100%;
+    --popover-foreground:   24 14% 10%;
+    --surface-2:            40 22% 97%;
+    --surface-3:            38 16% 93%;
+    --secondary:            38 18% 94%;
+    --secondary-foreground: 24 10% 20%;
+    --muted:                38 16% 93%;
+    --muted-foreground:     28 8% 37%;     /* 6.4:1 on white, 5.5:1 on surface-3 */
+    --faint-foreground:     28 6% 41%;     /* placeholders / captions, ≥4.5:1 */
+
+    /* ── Action colours ── near-black primary, orange accent */
+    --primary:              24 14% 10%;
+    --primary-foreground:   40 30% 97%;
+    --accent:               16 80% 95%;    /* hover tint (shadcn semantics) */
+    --accent-foreground:    14 78% 34%;
+    --brand:                16 88% 59%;    /* ≈ #F26B3A */
+    --brand-strong:         15 82% 42%;    /* fill that carries white text (5:1) */
+    --brand-ink:            14 78% 35%;    /* orange text on white / ivory (6+:1) */
+    --brand-foreground:     0 0% 100%;
+    --on-brand:             0 0% 100%;
+    --destructive:          356 70% 42%;
     --destructive-foreground: 0 0% 100%;
-    --border:        230 24% 89%;
-    --input:         230 16% 58%;   /* control boundary: ≥3:1 on canvas + glass */
-    --ring:          246 66% 52%;
-    --radius:        0.75rem;
 
-    --profit:        156 72% 27%;
-    --profit-foreground: 156 72% 10%;
-    --loss:          356 70% 44%;
-    --loss-foreground: 356 70% 96%;
-    --warning:       32 92% 34%;
-    --warning-foreground: 32 92% 10%;
+    /* ── Borders & focus ── */
+    --border:               36 14% 88%;
+    --border-strong:        34 11% 78%;
+    --input:                30 8% 50%;     /* control boundary ≥3:1 on white + page */
+    --ring:                 16 82% 46%;
+    --radius:               0.75rem;
+    --radius-card:          1.25rem;
 
-    /* Chart palette — indigo first; green/red stay reserved for P&L */
-    --chart-1: 246 72% 58%;
-    --chart-2: 206 84% 50%;
-    --chart-3: 186 70% 38%;
-    --chart-4: 276 56% 56%;
-    --chart-5: 36 86% 50%;
+    /* ── Financial semantics (text-safe) ── */
+    --profit:               156 70% 24%;
+    --profit-foreground:    156 72% 10%;
+    --loss:                 356 70% 42%;
+    --loss-foreground:      356 70% 96%;
+    --warning:              32 92% 32%;
+    --warning-foreground:   32 92% 10%;
 
-    /* Motion tokens (shared) */
+    /* ── Charts ── orange first; `--chart-ink` is the "dark bar" colour */
+    --chart-1:              16 88% 59%;
+    --chart-2:              24 12% 14%;
+    --chart-3:              38 92% 50%;
+    --chart-4:              190 42% 36%;
+    --chart-5:              28 9% 52%;
+    --chart-ink:            24 14% 12%;
+    --chart-grid:           24 14% 10% / .07;
+
+    /* ── Glass (nav + toolbar groups; cards stay opaque) ── */
+    --glass:                0 0% 100% / .62;
+    --glass-surface:        0 0% 100% / .86;
+    --glass-elevated:       0 0% 100% / .94;
+    --glass-overlay:        0 0% 100% / .97;
+    --glass-border:         30 20% 30% / .14;
+    --glass-border-strong:  30 20% 30% / .22;
+    --glass-highlight:      inset 0 1px 0 hsl(0 0% 100% / .8);
+    --blur-sm: 8px;
+    --blur-md: 14px;
+    --blur-lg: 16px;
+
+    /* ── Elevation ── */
+    --shadow-1: 0 1px 2px hsl(24 30% 20% / .05), 0 1px 1px hsl(24 30% 20% / .03);
+    --shadow-2: 0 14px 32px -16px hsl(24 30% 20% / .20);
+    --shadow-3: 0 28px 60px -26px hsl(24 30% 20% / .30);
+    --shadow-brand: 0 22px 40px -22px hsl(15 82% 42% / .65);
+    --scrim: 24 20% 8%;
+    --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
+
+    /* ── Gradients & atmosphere ── */
+    --grad-primary:       linear-gradient(180deg, hsl(24 12% 17%) 0%, hsl(24 14% 9%) 100%);
+    --grad-primary-hover: linear-gradient(180deg, hsl(24 12% 23%) 0%, hsl(24 14% 13%) 100%);
+    --grad-brand:         linear-gradient(135deg, hsl(17 82% 43%) 0%, hsl(12 80% 36%) 100%);
+    --atmosphere:
+      radial-gradient(46rem 28rem at 88% -6%,  hsl(var(--brand) / .14), transparent 62%),
+      radial-gradient(40rem 26rem at -4% 4%,   hsl(36 95% 72% / .16), transparent 60%),
+      radial-gradient(36rem 24rem at 50% 112%, hsl(var(--brand) / .06), transparent 62%);
+    --dot: 24 14% 10% / .10;
+
+    /* ── Motion ── */
     --dur-fast: 120ms;
     --dur: 200ms;
     --dur-slow: 320ms;
     --ease-out: cubic-bezier(.16, 1, .3, 1);
 
-    /* ── Glass system (mirrors src/styles/dashboard.css; global so portalled
-       surfaces match). Data/overlay surfaces stay mostly opaque for legibility. ── */
-    --glass-surface:   0 0% 100% / .78;   /* panels, cards on canvas   */
-    --glass-elevated:  0 0% 100% / .90;   /* popovers, menus, toasts   */
-    --glass-overlay:   0 0% 100% / .96;   /* dialogs, sheets           */
-    --glass-border:    230 30% 30% / .12;
-    --glass-border-strong: 230 30% 30% / .20;
-    --glass-highlight: inset 0 1px 0 hsl(0 0% 100% / .75);
-    --blur-sm: 8px;
-    --blur-md: 14px;
-    --blur-lg: 22px;
-    --shadow-1: 0 1px 2px hsl(232 40% 20% / .05), 0 1px 1px hsl(232 40% 20% / .03);
-    --shadow-2: 0 8px 24px -10px hsl(232 40% 20% / .16);
-    --shadow-3: 0 24px 56px -24px hsl(232 40% 20% / .28);
-    --scrim: 230 32% 10%;
-    --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(246 66% 52% / .55);
-    --grad-primary: linear-gradient(180deg, hsl(246 70% 57%) 0%, hsl(246 66% 49%) 100%);
-    --grad-primary-hover: linear-gradient(180deg, hsl(246 74% 60%) 0%, hsl(246 70% 52%) 100%);
-    --atmosphere:
-      radial-gradient(60rem 34rem at 6% -10%,  hsl(248 90% 70% / .18), transparent 60%),
-      radial-gradient(46rem 28rem at 104% 0%,  hsl(196 90% 60% / .12), transparent 60%),
-      radial-gradient(40rem 30rem at 60% 115%, hsl(262 80% 72% / .10), transparent 60%);
+    /* ── Sidebar (shadcn sidebar component) ── */
+    --sidebar-background: 40 20% 97%;
+    --sidebar-foreground: 24 10% 24%;
+    --sidebar-primary: 24 14% 10%;
+    --sidebar-primary-foreground: 40 30% 97%;
+    --sidebar-accent: 38 18% 93%;
+    --sidebar-accent-foreground: 24 14% 10%;
+    --sidebar-border: 36 14% 88%;
+    --sidebar-ring: 16 82% 46%;
 
-    /* Sidebar — midnight */
-    --sidebar-background: 230 30% 8%;
-    --sidebar-foreground: 228 20% 80%;
-    --sidebar-primary: 244 92% 76%;
-    --sidebar-primary-foreground: 230 30% 8%;
-    --sidebar-accent: 232 26% 15%;
-    --sidebar-accent-foreground: 244 92% 82%;
-    --sidebar-border: 232 22% 16%;
-    --sidebar-ring: 244 92% 76%;
+    /* ── Colour-value aliases ──
+       Feature components (FnOTable, HealthPanel, SymbolSearch, MarketIndexStrip…)
+       read these names. They live on :root so portalled dialogs resolve them. */
+    --bg-app: hsl(var(--background));
+    --bg-solid: hsl(var(--card));
+    --bg-card: hsl(var(--card));
+    --bg-surface: hsl(var(--surface-2));
+    --bg-hover: hsl(var(--surface-3));
+    --bg-input: hsl(var(--surface-2));
+    --bg-glass: hsl(var(--glass));
+    --bg-overlay: hsl(var(--popover) / .97);
+    --tx-900: hsl(var(--foreground));
+    --tx-700: hsl(var(--secondary-foreground));
+    --tx-600: hsl(var(--secondary-foreground));
+    --tx-500: hsl(var(--muted-foreground));
+    --tx-400: hsl(var(--muted-foreground));
+    --tx-300: hsl(var(--faint-foreground));
+    --bd-200: hsl(var(--border-strong));
+    --bd-100: hsl(var(--border));
+    --bd-50:  hsl(var(--border) / .6);
+    --bd-input: hsl(var(--input));
+    --brand-tint: hsl(var(--brand) / .10);
+    --accent-dim: hsl(var(--brand) / .10);
+    --accent-bd:  hsl(var(--brand) / .32);
+    --accent-fill: hsl(var(--brand-strong));
+    --accent-2: hsl(var(--chart-2));
+    --green: hsl(var(--profit));
+    --green-bg: hsl(var(--profit) / .10);
+    --green-bd: hsl(var(--profit) / .26);
+    --red: hsl(var(--loss));
+    --red-bg: hsl(var(--loss) / .09);
+    --red-bd: hsl(var(--loss) / .26);
+    --amber: hsl(var(--warning));
+    --amber-bg: hsl(var(--warning) / .10);
+    --amber-bd: hsl(var(--warning) / .28);
+    --sh-1: var(--shadow-1);
+    --sh-2: var(--shadow-2);
+    --sh-3: var(--shadow-3);
+    --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 20px;
+    --ff-body: 'Geist', -apple-system, system-ui, sans-serif;
+    --ff-mono: 'Geist Mono', 'SF Mono', ui-monospace, monospace;
+    --ff-display: 'Instrument Serif', Georgia, serif;
   }
 
   .dark {
-    --background: 230 30% 5%;
-    --foreground: 228 40% 96%;
-    --card: 230 25% 9%;
-    --card-foreground: 228 30% 92%;
-    --popover: 230 26% 11%;
-    --popover-foreground: 228 30% 92%;
-    --primary: 244 92% 76%;
-    --primary-foreground: 230 30% 8%;
-    --secondary: 230 22% 14%;
-    --secondary-foreground: 228 18% 80%;
-    --muted: 230 22% 13%;
-    --muted-foreground: 228 12% 62%;
-    --accent: 244 40% 18%;
-    --accent-foreground: 244 92% 84%;
-    --destructive: 356 72% 63%;
-    --destructive-foreground: 230 30% 8%;   /* white fails 4.5:1 on this fill */
-    --border: 230 20% 17%;
-    --input: 230 16% 44%;   /* control boundary: ≥3:1 on canvas + glass */
-    --ring: 244 92% 76%;
+    --background:           24 9% 7%;
+    --foreground:           36 22% 94%;
+    --card:                 24 8% 10.5%;
+    --card-foreground:      36 22% 94%;
+    --popover:              24 8% 12.5%;
+    --popover-foreground:   36 22% 94%;
+    --surface-2:            24 8% 13.5%;
+    --surface-3:            24 8% 17%;
+    --secondary:            24 8% 15%;
+    --secondary-foreground: 34 16% 82%;
+    --muted:                24 8% 15%;
+    --muted-foreground:     30 9% 66%;
+    --faint-foreground:     30 8% 60%;
 
-    --profit: 152 62% 56%;
-    --profit-foreground: 152 58% 92%;
-    --loss: 356 86% 68%;
-    --loss-foreground: 356 76% 94%;
-    --warning: 38 92% 62%;
-    --warning-foreground: 38 88% 94%;
+    --primary:              36 22% 94%;
+    --primary-foreground:   24 12% 9%;
+    --accent:               16 28% 17%;
+    --accent-foreground:    18 92% 76%;
+    --brand:                16 90% 60%;
+    --brand-strong:         15 82% 42%;
+    --brand-ink:            18 92% 74%;
+    --destructive:          356 72% 63%;
+    --destructive-foreground: 24 12% 9%;
 
-    --chart-1: 244 92% 72%;
-    --chart-2: 206 90% 64%;
-    --chart-3: 186 70% 52%;
-    --chart-4: 276 70% 70%;
-    --chart-5: 38 92% 62%;
+    --border:               28 6% 19%;
+    --border-strong:        28 6% 28%;
+    --input:                30 7% 46%;
+    --ring:                 16 90% 62%;
 
-    --glass-surface:   230 26% 10% / .72;
-    --glass-elevated:  230 26% 11% / .92;
-    --glass-overlay:   230 26% 11% / .96;
-    --glass-border:    230 40% 100% / .09;
-    --glass-border-strong: 230 40% 100% / .15;
-    --glass-highlight: inset 0 1px 0 hsl(0 0% 100% / .06);
-    --shadow-1: 0 1px 2px hsl(0 0% 0% / .30);
-    --shadow-2: 0 12px 28px -12px hsl(0 0% 0% / .55);
-    --shadow-3: 0 28px 64px -24px hsl(0 0% 0% / .70);
-    --scrim: 230 40% 3%;
-    --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(244 92% 76% / .65);
-    --grad-primary: linear-gradient(180deg, hsl(244 94% 80%) 0%, hsl(246 84% 72%) 100%);
-    --grad-primary-hover: linear-gradient(180deg, hsl(244 96% 84%) 0%, hsl(246 88% 76%) 100%);
+    --profit:               152 62% 56%;
+    --profit-foreground:    152 58% 92%;
+    --loss:                 356 86% 68%;
+    --loss-foreground:      356 76% 94%;
+    --warning:              38 92% 62%;
+    --warning-foreground:   38 88% 94%;
+
+    --chart-1:              16 90% 62%;
+    --chart-2:              36 18% 86%;
+    --chart-3:              40 92% 60%;
+    --chart-4:              190 45% 58%;
+    --chart-5:              30 10% 62%;
+    --chart-ink:            36 16% 84%;
+    --chart-grid:           36 20% 100% / .07;
+
+    --glass:                24 8% 12% / .62;
+    --glass-surface:        24 8% 11% / .82;
+    --glass-elevated:       24 8% 12.5% / .94;
+    --glass-overlay:        24 8% 12.5% / .97;
+    --glass-border:         36 30% 100% / .09;
+    --glass-border-strong:  36 30% 100% / .15;
+    --glass-highlight:      inset 0 1px 0 hsl(0 0% 100% / .06);
+
+    --shadow-1: 0 1px 2px hsl(0 0% 0% / .35);
+    --shadow-2: 0 14px 32px -14px hsl(0 0% 0% / .60);
+    --shadow-3: 0 30px 64px -26px hsl(0 0% 0% / .72);
+    --shadow-brand: 0 24px 44px -22px hsl(15 82% 30% / .8);
+    --scrim: 24 20% 3%;
+
+    --grad-primary:       linear-gradient(180deg, hsl(36 24% 97%) 0%, hsl(36 18% 88%) 100%);
+    --grad-primary-hover: linear-gradient(180deg, hsl(36 26% 100%) 0%, hsl(36 20% 92%) 100%);
     --atmosphere:
-      radial-gradient(56rem 32rem at 4% -12%,  hsl(250 85% 55% / .22), transparent 60%),
-      radial-gradient(44rem 26rem at 104% -4%, hsl(190 85% 45% / .11), transparent 60%),
-      radial-gradient(42rem 30rem at 55% 118%, hsl(262 70% 45% / .14), transparent 60%);
+      radial-gradient(46rem 28rem at 88% -8%,  hsl(var(--brand) / .15), transparent 62%),
+      radial-gradient(40rem 26rem at -4% 6%,   hsl(30 90% 50% / .07), transparent 60%),
+      radial-gradient(36rem 24rem at 50% 114%, hsl(var(--brand) / .08), transparent 62%);
+    --dot: 36 20% 100% / .08;
 
-    --sidebar-background: 230 32% 5%;
-    --sidebar-foreground: 228 18% 76%;
-    --sidebar-primary: 244 92% 76%;
-    --sidebar-primary-foreground: 230 32% 5%;
-    --sidebar-accent: 232 26% 12%;
-    --sidebar-accent-foreground: 244 92% 82%;
-    --sidebar-border: 232 22% 13%;
-    --sidebar-ring: 244 92% 76%;
+    --sidebar-background: 24 9% 8%;
+    --sidebar-foreground: 34 14% 78%;
+    --sidebar-primary: 36 22% 94%;
+    --sidebar-primary-foreground: 24 12% 9%;
+    --sidebar-accent: 24 8% 14%;
+    --sidebar-accent-foreground: 36 22% 94%;
+    --sidebar-border: 28 6% 16%;
+    --sidebar-ring: 16 90% 62%;
   }
 }
-
 @layer base {
   * { @apply border-border; }
-  html { scroll-behavior: smooth; overflow-x: hidden; }
+  html { scroll-behavior: smooth; overflow-x: hidden; color-scheme: light; }
+  html.dark { color-scheme: dark; }
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Geist', system-ui, sans-serif;
@@ -159,10 +256,11 @@
   }
   .font-mono { font-family: 'Geist Mono', monospace; }
   .font-serif { font-family: 'Instrument Serif', Georgia, serif; }
+  ::selection { background: hsl(var(--brand) / .28); }
 }
 
 @layer components {
-  /* ── Semantic color helpers ── */
+  /* â”€â”€ Semantic color helpers â”€â”€ */
   .text-profit   { color: hsl(var(--profit)); }
   .text-loss     { color: hsl(var(--loss)); }
   .text-warning  { color: hsl(var(--warning)); }
@@ -172,7 +270,7 @@
   .border-profit { border-color: hsl(var(--profit)); }
   .border-loss   { border-color: hsl(var(--loss)); }
 
-  /* ── Page background ── */
+  /* â”€â”€ Page background â”€â”€ */
   .mesh-bg,
   .atmosphere-bg {
     background-color: hsl(var(--background));
@@ -181,7 +279,7 @@
   /* Full-page canvases keep the light fixed while content scrolls. */
   .atmosphere-bg { background-attachment: fixed; }
 
-  /* ── Glass surfaces (level 1 → 3). Opaque fallback lives at file end. ── */
+  /* â”€â”€ Glass surfaces (level 1 â†’ 3). Opaque fallback lives at file end. â”€â”€ */
   .glass-surface,
   .glass-elevated,
   .glass-overlay {
@@ -207,11 +305,11 @@
   /* Fill that always carries white text (used with `text-white` on CTAs).
      !important so it wins over the Button's default gradient utility. */
   .gradient-primary {
-    background-color: hsl(246 70% 54%);
-    background-image: linear-gradient(180deg, hsl(248 72% 60%) 0%, hsl(246 70% 52%) 100%) !important;
+    background-color: hsl(var(--brand-strong));
+    background-image: var(--grad-brand) !important;
   }
   .gradient-primary:hover {
-    background-image: linear-gradient(180deg, hsl(248 76% 63%) 0%, hsl(246 74% 55%) 100%) !important;
+    background-image: linear-gradient(135deg, hsl(17 84% 47%) 0%, hsl(12 82% 40%) 100%) !important;
   }
 
   .glass-scrim {
@@ -220,7 +318,7 @@
     backdrop-filter: blur(6px);
   }
 
-  /* ── STAT CARD ── */
+  /* â”€â”€ STAT CARD â”€â”€ */
   .stat-card {
     position: relative;
     background: hsl(var(--card));
@@ -237,13 +335,13 @@
     top: 0; left: 0; right: 0;
     height: 2px;
     border-radius: 2px 2px 0 0;
-    background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.3) 100%);
+    background: linear-gradient(90deg, hsl(var(--brand)) 0%, hsl(var(--brand) / 0.3) 100%);
     opacity: 0;
     transition: opacity 0.22s ease;
   }
   .stat-card:hover {
-    border-color: hsl(var(--primary) / 0.35);
-    box-shadow: 0 8px 28px hsl(var(--primary) / 0.12);
+    border-color: hsl(var(--brand) / 0.40);
+    box-shadow: 0 8px 28px hsl(var(--brand) / 0.14);
     transform: translateY(-3px);
   }
   .stat-card:hover::before { opacity: 1; }
@@ -251,7 +349,7 @@
   .stat-card-profit::before { background: hsl(var(--profit)); opacity: 1; }
   .stat-card-loss::before   { background: hsl(var(--loss)); opacity: 1; }
 
-  /* ── GLASS CARD ── */
+  /* â”€â”€ GLASS CARD â”€â”€ */
   .glass-card {
     background-color: hsl(var(--glass-surface));
     border: 1px solid hsl(var(--glass-border));
@@ -263,11 +361,11 @@
     transition: box-shadow 0.22s ease, border-color 0.22s ease;
   }
   .glass-card:hover {
-    border-color: hsl(var(--primary) / 0.28);
-    box-shadow: var(--glass-highlight), 0 12px 40px -12px hsl(var(--primary) / 0.18);
+    border-color: hsl(var(--brand) / 0.32);
+    box-shadow: var(--glass-highlight), var(--shadow-2);
   }
 
-  /* ── HEADER GLASS ── */
+  /* â”€â”€ HEADER GLASS â”€â”€ */
   .header-glass {
     background: hsl(var(--background) / 0.92);
     backdrop-filter: blur(24px) saturate(180%);
@@ -275,7 +373,7 @@
     border-bottom: 1px solid hsl(var(--border));
   }
 
-  /* ── TAB BAR ── */
+  /* â”€â”€ TAB BAR â”€â”€ */
   .tab-bar-glass {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
@@ -286,10 +384,10 @@
     background: hsl(var(--primary));
     color: hsl(var(--primary-foreground));
     border-radius: calc(var(--radius) - 1px);
-    box-shadow: 0 2px 12px hsl(var(--primary) / 0.35);
+    box-shadow: 0 2px 12px hsl(var(--brand) / 0.35);
   }
 
-  /* ── SIDEBAR ── */
+  /* â”€â”€ SIDEBAR â”€â”€ */
   .sidebar-tray {
     position: fixed;
     left: 0; top: 0;
@@ -302,7 +400,7 @@
     flex-direction: column;
     background: hsl(var(--sidebar-background));
     border-right: 1px solid hsl(var(--sidebar-border));
-    box-shadow: 16px 0 48px hsl(222 38% 4% / 0.4);
+    box-shadow: 16px 0 48px hsl(var(--scrim) / 0.4);
     max-height: 100dvh;
     overflow-y: auto;
   }
@@ -318,7 +416,7 @@
 
   .sidebar-overlay {
     position: fixed; inset: 0; z-index: 99;
-    background: hsl(222 38% 4% / 0.55);
+    background: hsl(var(--scrim) / 0.55);
     backdrop-filter: blur(4px);
     opacity: 0; pointer-events: none;
     transition: opacity 0.28s ease;
@@ -326,19 +424,19 @@
   @media (min-width: 640px) { .sidebar-overlay { position: absolute; } }
   .sidebar-overlay.open { opacity: 1; pointer-events: all; }
 
-  /* ── BOTTOM NAV ── */
+  /* â”€â”€ BOTTOM NAV â”€â”€ */
   .bottom-nav-glass {
     background: hsl(var(--card) / 0.95);
     backdrop-filter: blur(20px);
     border-top: 1px solid hsl(var(--border));
-    box-shadow: 0 -4px 20px hsl(222 38% 4% / 0.06);
+    box-shadow: 0 -4px 20px hsl(var(--scrim) / 0.06);
   }
   .dark .bottom-nav-glass {
     background: hsl(var(--card) / 0.96);
-    box-shadow: 0 -4px 20px hsl(222 38% 4% / 0.3);
+    box-shadow: 0 -4px 20px hsl(var(--scrim) / 0.3);
   }
 
-  /* ── TABLE OVERRIDES (wc-ctnr) ── */
+  /* â”€â”€ TABLE OVERRIDES (wc-ctnr) â”€â”€ */
   .wc-ctnr table {
     width: 100%;
     border-collapse: separate;
@@ -389,19 +487,19 @@
     background: hsl(var(--accent) / .7) !important;
   }
 
-  /* ── Typography helpers ── */
+  /* â”€â”€ Typography helpers â”€â”€ */
   .table-header {
     @apply text-[10px] font-semibold uppercase tracking-widest;
     color: hsl(var(--muted-foreground));
   }
 
-  /* ── Dropdown ── */
+  /* â”€â”€ Dropdown â”€â”€ */
   [data-radix-popper-content-wrapper] {
     z-index: 999999 !important;
     position: fixed !important;
   }
 
-  /* ── Animations ── */
+  /* â”€â”€ Animations â”€â”€ */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -426,7 +524,7 @@
   .stagger > *:nth-child(6) { animation-delay: 275ms; }
   .stagger > *:nth-child(7) { animation-delay: 330ms; }
 
-  /* ── Scrollbars ── */
+  /* â”€â”€ Scrollbars â”€â”€ */
   .scroll-x-mobile {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -434,7 +532,7 @@
   }
   .scroll-x-mobile::-webkit-scrollbar { display: none; }
 
-  /* ── Smooth transitions ── */
+  /* â”€â”€ Smooth transitions â”€â”€ */
   *, *::before, *::after {
     transition-property: background-color, border-color, color, box-shadow;
     transition-duration: 160ms;
@@ -469,7 +567,7 @@
 /* Tabular figures wherever the codebase marks numbers as mono */
 .font-mono, .tabular-nums { font-variant-numeric: tabular-nums; }
 
-/* Readability fallback: no blur support or reduced transparency → opaque glass. */
+/* Readability fallback: no blur support or reduced transparency â†’ opaque glass. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root, .dark {
     --glass-surface: var(--card); --glass-elevated: var(--popover); --glass-overlay: var(--popover);

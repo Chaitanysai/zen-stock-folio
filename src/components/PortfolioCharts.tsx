@@ -10,6 +10,7 @@ import { useLivePrices } from "@/hooks/useLivePrices";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { fetchCandles } from "@/lib/market-data/client";
 import { useEffect, useRef, useState } from "react";
+import { candleThemeOptions, chartThemeOptions, readChartColors, useChartColors } from "@/hooks/useChartTheme";
 
 const PALETTE = [
   "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
@@ -45,6 +46,13 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
   const seriesRef = useRef<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const colors = useChartColors();
+
+  // Re-theme in place when the theme class changes; data and zoom are kept.
+  useEffect(() => {
+    chartRef.current?.applyOptions(chartThemeOptions(colors));
+    seriesRef.current?.applyOptions?.(candleThemeOptions(colors));
+  }, [colors]);
 
   // Initialise chart once
   useEffect(() => {
@@ -60,27 +68,17 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
         
         if (!isMounted) return;
 
-        const isDark = document.documentElement.classList.contains("dark");
-        const styles = getComputedStyle(document.documentElement);
-        const token = (name: string) => `hsl(${styles.getPropertyValue(name).trim()})`;
-        const gridColor = isDark ? "#ffffff0d" : "#0000000d";
-        const borderColor = isDark ? "#ffffff14" : "#00000014";
+        const initial = readChartColors();
+        const themed = chartThemeOptions(initial);
 
         chart = createChart(containerRef.current!, {
           width: containerRef.current!.clientWidth,
           height: 280,
-          layout: {
-            textColor: token("--muted-foreground"),
-            background: { type: ColorType.Solid, color: "transparent" },
-          },
-          grid: {
-            vertLines: { color: gridColor },
-            horzLines: { color: gridColor },
-          },
+          ...themed,
+          layout: { ...themed.layout, background: { type: ColorType.Solid, color: "transparent" } },
           crosshair: { mode: 1 },
-          rightPriceScale: { borderColor },
           timeScale: {
-            borderColor,
+            ...themed.timeScale,
             timeVisible: range === "1d",
             secondsVisible: false,
           },
@@ -89,14 +87,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
         });
 
         // Use the v5.1 API: addSeries(CandlestickSeries, options)
-        const series = chart.addSeries(CandlestickSeries, {
-          upColor: token("--profit"),
-          downColor: token("--loss"),
-          borderUpColor: token("--profit"),
-          borderDownColor: token("--loss"),
-          wickUpColor: token("--profit"),
-          wickDownColor: token("--loss"),
-        });
+        const series = chart.addSeries(CandlestickSeries, candleThemeOptions(initial));
 
         if (isMounted) {
           chartRef.current = chart;

@@ -127,7 +127,7 @@ const Login = () => {
     return (
       <div className="atmosphere-bg flex min-h-screen items-center justify-center px-4">
         <div className="glass-elevated flex items-center gap-3 rounded-2xl px-5 py-4 text-sm text-muted-foreground" role="status">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden="true" />
+          <Loader2 className="h-4 w-4 animate-spin text-brand-ink" aria-hidden="true" />
           Restoring your session
         </div>
       </div>
@@ -230,7 +230,7 @@ const Login = () => {
           <div className="max-w-lg space-y-10 py-10">
             <div className="space-y-5">
               <p className="font-serif text-5xl leading-[1.05] tracking-tight xl:text-6xl">
-                Your market. Your strategy. <span className="italic text-primary">Your next move.</span>
+                Your market. Your strategy. <span className="italic text-brand-ink">Your next move.</span>
               </p>
               <p className="max-w-md text-base leading-7 text-muted-foreground">
                 A clearer view of your investments, watchlists, and market opportunities, all in one focused workspace.
@@ -262,7 +262,7 @@ const Login = () => {
                 {brand(36, "text-lg")}
                 <div className="mt-6 hidden space-y-4 md:block">
                   <p className="font-serif text-4xl leading-[1.05] tracking-tight">
-                    Your market. Your strategy. <span className="italic text-primary">Your next move.</span>
+                    Your market. Your strategy. <span className="italic text-brand-ink">Your next move.</span>
                   </p>
                   <LoginHeroVisuals compact />
                 </div>
@@ -372,7 +372,7 @@ const Login = () => {
                         {mode === "signin" && (
                           <button
                             type="button"
-                            className="rounded-sm text-xs font-medium text-primary underline-offset-4 hover:underline"
+                            className="rounded-sm text-xs font-medium text-brand-ink underline-offset-4 hover:underline"
                             onClick={() => switchMode("reset")}
                           >
                             Forgot password?
@@ -446,14 +446,14 @@ const Login = () => {
                     )}
 
                     {showResend && (
-                      <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm">
+                      <div className="rounded-lg border border-brand/30 bg-brand/5 px-3 py-2 text-sm">
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-foreground/80">Didn't receive the email?</span>
                           <button
                             type="button"
                             onClick={handleResendConfirmation}
                             disabled={resendLoading}
-                            className="flex items-center gap-1 rounded-sm text-xs font-semibold text-primary underline-offset-4 hover:underline disabled:opacity-60"
+                            className="flex items-center gap-1 rounded-sm text-xs font-semibold text-brand-ink underline-offset-4 hover:underline disabled:opacity-60"
                           >
                             {resendLoading ? (
                               <>
@@ -500,7 +500,7 @@ const Login = () => {
                 {mode === "reset" && (
                   <button
                     type="button"
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline"
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-sm text-sm font-medium text-brand-ink underline-offset-4 hover:underline"
                     onClick={() => switchMode("signin")}
                   >
                     <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />

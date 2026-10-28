@@ -36,6 +36,8 @@ vi.mock("lightweight-charts", () => ({
   }),
 }));
 vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({ json: () => Promise.resolve({}) })));
+// jsdom has no layout engine; the price chart observes its container size.
+vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
 
 import Index from "./Index";
 
@@ -67,43 +69,73 @@ beforeEach(() => {
   };
 });
 
-describe("Index dashboard shell", () => {
-  it("renders the portfolio hero from real holdings", async () => {
+describe("Index dashboard", () => {
+  it("renders the portfolio value card from real holdings", async () => {
     await renderIndex();
-    const hero = screen.getByRole("article", { name: /portfolio value/i });
-    // 10×120 + 5×180 = 2100 → ₹2.1K; P&L 2100 − 2000 = +100
-    expect(within(hero).getByText("₹2.1K")).toBeInTheDocument();
-    expect(within(hero).getByText(/\+₹100 \(\+5\.0%\)/)).toBeInTheDocument();
+    const card = screen.getByRole("article", { name: /portfolio value/i });
+    // 10×120 + 5×180 = 2100; unrealised P&L 2100 − 2000 = +100 (+5.0%)
+    expect(within(card).getByText("₹2,100")).toBeInTheDocument();
+    expect(within(card).getByText(/Unrealised \+₹100 \(\+5\.0%\) on ₹2,000 invested/)).toBeInTheDocument();
   });
 
-  it("exposes primary navigation as buttons with aria-current", async () => {
+  it("exposes the rail as buttons with aria-current and switches pages", async () => {
     await renderIndex();
-    const nav = screen.getByRole("navigation", { name: "Sections" });
-    const dash = within(nav).getByRole("button", { name: "Dashboard" });
-    expect(dash).toHaveAttribute("aria-current", "page");
+    const rail = screen.getByRole("navigation", { name: "Sections" });
+    const overview = within(rail).getByRole("button", { name: "Overview" });
+    expect(overview).toHaveAttribute("aria-current", "page");
 
-    fireEvent.click(within(nav).getByRole("button", { name: "Watchlist" }));
-    expect(within(nav).getByRole("button", { name: "Watchlist" })).toHaveAttribute("aria-current", "page");
+    fireEvent.click(within(rail).getByRole("button", { name: "Watchlist" }));
+    expect(within(rail).getByRole("button", { name: "Watchlist" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("heading", { level: 1, name: "Watchlist" })).toBeInTheDocument();
+    // The pill navigation mirrors the active page.
+    const pills = screen.getByRole("navigation", { name: "Primary" });
+    expect(within(pills).getByRole("button", { name: "Watchlist" })).toHaveAttribute("aria-current", "page");
   });
 
-  it("switches the holdings breakdown metric with pressed state", async () => {
+  it("keeps every destination reachable from the rail", async () => {
     await renderIndex();
-    const group = screen.getByRole("group", { name: "Breakdown metric" });
-    const pnl = within(group).getByRole("button", { name: "P&L" });
-    fireEvent.click(pnl);
-    expect(pnl).toHaveAttribute("aria-pressed", "true");
-    const list = screen.getByRole("list", { name: "Holdings breakdown" });
-    expect(within(list).getByText("RELIANCE")).toBeInTheDocument();
-    expect(within(list).getByText("+₹200")).toBeInTheDocument();
-    expect(within(list).getByText("−₹100")).toBeInTheDocument();
+    const rail = screen.getByRole("navigation", { name: "Sections" });
+    for (const name of ["Overview", "Portfolio", "Trades", "History", "Journal", "Charts", "Sectors", "Analytics", "Watchlist", "News", "AI Insights", "Alerts", "Export"]) {
+      expect(within(rail).getByRole("button", { name })).toBeInTheDocument();
+    }
   });
 
-  it("toggles the theme through next-themes", async () => {
+  it("sorts the holdings table and shows real per-holding figures", async () => {
     await renderIndex();
-    const toggle = screen.getByRole("button", { name: /switch to light theme/i });
-    fireEvent.click(toggle);
-    expect(await screen.findByRole("button", { name: /switch to dark theme/i })).toBeInTheDocument();
+    const table = screen.getByRole("table", { name: /open holdings/i });
+    fireEvent.click(within(table).getByRole("button", { name: "Sort by profit and loss" }));
+    const header = within(table).getByRole("columnheader", { name: /P&L$/ });
+    expect(header).toHaveAttribute("aria-sort", "descending");
+    expect(within(table).getByText("+₹200")).toBeInTheDocument();
+    expect(within(table).getByText("−₹100")).toBeInTheDocument();
+    const rows = within(table).getAllByRole("row").slice(1);
+    expect(within(rows[0]).getByText("RELIANCE · Energy")).toBeInTheDocument();
+    fireEvent.click(within(table).getByRole("button", { name: "Sort by profit and loss" }));
+    expect(within(within(table).getAllByRole("row")[1]).getByText("INFY · Energy")).toBeInTheDocument();
+  });
+
+  it("filters holdings by search text and by gain or loss", async () => {
+    await renderIndex();
+    const table = () => screen.getByRole("table", { name: /open holdings/i });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search holdings" }), { target: { value: "infy" } });
+    expect(within(table()).queryByText("RELIANCE · Energy")).toBeNull();
+    expect(within(table()).getByText("INFY · Energy")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search holdings" }), { target: { value: "zzz" } });
+    expect(screen.getByText("No holdings match")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /clear search and filter/i }));
+    expect(within(table()).getByText("RELIANCE · Energy")).toBeInTheDocument();
+  });
+
+  it("switches the theme through next-themes and persists it", async () => {
+    await renderIndex();
+    const light = screen.getByRole("button", { name: "Light theme" });
+    const dark = screen.getByRole("button", { name: "Dark theme" });
+    expect(dark).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(light);
+    expect(await screen.findByRole("button", { name: "Light theme", pressed: true })).toBeInTheDocument();
+    expect(localStorage.getItem("theme")).toBe("light");
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
   });
 
   it("migrates the legacy dashboard theme flag once", async () => {
@@ -118,5 +150,42 @@ describe("Index dashboard shell", () => {
     const card = screen.getByRole("region", { name: "Watchlist" });
     expect(within(card).getByText(/Entry ₹3,400–3,600/)).toBeInTheDocument();
     expect(card.querySelector("polyline")).toBeNull();
+  });
+
+  it("removes a watchlist symbol only after confirmation", async () => {
+    await renderIndex();
+    const card = screen.getByRole("region", { name: "Watchlist" });
+    fireEvent.click(within(card).getByRole("button", { name: "Remove TCS from watchlist" }));
+    expect(within(card).getByText("TCS")).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
+    await act(async () => { await Promise.resolve(); });
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ watchlist: [] }));
+  });
+
+  it("shows honest empty states, not sample rows, for an empty account", async () => {
+    snapshot = { stocks: [], trades: [], watchlist: [], alerts: [], fnoTrades: [] };
+    await renderIndex();
+    expect(screen.getByText("No open holdings yet")).toBeInTheDocument();
+    expect(screen.getByText("Realised P&L by month appears once you close a trade.", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Nothing on your watchlist")).toBeInTheDocument();
+    // Real next actions, wired to the existing dialogs.
+    expect(screen.getAllByRole("button", { name: /add trade/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: /import/i }).length).toBeGreaterThan(0);
+    const win = screen.getByRole("article", { name: "Win rate" });
+    expect(within(win).getByText("—")).toBeInTheDocument();
+  });
+
+  it("plots realised P&L by month only from closed trades", async () => {
+    snapshot = {
+      ...snapshot,
+      stocks: [
+        ...snapshot.stocks,
+        { ...stock("TCS", 100, 150, 10), status: "Sold Profit", exitPrice: 150, exitDate: "10-Jan-2026" } as unknown as PortfolioStock,
+      ],
+    };
+    await renderIndex();
+    const table = await screen.findByRole("table", { name: "Realised profit and loss by month" });
+    expect(within(table).getByText("Jan '26")).toBeInTheDocument();
+    expect(within(table).getByText("+₹500")).toBeInTheDocument();
   });
 });

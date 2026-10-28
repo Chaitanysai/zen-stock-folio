@@ -15,7 +15,7 @@ const NotFound = () => {
     <main className="atmosphere-bg flex min-h-screen items-center justify-center px-4 py-10 text-foreground">
       <div className="glass-elevated w-full max-w-md animate-fade-up rounded-2xl p-8 text-center shadow-[var(--glass-highlight),var(--shadow-3)] sm:p-10">
         <LogoMark size={40} className="mx-auto" />
-        <p className="mt-6 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-primary">Error 404</p>
+        <p className="mt-6 font-mono text-xs font-semibold uppercase tracking-[0.18em] text-brand-ink">Error 404</p>
         <h1 className="mt-2 font-serif text-4xl tracking-tight sm:text-5xl">Page not found</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
           We couldn't find <span className="break-all font-mono text-foreground">{location.pathname}</span>. It may have

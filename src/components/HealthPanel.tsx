@@ -132,7 +132,7 @@ export function HealthPanel() {
     <div>
       <div className="zf-card" style={{ padding: "16px 18px", marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
-          <Activity size={15} color="var(--accent)" />
+          <Activity size={15} color="hsl(var(--brand-ink))" />
           <div style={{ fontSize: 13, fontWeight: 700, color: "var(--tx-900)" }}>Integration Health</div>
           {data && (
             <span

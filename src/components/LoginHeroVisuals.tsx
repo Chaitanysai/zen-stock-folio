@@ -49,8 +49,8 @@ export default function LoginHeroVisuals({ className = "", compact = false }: Lo
         <svg viewBox={`0 0 ${W} ${H}`} className={compact ? "h-28 w-full" : "h-auto w-full"} preserveAspectRatio="none">
           <defs>
             <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" className="[stop-color:hsl(var(--primary))] [stop-opacity:.28]" />
-              <stop offset="100%" className="[stop-color:hsl(var(--primary))] [stop-opacity:0]" />
+              <stop offset="0%" className="[stop-color:hsl(var(--brand))] [stop-opacity:.28]" />
+              <stop offset="100%" className="[stop-color:hsl(var(--brand))] [stop-opacity:0]" />
             </linearGradient>
           </defs>
 
@@ -72,7 +72,7 @@ export default function LoginHeroVisuals({ className = "", compact = false }: Lo
           <path
             d={line}
             fill="none"
-            className="stroke-primary"
+            className="stroke-brand"
             strokeWidth="2.25"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -80,8 +80,8 @@ export default function LoginHeroVisuals({ className = "", compact = false }: Lo
           />
           {!compact && (
             <>
-              <circle cx={lastX} cy={lastY} r="9" className="fill-primary/20" />
-              <circle cx={lastX} cy={lastY} r="4" className="fill-primary" />
+              <circle cx={lastX} cy={lastY} r="9" className="fill-brand/20" />
+              <circle cx={lastX} cy={lastY} r="4" className="fill-brand" />
             </>
           )}
         </svg>
