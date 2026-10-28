@@ -2,7 +2,7 @@ import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { COLLISION_PADDING, PANEL_OFFSET, panel, panelMotion } from "@/components/ui/overlay";
+import { COLLISION_PADDING, PANEL_OFFSET, panel, panelMotion, panelMotionSteady } from "@/components/ui/overlay";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -54,8 +54,11 @@ DropdownMenuSubContent.displayName = "DropdownMenuSubContent";
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = PANEL_OFFSET, collisionPadding = COLLISION_PADDING, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
+    /** Fade + vertical settle only — no scale, so the anchor never drifts. */
+    steady?: boolean;
+  }
+>(({ className, sideOffset = PANEL_OFFSET, collisionPadding = COLLISION_PADDING, steady = false, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
@@ -63,7 +66,7 @@ const DropdownMenuContent = React.forwardRef<
       collisionPadding={collisionPadding}
       className={cn(
         panel,
-        panelMotion,
+        steady ? panelMotionSteady : panelMotion,
         "min-w-[12rem] max-h-[var(--radix-dropdown-menu-content-available-height)] max-w-[var(--radix-dropdown-menu-content-available-width)] origin-[var(--radix-dropdown-menu-content-transform-origin)] overflow-y-auto p-1",
         className
       )}

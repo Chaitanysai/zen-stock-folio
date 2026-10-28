@@ -247,7 +247,7 @@ export function TopBar(props: TopBarProps) {
               <ChevronDown aria-hidden="true" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuContent steady align="end" className="w-64">
             <DropdownMenuLabel>
               <span className="zf-menu-head" style={{ padding: 0 }}>
                 <b>{props.userName}</b>

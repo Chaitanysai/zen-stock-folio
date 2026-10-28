@@ -101,11 +101,11 @@ const TradeAnalytics = ({ stocks }: TradeAnalyticsProps) => {
           Analytics
         </span>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border p-px">
+      <div className="zf-metric-grid grid grid-cols-2 md:grid-cols-4">
         {metrics.map((m) => (
           <div
             key={m.label}
-            className="bg-card px-4 py-4 flex flex-col gap-3 hover:bg-accent/40 transition-colors"
+            className="px-4 py-4 flex flex-col gap-3 hover:bg-accent/40 transition-colors"
           >
             <div className="flex items-center justify-between">
               <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${m.bg}`}>

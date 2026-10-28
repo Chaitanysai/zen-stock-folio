@@ -514,6 +514,9 @@
 .zf-quote b { display: block; font: 600 22px var(--ff-num); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .zf-quote span { font: 600 12px var(--ff-num); }
 .zf-strip { padding: 14px var(--card-pad); }
+/* Last card of the right-hand stack: grows to keep row 3 level with the chart
+   column, so the balance comes from real content rather than filler. */
+.zf-pulse { flex: 1; padding: 0; }
 
 /* Empty / loading */
 .zf-skel { display: inline-block; vertical-align: middle; border-radius: 8px; background: hsl(var(--surface-3)); }
@@ -597,6 +600,16 @@
 .zf-tab-panel .recharts-text { fill: hsl(var(--muted-foreground)) !important; }
 .zf-tab-panel .recharts-cartesian-grid line { stroke: hsl(var(--border)) !important; }
 .zf-tab-panel .bg-card { background: transparent !important; }
+/* Analytics metrics sit on the panel surface itself. Hairline borders are the
+   only separators; the previous gap/bg-border grid showed through the tiles as
+   one solid grey block once `.bg-card` was neutralised above. */
+.zf-metric-grid { border-top: 1px solid hsl(var(--border) / .7); }
+.zf-metric-grid > * { border-bottom: 1px solid hsl(var(--border) / .7); border-left: 0; }
+.zf-metric-grid > *:nth-child(2n) { border-left: 1px solid hsl(var(--border) / .7); }
+@media (min-width: 768px) {
+  .zf-metric-grid > *:nth-child(2n) { border-left: 0; }
+  .zf-metric-grid > *:not(:nth-child(4n+1)) { border-left: 1px solid hsl(var(--border) / .7); }
+}
 .zf-tab-panel > .glass-card, .zf-tab-panel > .glass-card:hover,
 .zf-tab-panel [role="tabpanel"] > .glass-card, .zf-tab-panel [role="tabpanel"] > .glass-card:hover {
   border: 0 !important; border-radius: 0; box-shadow: none; background: transparent;

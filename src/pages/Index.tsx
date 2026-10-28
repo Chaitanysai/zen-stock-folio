@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTheme } from "next-themes";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { Activity, AlertTriangle, Loader2 } from "lucide-react";
 import "@/styles/dashboard.css";
 import {
   portfolioData as initialData,
@@ -535,12 +535,17 @@ export default function Index() {
                   <div className="zf-stack">
                     <InsightCard text={describeAiTeaser(m.active.length, bestPerformer(live))} goTo={goTo} />
                     <FnoCard m={m} loading={loading} openFno={openFno} />
+                    <section className="zf-card zf-strip zf-pulse zf-in" style={stagger(10)} aria-labelledby="zf-pulse-title">
+                      <div className="zf-card-head">
+                        <h2 className="zf-card-title" id="zf-pulse-title">Market pulse</h2>
+                        <span className="zf-chip-ico" aria-hidden="true"><Activity /></span>
+                      </div>
+                      <div className="zf-card-body">
+                        <MarketIndexStrip />
+                      </div>
+                    </section>
                   </div>
                 </div>
-
-                <section className="zf-card zf-strip zf-in" style={stagger(10)} aria-label="Market indices">
-                  <MarketIndexStrip />
-                </section>
               </div>
             )}
 

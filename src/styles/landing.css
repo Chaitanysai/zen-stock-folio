@@ -175,13 +175,13 @@
 .zl-hero {
   display: flex; align-items: center;
   min-height: calc(100svh - var(--zl-nav-h));
-  padding: clamp(40px, 6vw, 96px) 0 clamp(48px, 7vw, 112px);
+  padding: clamp(28px, 4.2vw, 68px) 0 clamp(32px, 4.8vw, 80px);
 }
 .zl-hero > .zl-wrap { width: 100%; }
 /* Copy and preview share the wrap; the preview gets the larger share and grows with it. */
 .zl-hero-grid {
   display: grid; grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr);
-  align-items: center; gap: clamp(32px, 4.5vw, 96px);
+  align-items: center; gap: clamp(28px, 4vw, 88px);
 }
 .zl-eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
@@ -340,7 +340,7 @@
 .zl-stage-note { margin-top: 14px; text-align: center; font-size: 12px; color: var(--zl-tx-2); }
 
 /* ════════ Sections ════════ */
-.zl-section { padding: clamp(64px, 9vw, 120px) 0; position: relative; }
+.zl-section { padding: clamp(44px, 5.6vw, 84px) 0; position: relative; }
 .zl-section + .zl-section { border-top: 1px solid var(--zl-bd); }
 .zl-kicker {
   font: 600 12px/1 'Geist Mono', monospace; letter-spacing: .14em; text-transform: uppercase;
@@ -353,7 +353,7 @@
 }
 .zl-h2 em { font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; letter-spacing: -.01em; }
 .zl-sub { margin: 16px 0 0; max-width: 38rem; font-size: 16.5px; line-height: 1.6; color: var(--zl-tx-2); }
-.zl-head { margin-bottom: clamp(36px, 5vw, 56px); }
+.zl-head { margin-bottom: clamp(28px, 3.4vw, 44px); }
 .zl-head-split { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
 
 /* Feature bento: one wide card + four */
@@ -441,7 +441,7 @@
 /* Final CTA */
 .zl-final {
   position: relative; overflow: hidden; isolation: isolate;
-  padding: clamp(40px, 6vw, 72px) clamp(24px, 5vw, 64px);
+  padding: clamp(32px, 4.6vw, 60px) clamp(24px, 5vw, 64px);
   border-radius: var(--zl-r-xl);
   background: var(--zl-grad-hero); color: #fff;
   box-shadow: var(--zl-sh-hero), inset 0 1px 0 hsl(0 0% 100% / .2);
@@ -464,7 +464,7 @@
 .zl-final .zl-btn:focus-visible { box-shadow: 0 0 0 2px hsl(14 78% 28%), 0 0 0 4px #fff; }
 
 /* Footer */
-.zl-footer { padding: 48px 0 40px; border-top: 1px solid var(--zl-bd); margin-top: clamp(64px, 9vw, 120px); }
+.zl-footer { padding: 44px 0 36px; border-top: 1px solid var(--zl-bd); margin-top: clamp(40px, 5vw, 72px); }
 .zl-foot { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 24px; }
 .zl-foot-tag { margin: 10px 0 0; font-size: 13.5px; color: hsl(var(--muted-foreground)); max-width: 30ch; }
 .zl-foot nav ul { display: flex; flex-wrap: wrap; gap: 4px 6px; list-style: none; margin: 0; padding: 0; }
