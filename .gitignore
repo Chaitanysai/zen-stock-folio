@@ -47,3 +47,4 @@ ddlxhhvrlufvevgzguqd.storage.zip
 *.sln
 *.sw?
 .vercel
+.wrangler/
