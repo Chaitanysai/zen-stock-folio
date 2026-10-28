@@ -30,9 +30,11 @@
 
   --zl-r-sm: 10px; --zl-r-md: 14px; --zl-r-lg: 20px; --zl-r-xl: 28px;
   --zl-blur: 16px;
-  --zl-ease: cubic-bezier(.16, 1, .3, 1);
-  --zl-max: 1200px;
-  --zl-gutter: clamp(20px, 4vw, 40px);
+  --zl-ease: var(--ease-out);
+  /* Page width and side gutter, shared by the header and every section so their edges align.
+     The wrap grows with the viewport up to --zl-max, then centres. */
+  --zl-max: 1680px;
+  --zl-gutter: clamp(20px, 3.2vw, 56px);
 
   position: relative;
   min-height: 100vh;
@@ -168,10 +170,18 @@
 .zl-mobile-cta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 6px 4px; border-top: 1px solid var(--zl-bd); margin-top: 6px; }
 
 /* ════════ Hero ════════ */
-.zl-hero { padding: clamp(48px, 8vw, 96px) 0 clamp(56px, 8vw, 112px); }
+/* The hero fills the first screen (below the fixed header) and centres its grid in it, so tall
+   monitors don't end in an empty band. Stacked layouts are taller than that and just grow. */
+.zl-hero {
+  display: flex; align-items: center;
+  min-height: calc(100svh - var(--zl-nav-h));
+  padding: clamp(40px, 6vw, 96px) 0 clamp(48px, 7vw, 112px);
+}
+.zl-hero > .zl-wrap { width: 100%; }
+/* Copy and preview share the wrap; the preview gets the larger share and grows with it. */
 .zl-hero-grid {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
-  align-items: center; gap: clamp(32px, 5vw, 64px);
+  display: grid; grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr);
+  align-items: center; gap: clamp(32px, 4.5vw, 96px);
 }
 .zl-eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
@@ -187,7 +197,7 @@
 }
 .zl-h1 {
   margin: 22px 0 0;
-  font-size: clamp(40px, 5.6vw, 68px); line-height: 1.02; font-weight: 650; letter-spacing: -.04em;
+  font-size: clamp(40px, 5vw, 88px); line-height: 1.02; font-weight: 650; letter-spacing: -.04em;
   text-wrap: balance;
 }
 .zl-h1 em {
@@ -195,7 +205,7 @@
   background: var(--zl-grad-text); -webkit-background-clip: text; background-clip: text; color: transparent;
   padding-right: .06em;
 }
-.zl-lede { margin: 22px 0 0; max-width: 34rem; font-size: clamp(16px, 1.4vw, 18px); line-height: 1.6; color: var(--zl-tx-2); text-wrap: pretty; }
+.zl-lede { margin: 22px 0 0; max-width: 52ch; font-size: clamp(16px, 1.25vw, 22px); line-height: 1.6; color: var(--zl-tx-2); text-wrap: pretty; }
 .zl-cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 .zl-hero-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 28px 0 0; padding: 0; list-style: none; }
 .zl-hero-meta li { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: hsl(var(--muted-foreground)); }
@@ -213,7 +223,7 @@
 .zl-in-preview { animation: zl-float-in 900ms 200ms var(--zl-ease) backwards; }
 
 /* ════════ Dashboard preview (sample data) ════════ */
-.zl-stage { position: relative; min-width: 0; }
+.zl-stage { position: relative; min-width: 0; container-type: inline-size; }
 .zl-stage::before {
   /* soft glow under the device */
   content: ''; position: absolute; inset: 8% 6% -6% 6%; z-index: -1;
@@ -476,10 +486,14 @@
 }
 
 /* ════════ Responsive ════════ */
+/* Stack before the two columns get cramped: below 1140px the copy would be under ~460px wide. */
+@media (max-width: 1140px) {
+  .zl-hero-grid { grid-template-columns: minmax(0, 1fr); gap: clamp(32px, 6vw, 56px); }
+  .zl-h1 { font-size: clamp(40px, 7.4vw, 64px); }
+  .zl-hero-copy { max-width: 44rem; }
+  .zl-stage { max-width: 960px; width: 100%; margin-inline: auto; }
+}
 @media (max-width: 1080px) {
-  .zl-hero-grid { grid-template-columns: minmax(0, 1fr); }
-  .zl-hero-copy { max-width: 40rem; }
-  .zl-stage { max-width: 760px; width: 100%; margin-inline: auto; }
   .zl-trust { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 900px) {
@@ -512,6 +526,41 @@
   .zl-eyebrow { font-size: 11px; letter-spacing: 0; }
   .zl-final .zl-cta-row .zl-btn { flex: 1 1 100%; }
 }
+
+/* ════════ Preview scales with its own width ════════
+   The preview's type is set in px; on wide stages it steps up so a 900px frame doesn't look
+   like a shrunken 548px one. Container queries follow the stage, not the viewport. */
+@container (min-width: 680px) {
+  .zl-pv-body { gap: 14px; padding: 18px; }
+  .zl-pv-top, .zl-pv-bottom { gap: 14px; }
+  .zl-pv-bar { padding: 14px 20px; }
+  .zl-pv-title { font-size: 13.5px; }
+  .zl-pv-lbl, .zl-pv-card-lbl { font-size: 12.5px; }
+  .zl-pv-hero { padding: 20px 22px; }
+  .zl-pv-val { font-size: 34px; }
+  .zl-pv-chip { font-size: 12.5px; }
+  .zl-pv-pnl { font-size: 25px; }
+  .zl-pv-sub { font-size: 12.5px; }
+  .zl-pv-card { padding: 16px 18px; }
+  .zl-pv-chart { padding: 14px 18px 10px; }
+  .zl-pv-chart svg { height: clamp(120px, 14cqw, 190px); }
+  .zl-pv-th { font-size: 10.5px; padding: 10px 18px; }
+  .zl-pv-tr { padding: 11px 18px; }
+  .zl-pv-name { font-size: 13px; }
+  .zl-pv-num, .zl-pv-wl-zone { font-size: 12.5px; }
+  .zl-pv-logo { width: 28px; height: 28px; font-size: 9.5px; }
+  .zl-pv-wl-name { font-size: 13.5px; }
+  .zl-pv-badge, .zl-pv-alert { font-size: 11.5px; }
+  .zl-pv-seg span { font-size: 11px; padding: 4px 9px; }
+}
+@container (min-width: 820px) {
+  .zl-pv-val { font-size: 40px; }
+  .zl-pv-pnl { font-size: 29px; }
+  .zl-pv-name { font-size: 14px; }
+  .zl-pv-num, .zl-pv-wl-zone { font-size: 13.5px; }
+  .zl-pv-lbl, .zl-pv-card-lbl { font-size: 13.5px; }
+}
+.zl-stage-note { font-size: clamp(12px, .9vw, 14px); }
 
 /* ════════ Reduced motion / transparency ════════ */
 @media (prefers-reduced-motion: reduce) {

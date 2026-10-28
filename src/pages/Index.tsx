@@ -43,6 +43,7 @@ import { dataModeLabel } from "@/lib/market-data/freshness.ts";
 import { computeMetrics, realisedByMonth, toHoldingRow } from "@/lib/dashboard/overview";
 import { greeting, signedPct, stagger } from "@/lib/dashboard/format";
 import { MobileMenu, Rail, TopBar } from "@/components/dashboard/Shell";
+import { useThemeReveal } from "@/hooks/useThemeReveal";
 import { BalanceCard, PnlCard, StatGrid } from "@/components/dashboard/Summary";
 import { HoldingsCard } from "@/components/dashboard/Holdings";
 import { FnoCard, InsightCard, PriceChartCard, SectorCard, WatchlistCard } from "@/components/dashboard/Sections";
@@ -57,6 +58,7 @@ export default function Index() {
   // The old dashboard-only "zf-dark" flag is migrated once so a previous
   // light/dark choice is preserved.
   const { resolvedTheme, setTheme } = useTheme();
+  const switchTheme = useThemeReveal();
   const theme = resolvedTheme === "light" ? "light" : "dark";
   useEffect(() => {
     try {
@@ -385,7 +387,7 @@ export default function Index() {
           tab={tab}
           onSelect={goTo}
           theme={theme}
-          onTheme={setTheme}
+          onTheme={switchTheme}
           onHelp={() => setHelpOpen(true)}
           onSignOut={() => { void signOut(); }}
         />
@@ -543,7 +545,7 @@ export default function Index() {
         tab={tab}
         onSelect={goTo}
         theme={theme}
-        onTheme={setTheme}
+        onTheme={switchTheme}
         userName={userName}
         userEmail={userEmail}
         onDisplayName={() => { setNameInput(displayName); setNameOpen(true); }}

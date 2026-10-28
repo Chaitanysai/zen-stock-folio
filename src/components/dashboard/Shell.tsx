@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {
   Bell, ChevronDown, HelpCircle, Info, LogOut, Menu, Moon, Pencil, RefreshCw, Search, Sun,
 } from "lucide-react";
@@ -10,10 +10,11 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import type { PriceAlert } from "@/data/sampleData";
+import type { ThemeName } from "@/hooks/useThemeReveal";
 import { inr } from "@/lib/dashboard/format";
 import { NAV_GROUPS, PRIMARY_NAV, navItem, type ActiveTab } from "./nav";
 
-export type ThemeName = "light" | "dark";
+export type { ThemeName };
 
 function Tip({ label, side = "bottom", children }: { label: string; side?: "bottom" | "right"; children: ReactNode }) {
   return (
@@ -29,7 +30,7 @@ interface RailProps {
   tab: ActiveTab;
   onSelect: (id: ActiveTab) => void;
   theme: ThemeName;
-  onTheme: (theme: ThemeName) => void;
+  onTheme: (theme: ThemeName, event: MouseEvent<HTMLElement>) => void;
   onHelp: () => void;
   onSignOut: () => void;
 }
@@ -39,12 +40,12 @@ export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailP
     <aside className="zf-rail zf-glass" aria-label="Section rail">
       <div className="zf-theme" role="group" aria-label="Theme">
         <Tip label="Light theme" side="right">
-          <button type="button" className="zf-rbtn" aria-label="Light theme" aria-pressed={theme === "light"} onClick={() => onTheme("light")}>
+          <button type="button" className="zf-rbtn" aria-label="Light theme" aria-pressed={theme === "light"} onClick={(e) => onTheme("light", e)}>
             <Sun aria-hidden="true" />
           </button>
         </Tip>
         <Tip label="Dark theme" side="right">
-          <button type="button" className="zf-rbtn" aria-label="Dark theme" aria-pressed={theme === "dark"} onClick={() => onTheme("dark")}>
+          <button type="button" className="zf-rbtn" aria-label="Dark theme" aria-pressed={theme === "dark"} onClick={(e) => onTheme("dark", e)}>
             <Moon aria-hidden="true" />
           </button>
         </Tip>
@@ -114,6 +115,28 @@ export function TopBar(props: TopBarProps) {
   const pills = PRIMARY_NAV.includes(tab) ? PRIMARY_NAV : [...PRIMARY_NAV, tab];
   const count = triggeredAlerts.length;
 
+  // Sliding active-pill indicator: measure the active button so the fill can
+  // travel between pills instead of snapping. position starts hidden and only
+  // becomes visible once measured, so it never flies in from the left on mount.
+  const pillNavRef = useRef<HTMLElement | null>(null);
+  const [indicator, setIndicator] = useState({ x: 0, w: 0 });
+  const [indicatorReady, setIndicatorReady] = useState(false);
+
+  useLayoutEffect(() => {
+    const nav = pillNavRef.current;
+    if (!nav) return;
+    const measure = () => {
+      const active = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!active) return;
+      setIndicator({ x: active.offsetLeft, w: active.offsetWidth });
+    };
+    measure();
+    setIndicatorReady(true);
+    const ro = new ResizeObserver(measure);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, [tab, pills.length]);
+
   return (
     <header className="zf-top">
       <div className="zf-top-left">
@@ -126,7 +149,15 @@ export function TopBar(props: TopBarProps) {
         </button>
       </div>
 
-      <nav className="zf-nav zf-pills zf-glass" aria-label="Primary">
+      <nav className="zf-nav zf-pills zf-glass" aria-label="Primary" ref={pillNavRef}>
+        {/* Decorative sliding fill behind the active pill. aria-hidden keeps it out of the
+            accessibility tree; each button still carries aria-current for assistive tech. */}
+        <span
+          className="zf-nav-indicator"
+          data-ready={indicatorReady ? "" : undefined}
+          style={{ transform: `translateX(${indicator.x}px)`, width: indicator.w }}
+          aria-hidden="true"
+        />
         {pills.map((id) => (
           <button
             key={id}
@@ -240,7 +271,7 @@ interface MobileMenuProps {
   tab: ActiveTab;
   onSelect: (id: ActiveTab) => void;
   theme: ThemeName;
-  onTheme: (theme: ThemeName) => void;
+  onTheme: (theme: ThemeName, event: MouseEvent<HTMLElement>) => void;
   userName: string;
   userEmail: string;
   onDisplayName: () => void;
@@ -258,8 +289,8 @@ export function MobileMenu(p: MobileMenuProps) {
         <SheetDescription className="zf-sr-only">Navigate between sections, change theme or manage your account.</SheetDescription>
 
         <div className="zf-seg" role="group" aria-label="Theme" style={{ margin: "14px 8px 0", display: "flex" }}>
-          <button type="button" style={{ flex: 1, minHeight: 40 }} aria-pressed={p.theme === "light"} onClick={() => p.onTheme("light")}>Light</button>
-          <button type="button" style={{ flex: 1, minHeight: 40 }} aria-pressed={p.theme === "dark"} onClick={() => p.onTheme("dark")}>Dark</button>
+          <button type="button" style={{ flex: 1, minHeight: 40 }} aria-pressed={p.theme === "light"} onClick={(e) => p.onTheme("light", e)}>Light</button>
+          <button type="button" style={{ flex: 1, minHeight: 40 }} aria-pressed={p.theme === "dark"} onClick={(e) => p.onTheme("dark", e)}>Dark</button>
         </div>
 
         <nav aria-label="All sections">

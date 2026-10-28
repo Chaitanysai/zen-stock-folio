@@ -140,7 +140,7 @@
 .zf-brand-mark { display: inline-flex; width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
 .zf-brand-mark svg { width: 34px; height: 34px; }
 
-.zf-pills { display: inline-flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; }
+.zf-pills { display: inline-flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; position: relative; }
 .zf-nav-item {
   flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
@@ -149,7 +149,26 @@
   transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease;
 }
 .zf-nav-item:hover { color: hsl(var(--foreground)); background: hsl(var(--surface-3) / .8); }
-.zf-nav-item[aria-current="page"] { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 600; box-shadow: var(--shadow-1); }
+/* On the active pill, the hover tint would sit over the sliding fill. */
+.zf-nav-item[aria-current="page"]:hover { background: transparent; color: hsl(var(--primary-foreground)); }
+/* Active pill colour now comes from the sliding indicator behind it. */
+.zf-nav-item[aria-current="page"] { background: transparent; color: hsl(var(--primary-foreground)); font-weight: 600; }
+.zf-nav-item[aria-current="page"]:hover { background: transparent; }
+
+.zf-nav { position: relative; }
+.zf-nav-indicator {
+  position: absolute; top: 4px; bottom: 4px; left: 0; z-index: 0;
+  border-radius: 999px; background: hsl(var(--primary)); box-shadow: var(--shadow-1);
+  pointer-events: none; opacity: 0;
+  transition-property: transform, width, opacity;
+  transition-duration: var(--dur-route, 260ms), var(--dur-route, 260ms), 120ms;
+  transition-timing-function: var(--ease-out), var(--ease-out), ease;
+}
+.zf-nav-indicator[data-ready] { opacity: 1; }
+.zf-nav-item { position: relative; z-index: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .zf-nav-indicator { transition-property: opacity; transition-duration: 120ms; }
+}
 
 .zf-iconbtn {
   position: relative; width: 40px; height: 40px; flex-shrink: 0;
@@ -613,11 +632,10 @@
 @keyframes zf-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes zf-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes zf-pulse { 50% { opacity: .55; } }
-@keyframes zf-panel-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 /* Entrance runs once, staggered in reading order (≤ 240ms total). */
 @media (prefers-reduced-motion: no-preference) {
   .zf-in { animation: zf-rise 420ms var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
-  .zf-tab-panel { animation: zf-panel-in var(--dur) var(--ease-out) both; }
+  .zf-tab-panel { animation: zf-route-in var(--dur-route) var(--ease-out) both; }
   .zf-empty-state { animation: zf-fade var(--dur-slow) ease both; }
 }
 
