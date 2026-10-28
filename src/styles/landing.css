@@ -210,6 +210,17 @@
 .zl-hero-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 28px 0 0; padding: 0; list-style: none; }
 .zl-hero-meta li { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: hsl(var(--muted-foreground)); }
 .zl-hero-meta svg { width: 15px; height: 15px; color: hsl(var(--brand-ink)); }
+/* Desktop: the copy starts on the preview's top edge instead of floating centred beside the
+   taller frame. Only when the viewport is tall enough to hold the whole stage does the trust
+   row settle on the stage's bottom edge; on shorter laptops that would push it below the fold. */
+@media (min-width: 1141px) {
+  .zl-hero-grid { align-items: start; }
+}
+@media (min-width: 1141px) and (min-height: 900px) {
+  .zl-hero-grid { align-items: stretch; }
+  .zl-hero-copy { display: flex; flex-direction: column; }
+  .zl-hero-meta { margin-top: auto; padding-top: 28px; }
+}
 
 /* Entrance: runs once on load, ≤ 400ms of stagger */
 @keyframes zl-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
