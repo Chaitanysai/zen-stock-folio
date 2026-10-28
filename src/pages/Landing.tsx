@@ -1,5 +1,5 @@
 import { useRef, type CSSProperties } from "react";
-import { Link } from "react-router-dom";
+import { RouteLink } from "@/components/RouteTransition";
 import {
   ArrowRight,
   BellRing,
@@ -133,10 +133,10 @@ const Landing = () => {
                 clear dashboard, so you can see where you stand and plan the next move with a level head.
               </p>
               <div className="zl-cta-row zl-in zl-in-3">
-                <Link to="/signup" className="zl-btn zl-btn-primary">
+                <RouteLink to="/signup" className="zl-btn zl-btn-primary">
                   Create free account <ArrowRight aria-hidden="true" />
-                </Link>
-                <Link to="/login" className="zl-btn zl-btn-ghost">Sign in</Link>
+                </RouteLink>
+                <RouteLink to="/login" className="zl-btn zl-btn-ghost">Sign in</RouteLink>
               </div>
               <ul className="zl-hero-meta zl-in zl-in-4">
                 <li><Lock aria-hidden="true" />Private to your account</li>
@@ -264,10 +264,10 @@ const Landing = () => {
                 <p>Create a free account, add your first holding, and get the full picture in one place.</p>
               </div>
               <div className="zl-cta-row">
-                <Link to="/signup" className="zl-btn zl-btn-light">
+                <RouteLink to="/signup" className="zl-btn zl-btn-light">
                   Get started <ArrowRight aria-hidden="true" />
-                </Link>
-                <Link to="/login" className="zl-btn zl-btn-outline-light">Sign in</Link>
+                </RouteLink>
+                <RouteLink to="/login" className="zl-btn zl-btn-outline-light">Sign in</RouteLink>
               </div>
             </div>
           </div>
@@ -278,10 +278,10 @@ const Landing = () => {
         <div className="zl-wrap">
           <div className="zl-foot">
             <div>
-              <Link to="/" className="zl-brand" aria-label="ZenFolio home">
+              <RouteLink to="/" className="zl-brand" aria-label="ZenFolio home">
                 <LogoMark size={28} />
                 <span className="zl-brand-name">ZenFolio</span>
-              </Link>
+              </RouteLink>
               <p className="zl-foot-tag">A calm portfolio tracker for Indian equities.</p>
             </div>
             <nav aria-label="Footer">
@@ -289,8 +289,8 @@ const Landing = () => {
                 {SECTIONS.map((s) => (
                   <li key={s.id}><a href={`#${s.id}`}>{s.label}</a></li>
                 ))}
-                <li><Link to="/login">Sign in</Link></li>
-                <li><Link to="/signup">Create account</Link></li>
+                <li><RouteLink to="/login">Sign in</RouteLink></li>
+                <li><RouteLink to="/signup">Create account</RouteLink></li>
               </ul>
             </nav>
           </div>

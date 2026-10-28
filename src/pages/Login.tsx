@@ -1,7 +1,8 @@
 import { FormEvent, useEffect, useRef, useState, useCallback } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Eye, EyeOff, Loader2, Check, X, Chrome } from "lucide-react";
 import LogoMark from "@/components/LogoMark";
+import { RouteLink } from "@/components/RouteTransition";
 import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -210,14 +211,14 @@ const Login = () => {
   const showResend = mode === "signin" && lastSignupEmail && !notice?.includes("Account created");
 
   const brand = (size: number, text: string) => (
-    <Link
+    <RouteLink
       to="/"
       aria-label="ZenFolio home"
       className="inline-flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
       <LogoMark size={size} />
       <span className={`${text} font-bold tracking-tight`}>ZenFolio</span>
-    </Link>
+    </RouteLink>
   );
 
   return (
@@ -245,13 +246,13 @@ const Login = () => {
         {/* Authentication */}
         <section className="flex flex-col px-4 py-5 sm:px-6 lg:px-10 lg:py-8">
           <header className="flex items-center justify-between gap-3 lg:justify-end lg:gap-2">
-            <Link
+            <RouteLink
               to="/"
               className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background -ml-3"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Back to home
-            </Link>
+            </RouteLink>
             <ThemeToggle />
           </header>
 

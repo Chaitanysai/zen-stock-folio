@@ -49,9 +49,25 @@ import { HoldingsCard } from "@/components/dashboard/Holdings";
 import { FnoCard, InsightCard, PriceChartCard, SectorCard, WatchlistCard } from "@/components/dashboard/Sections";
 import { NAV_ITEMS, PAGE_TITLES, navItem, type ActiveTab } from "@/components/dashboard/nav";
 
+// Timing mirrors --dur-section-out / --dur-section-in in index.css.
+const SECTION_OUT_MS = 170;
+const SECTION_IN_MS = 350;
+
+function sectionMotionEnabled() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
+}
+
+type SectionPhase = "idle" | "leaving" | "entering";
+
 // ════════════════════════════════════════════════════════════════════════════
 export default function Index() {
   const [tab,       setTab]       = useState<ActiveTab>("overview");
+  const [renderedTab, setRenderedTab] = useState<ActiveTab>("overview");
+  const [phase, setPhase] = useState<SectionPhase>("idle");
+  const renderedTabRef = useRef<ActiveTab>("overview");
+  const sectionTimers = useRef<number[]>([]);
+  const [chartScrollSignal, setChartScrollSignal] = useState(0);
   const [mobileNav, setMobileNav] = useState(false);
 
   // One theme source: next-themes (App.tsx), persisted under localStorage "theme".
@@ -69,7 +85,36 @@ export default function Index() {
     } catch { /* storage unavailable: keep the provider default */ }
   }, [setTheme]);
 
-  const goTo = useCallback((id: ActiveTab) => { setTab(id); setMobileNav(false); }, []);
+  const clearSectionTimers = useCallback(() => {
+    sectionTimers.current.forEach((id) => window.clearTimeout(id));
+    sectionTimers.current = [];
+  }, []);
+
+  // `tab` drives the rail and the sliding pill immediately; the body keeps the
+  // outgoing section until it has faded, then swaps and settles the new one.
+  const goTo = useCallback((id: ActiveTab) => {
+    setTab(id);
+    setMobileNav(false);
+    if (id === renderedTabRef.current) return;
+
+    clearSectionTimers();
+    if (!sectionMotionEnabled()) {
+      renderedTabRef.current = id;
+      setRenderedTab(id);
+      setPhase("idle");
+      return;
+    }
+
+    setPhase("leaving");
+    sectionTimers.current.push(window.setTimeout(() => {
+      renderedTabRef.current = id;
+      setRenderedTab(id);
+      setPhase("entering");
+      sectionTimers.current.push(window.setTimeout(() => setPhase("idle"), SECTION_IN_MS));
+    }, SECTION_OUT_MS));
+  }, [clearSectionTimers]);
+
+  useEffect(() => clearSectionTimers, [clearSectionTimers]);
 
   const { user, signOut, loading: authLoading } = useAuth();
   const [showAuth,   setShowAuth]   = useState(false);
@@ -340,9 +385,19 @@ export default function Index() {
   const handleSearchSelect = useCallback((hit: { symbol: string }) => {
     setSearchedSymbol(hit.symbol.replace(/\.(NS|BO)$/i, "").toUpperCase());
     setSearchOpen(false);
+    setChartScrollSignal((n) => n + 1);
     goTo("overview");
-    requestAnimationFrame(() => document.getElementById("zf-chart-title")?.scrollIntoView?.({ block: "center" }));
   }, [goTo]);
+
+  // The chart only exists once the overview has settled (the swap may be delayed
+  // by the section transition), so scroll after the entering phase ends.
+  useEffect(() => {
+    if (chartScrollSignal === 0 || phase !== "idle" || renderedTab !== "overview") return;
+    const raf = requestAnimationFrame(() =>
+      document.getElementById("zf-chart-title")?.scrollIntoView?.({ block: "center" }),
+    );
+    return () => cancelAnimationFrame(raf);
+  }, [chartScrollSignal, phase, renderedTab]);
 
   const refreshStatus = priceError ? "Price refresh failed" : pricesLoading ? "Refreshing prices" : lastUpdated ? "Prices updated" : "";
 
@@ -413,14 +468,15 @@ export default function Index() {
           />
 
           <main id="zf-main" className="zf-main" tabIndex={-1}>
+          <div className="zf-section-body" data-phase={phase}>
             <div className="zf-page-head">
               <div>
-                {tab === "overview" ? (
+                {renderedTab === "overview" ? (
                   <h1 className="zf-h1">{greeting()}, <em>{userName}</em></h1>
                 ) : (
-                  <h1 className="zf-h1 zf-h1-plain">{PAGE_TITLES[tab]}</h1>
+                  <h1 className="zf-h1 zf-h1-plain">{PAGE_TITLES[renderedTab]}</h1>
                 )}
-                <p className="zf-sub">{tab === "overview" ? pnlSentence : navItem(tab).hint}</p>
+                <p className="zf-sub">{renderedTab === "overview" ? pnlSentence : navItem(renderedTab).hint}</p>
               </div>
             </div>
 
@@ -438,8 +494,8 @@ export default function Index() {
               </div>
             )}
 
-            {tab === "overview" && (
-              <>
+            {renderedTab === "overview" && (
+              <div className="zf-section-overview">
                 <div className="zf-row1">
                   <BalanceCard
                     loading={loading} m={m} watchCount={watchlist.length}
@@ -485,13 +541,13 @@ export default function Index() {
                 <section className="zf-card zf-strip zf-in" style={stagger(10)} aria-label="Market indices">
                   <MarketIndexStrip />
                 </section>
-              </>
+              </div>
             )}
 
-            {tab !== "overview" && (
-              <div key={tab} className="zf-tab-panel" style={{ minHeight: "calc(100dvh - 240px)" }}>
-                {tab === "holdings"  && <PortfolioTable stocks={live} onAdd={handlePortfolioAdd} onImport={handlePortfolioImport} onEdit={handlePortfolioEdit} onDelete={handlePortfolioDelete} />}
-                {tab === "trades" && (
+            {renderedTab !== "overview" && (
+              <div key={renderedTab} className="zf-tab-panel" style={{ minHeight: "calc(100dvh - 240px)" }}>
+                {renderedTab === "holdings"  && <PortfolioTable stocks={live} onAdd={handlePortfolioAdd} onImport={handlePortfolioImport} onEdit={handlePortfolioEdit} onDelete={handlePortfolioDelete} />}
+                {renderedTab === "trades" && (
                   <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                     <div className="zf-subtabs" role="tablist" aria-label="Trade type">
                       {([
@@ -523,18 +579,19 @@ export default function Index() {
                     </div>
                   </div>
                 )}
-                {tab === "watchlist" && <WatchlistTable watchlist={watchlist} onAdd={handleWatchlistAdd} onEdit={handleWatchlistEdit} onDelete={handleWatchlistDelete} />}
-                {tab === "news"      && <StockNewsFeed stocks={live} />}
-                {tab === "charts"    && <PortfolioCharts stocks={live} />}
-                {tab === "analytics" && <TradeAnalytics stocks={live} />}
-                {tab === "history"   && <TradeHistory stocks={live} />}
-                {tab === "journal"   && <TradeJournal stocks={stocks} onUpdateNotes={handleJournalNotesUpdate} />}
-                {tab === "sector"    && <SectorDiversification stocks={live} />}
-                {tab === "alerts"    && <PriceAlerts alerts={alerts} onAddAlert={handleAlertAdd} onDeleteAlert={handleAlertDelete} onDismissAlert={handleAlertDismiss} />}
-                {tab === "ai"        && <AIInsights stocks={live} />}
-                {tab === "export"    && <ExportPortfolio stocks={live} />}
+                {renderedTab === "watchlist" && <WatchlistTable watchlist={watchlist} onAdd={handleWatchlistAdd} onEdit={handleWatchlistEdit} onDelete={handleWatchlistDelete} />}
+                {renderedTab === "news"      && <StockNewsFeed stocks={live} />}
+                {renderedTab === "charts"    && <PortfolioCharts stocks={live} />}
+                {renderedTab === "analytics" && <TradeAnalytics stocks={live} />}
+                {renderedTab === "history"   && <TradeHistory stocks={live} />}
+                {renderedTab === "journal"   && <TradeJournal stocks={stocks} onUpdateNotes={handleJournalNotesUpdate} />}
+                {renderedTab === "sector"    && <SectorDiversification stocks={live} />}
+                {renderedTab === "alerts"    && <PriceAlerts alerts={alerts} onAddAlert={handleAlertAdd} onDeleteAlert={handleAlertDelete} onDismissAlert={handleAlertDismiss} />}
+                {renderedTab === "ai"        && <AIInsights stocks={live} />}
+                {renderedTab === "export"    && <ExportPortfolio stocks={live} />}
               </div>
             )}
+          </div>
           </main>
         </div>
       </div>

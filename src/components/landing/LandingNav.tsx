@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FocusEvent } from "react";
-import { Link } from "react-router-dom";
+import { RouteLink } from "@/components/RouteTransition";
 import { ArrowRight, Menu, X } from "lucide-react";
 import LogoMark from "@/components/LogoMark";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -41,10 +41,10 @@ export default function LandingNav() {
     <header className="zl-header" onBlur={onBlur}>
       <div className="zl-wrap">
         <nav className="zl-nav" aria-label="Main">
-          <Link to="/" className="zl-brand" aria-label="ZenFolio home">
+          <RouteLink to="/" className="zl-brand" aria-label="ZenFolio home">
             <LogoMark size={30} />
             <span className="zl-brand-name">ZenFolio</span>
-          </Link>
+          </RouteLink>
 
           <ul className="zl-links">
             {SECTIONS.map((s) => (
@@ -54,10 +54,10 @@ export default function LandingNav() {
 
           <div className="zl-nav-actions">
             <ThemeToggle />
-            <Link to="/login" className="zl-signin">Sign in</Link>
-            <Link to="/signup" className="zl-btn zl-btn-primary zl-btn-sm">
+            <RouteLink to="/login" className="zl-signin">Sign in</RouteLink>
+            <RouteLink to="/signup" className="zl-btn zl-btn-primary zl-btn-sm">
               Get started <ArrowRight aria-hidden="true" />
-            </Link>
+            </RouteLink>
             <button
               ref={btnRef}
               type="button"
@@ -80,8 +80,8 @@ export default function LandingNav() {
               ))}
             </ul>
             <div className="zl-mobile-cta">
-              <Link to="/login" className="zl-btn zl-btn-ghost zl-btn-sm" onClick={close}>Sign in</Link>
-              <Link to="/signup" className="zl-btn zl-btn-primary zl-btn-sm" onClick={close}>Get started</Link>
+              <RouteLink to="/login" className="zl-btn zl-btn-ghost zl-btn-sm" onClick={close}>Sign in</RouteLink>
+              <RouteLink to="/signup" className="zl-btn zl-btn-primary zl-btn-sm" onClick={close}>Get started</RouteLink>
             </div>
           </div>
         )}

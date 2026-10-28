@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigationType } from "react-router-dom";
+import { consumeRouteTransition } from "@/lib/navigation/routeTransition";
 
 // The first view of a page load already has its own entrance (landing hero, dashboard cards)
 // and must not steal focus, so only views mounted after it animate.
@@ -13,19 +14,21 @@ let firstViewMounted = false;
  */
 export function RouteEnter({ children }: { children: ReactNode }) {
   const navType = useNavigationType();
-  const [animate] = useState(firstViewMounted);
+  const [activated] = useState(firstViewMounted);
+  // A View Transition already animated this view; replaying the CSS entrance would double it.
+  const [suppressEnter] = useState(() => consumeRouteTransition());
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     firstViewMounted = true;
-    if (!animate) return;
+    if (!activated) return;
     if (navType !== "POP") window.scrollTo(0, 0);
     const root = ref.current;
     const target = root?.querySelector<HTMLElement>("h1") ?? root?.querySelector<HTMLElement>("main");
     if (!target) return;
     if (!target.hasAttribute("tabindex")) target.tabIndex = -1;
     target.focus({ preventScroll: true });
-  }, [animate, navType]);
+  }, [activated, navType]);
 
-  return <div ref={ref} className={animate ? "zf-route" : undefined}>{children}</div>;
+  return <div ref={ref} className={activated && !suppressEnter ? "zf-route" : undefined}>{children}</div>;
 }

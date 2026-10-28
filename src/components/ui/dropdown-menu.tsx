@@ -83,7 +83,7 @@ const DropdownMenuItem = React.forwardRef<
     ref={ref}
     className={cn(
       "flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer",
-      "outline-none transition-colors duration-100",
+      "outline-none transition-colors duration-200",
       "hover:bg-accent/60",
       "focus:bg-accent focus:text-accent-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60",
       "data-[disabled]:opacity-50 data-[disabled]:pointer-events-none",
@@ -103,7 +103,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex items-center gap-2 rounded-lg py-2 pl-8 pr-3 text-sm cursor-pointer",
-      "outline-none transition-all",
+      "outline-none transition-colors duration-200",
       "focus:bg-accent focus:text-accent-foreground",
       "data-[disabled]:opacity-50 data-[disabled]:pointer-events-none",
       className
@@ -129,7 +129,7 @@ const DropdownMenuRadioItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex items-center gap-2 rounded-lg py-2 pl-8 pr-3 text-sm cursor-pointer",
-      "outline-none transition-all",
+      "outline-none transition-colors duration-200",
       "focus:bg-accent focus:text-accent-foreground",
       "data-[disabled]:opacity-50 data-[disabled]:pointer-events-none",
       className

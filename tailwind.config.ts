@@ -104,6 +104,11 @@ export default {
         "pulse-dot": "pulse-dot 2s ease-in-out infinite",
         "slide-in": "slide-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
       },
+      // Panel open/close durations (tailwindcss-animate reads this scale).
+      animationDuration: {
+        "180": "180ms",
+        "220": "220ms",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

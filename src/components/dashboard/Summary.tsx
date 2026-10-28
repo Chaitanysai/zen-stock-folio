@@ -23,7 +23,7 @@ export function BalanceCard({ loading, m, watchCount, onAdd, onImport, goTo, ope
   const hasEquity = m.active.length > 0;
   const hasFno = m.fnoOpen.length > 0;
   return (
-    <article className="zf-card zf-balance zf-lift zf-in" style={stagger(0)} aria-labelledby="zf-balance-label">
+    <article className="zf-card zf-balance zf-in" style={stagger(0)} aria-labelledby="zf-balance-label">
       <div className="zf-balance-top">
         <span className="zf-label" id="zf-balance-label">Portfolio value</span>
         <span className="zf-chip" title="All values are in Indian rupees">INR · ₹</span>
@@ -98,7 +98,7 @@ interface StatProps {
 
 function Stat({ label, icon: Icon, value, loading, pill, cap, highlight, index }: StatProps) {
   return (
-    <article className={`zf-card zf-stat zf-lift zf-in${highlight ? " zf-stat-hl" : ""}`} style={stagger(index)} aria-label={label}>
+    <article className={`zf-card zf-stat zf-in${highlight ? " zf-stat-hl" : ""}`} style={stagger(index)} aria-label={label}>
       <div className="zf-stat-top">
         <span className="zf-label">{label}</span>
         <span className="zf-chip-ico" aria-hidden="true"><Icon /></span>
@@ -154,7 +154,7 @@ interface PnlProps {
 
 export function PnlCard({ loading, months, undated, onAdd, onImport }: PnlProps) {
   return (
-    <section className="zf-card zf-pnl zf-lift zf-in" style={stagger(5)} aria-labelledby="zf-pnl-title">
+    <section className="zf-card zf-pnl zf-in" style={stagger(5)} aria-labelledby="zf-pnl-title">
       <div>
         <h2 className="zf-card-title" id="zf-pnl-title">Realised P&amp;L by month</h2>
         <p className="zf-card-sub">Closed equity and F&amp;O trades, grouped by exit month</p>

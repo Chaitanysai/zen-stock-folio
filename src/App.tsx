@@ -2,12 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { SessionLoading } from "@/components/ProtectedRoute";
 import { RouteEnter } from "@/components/RouteEnter";
+import { installHistoryRouteTransition, setLastRoutePath } from "@/lib/navigation/routeTransition";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
@@ -15,6 +16,18 @@ import NotFound from "./pages/NotFound";
 // The dashboard pulls in recharts, lightweight-charts and react-markdown; split it
 // out so signed-out visitors (landing, login) don't download it.
 const Index = lazy(() => import("./pages/Index"));
+
+// Must run before BrowserRouter creates its history (and popstate listener).
+installHistoryRouteTransition();
+
+/** Remembers the committed path so the history bridge can ignore hash-only moves. */
+const RouteLocationTracker = () => {
+  const location = useLocation();
+  useEffect(() => {
+    setLastRoutePath(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+  return null;
+};
 
 const queryClient = new QueryClient();
 
@@ -39,6 +52,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <RouteLocationTracker />
             <Routes>
               <Route path="/login" element={<RouteEnter><Login /></RouteEnter>} />
               <Route path="/signup" element={<RouteEnter><Login /></RouteEnter>} />
