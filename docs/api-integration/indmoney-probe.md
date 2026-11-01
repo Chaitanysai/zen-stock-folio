@@ -13,8 +13,9 @@ phone) before committing this file. Never commit the token itself.
 ## 1. API base URL
 
 - Base URL observed in the authenticated app's network calls:
-- Does it match the host the adapter assumes? (yes/no)
-- Redirects or host changes:
+  `https://api.indstocks.com` (2026-11-01, authenticated `GET /user/profile`)
+- Does it match the host the adapter assumes? yes
+- Redirects or host changes: none observed
 
 ## 2. `GET /portfolio/holdings`
 
@@ -35,8 +36,12 @@ phone) before committing this file. Never commit the token itself.
 ## 4. Token acceptance
 
 - Was a dashboard-generated token accepted by `/portfolio/holdings` and
-  `/trade-book`? (yes/no)
-- If no, which token type works:
+  `/trade-book`? not yet exercised (only `/user/profile` so far)
+- If no, which token type works: the dashboard's 24-hour access token, sent as
+  `Authorization: <token>` with no scheme prefix. `Authorization: Bearer <token>`
+  is rejected with `401 {"error_type":"TokenException","message":"Unable to
+  validate user token"}` (verified 2026-11-01). `x-api-key` is not required for
+  `/user/profile`.
 
 ## 5. Pagination and caps
 

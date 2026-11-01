@@ -251,7 +251,9 @@ export function createIndstocksClient(config: IndstocksConfig): IndstocksClient 
         response = await fetchImpl(url, {
           headers: {
             "x-api-key": config.apiKey,
-            Authorization: `Bearer ${config.token}`,
+            // INDstocks expects the raw access token; a Bearer prefix is
+            // rejected with 401 "Unable to validate user token".
+            Authorization: config.token,
             Accept: "application/json",
           },
           signal: AbortSignal.timeout(timeoutMs),

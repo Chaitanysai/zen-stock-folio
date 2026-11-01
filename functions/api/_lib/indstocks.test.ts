@@ -376,4 +376,18 @@ describe("INDstocks adapter", () => {
     await client.tradeBook();
     expect(callsOf(fetchImpl)[1][0]).toBe("https://x.test/v1/trade-book");
   });
+
+  it("authenticates with the raw access token, not a Bearer prefix", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ data: {} }), { status: 200 })) as unknown as typeof fetch;
+    const client = createIndstocksClient(config(fetchImpl));
+
+    await client.profile();
+
+    const init = callsOf(fetchImpl)[0][1] as RequestInit;
+    expect(init.headers).toMatchObject({
+      Authorization: "broker-token",
+      "x-api-key": "api-key",
+    });
+  });
 });
