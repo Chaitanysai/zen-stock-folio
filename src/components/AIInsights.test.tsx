@@ -101,4 +101,19 @@ describe("AIInsights chat", () => {
       { role: "user", content: "What is my largest risk?" },
     ]);
   });
+
+  it("never describes an unpriced row as a ₹0 position with a −100% loss", async () => {
+    render(<AIInsights stocks={[{ ...stock, cmp: 0 }]} />);
+    await screen.findByText("Analysis complete");
+
+    const body = JSON.parse(fetchApiMock.mock.calls[0][1].body);
+    const context = body.portfolioContext as string;
+    expect(context).toContain("CMP N/A");
+    expect(context).toContain("P&L unavailable (no market price)");
+    expect(context).not.toContain("CMP ₹0");
+    expect(context).not.toContain("-100");
+    expect(context).toContain(
+      "Unpriced: 1 position with no market price (excluded from Current and Unrealised P&L)",
+    );
+  });
 });

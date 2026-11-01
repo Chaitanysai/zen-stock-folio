@@ -2,14 +2,18 @@ import { requireVerifiedIdentity } from "./_lib/auth";
 import { checkRateLimit, RATE_LIMITS } from "./_lib/ratelimit";
 import { errorResponse, handleOptions, jsonResponse, retryAfterHeader } from "./_lib/http";
 import { isCandleRange, RANGE_PRESETS } from "../../src/lib/market-data/freshness.ts";
-import { isSupportedIndexSymbol, normalizeSymbol } from "../../src/lib/market-data/symbols.ts";
+import { isMarket, isSupportedIndexSymbol, parseInstrument } from "../../src/lib/market-data/symbols.ts";
 import type { CandleRange } from "../../src/lib/market-data/types.ts";
 import { resolveCandles } from "./_lib/quotes";
 import type { PagesHandler } from "./_lib/types";
 
 /**
- * GET /api/candles?symbol=..&range=..&refresh=1 — OHLCV series for one symbol
- * plus the provenance needed to label it (CandlesEnvelope).
+ * GET /api/candles?symbol=..&range=..&market=..&refresh=1 — OHLCV series for one
+ * instrument plus the provenance needed to label it (CandlesEnvelope).
+ *
+ * `market` (default NSE) is validated, not inferred: `AAPL` on NSE and `AAPL` on
+ * NYSE are different listings, so a ticker alone cannot say which series the
+ * caller means. An unknown market is a 400 rather than a silent NSE fallback.
  *
  * The browser must never call Yahoo directly (the endpoint sends no CORS
  * header), and an out-of-range preset is rejected rather than silently
@@ -35,19 +39,26 @@ export const onRequestGet: PagesHandler = async ({ request, env }) => {
   }
 
   const url = new URL(request.url);
+  const marketParam = url.searchParams.get("market") ?? "NSE";
+  if (!isMarket(marketParam)) {
+    return errorResponse(env, request, 400, "Unsupported market", {}, "invalid_market");
+  }
   const rawSymbol = url.searchParams.get("symbol") ?? "";
   const rawRange = url.searchParams.get("range");
   const refresh = url.searchParams.get("refresh") === "1";
 
-  // Index charts are legitimate (`^NSEI`), so accept a supported index as-is.
-  const upper = rawSymbol.trim().toUpperCase();
-  const symbol = isSupportedIndexSymbol(upper) ? upper : normalizeSymbol(rawSymbol);
-  if (!symbol) {
+  // Index charts are legitimate (`^NSEI`), so accept a supported index as-is:
+  // they are NSE instruments regardless of the requested market.
+  const isIndex = isSupportedIndexSymbol(rawSymbol.trim().toUpperCase());
+  const instrument = isIndex
+    ? { market: "NSE" as const, ticker: rawSymbol.trim().toUpperCase() }
+    : parseInstrument({ market: marketParam, ticker: rawSymbol });
+  if (!instrument) {
     return errorResponse(
       env,
       request,
       400,
-      "A valid NSE symbol or supported index is required",
+      "A valid symbol for the requested market is required",
       {},
       "invalid_symbol",
     );
@@ -65,7 +76,7 @@ export const onRequestGet: PagesHandler = async ({ request, env }) => {
   }
   const range: CandleRange = isCandleRange(rawRange) ? rawRange : DEFAULT_RANGE;
 
-  const outcome = await resolveCandles(symbol, range, { bypassCache: refresh });
+  const outcome = await resolveCandles(instrument, range, { bypassCache: refresh });
   // A 404 from the provider is the common "no such symbol" case.
   if (outcome.status === "notfound") {
     return errorResponse(env, request, 404, outcome.message, {}, "symbol_not_found");

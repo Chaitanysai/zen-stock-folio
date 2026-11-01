@@ -144,4 +144,19 @@ describe("MarketCandlestick", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
+
+  it("asks for the listing's own market, not a bare NSE ticker", async () => {
+    const urls: string[] = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      urls.push(String(input));
+      return jsonResponse(envelope);
+    }) as unknown as typeof fetch;
+
+    render(<MarketCandlestick symbol="AAPL" market="US" range="1mo" />);
+
+    await screen.findByText(/1 bars @ 5m/);
+    expect(urls[0]).toContain("symbol=AAPL");
+    expect(urls[0]).toContain("market=US");
+    expect(urls[0]).not.toContain("market=NSE");
+  });
 });

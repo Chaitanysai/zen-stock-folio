@@ -11,6 +11,15 @@
  * consumer can label the data truthfully instead of guessing.
  */
 
+/** Listing market. A symbol never resolves to more than one market. */
+export type Market = "NSE" | "US";
+
+/** A ticker plus the market that disambiguates it. */
+export interface Instrument {
+  market: Market;
+  ticker: string;
+}
+
 export type ProviderId = "upstox" | "yahoo" | "twelvedata" | "cache";
 
 /**
@@ -41,8 +50,10 @@ export interface Candle {
 }
 
 export interface Quote {
-  /** Canonical NSE trading symbol, uppercase, no exchange suffix. */
+  /** Canonical trading symbol for `market`, uppercase, no exchange suffix. */
   symbol: string;
+  /** Listing market this quote belongs to. */
+  market: Market;
   price: number | null;
   change: number | null;
   changePercent: number | null;
@@ -104,6 +115,7 @@ export interface CandlesEnvelope extends Provenance {
 
 export interface SearchHit {
   symbol: string;
+  market: Market;
   name: string;
   exchange: string;
   /** Provider-native quote type, e.g. EQUITY / ETF / INDEX. */
@@ -174,4 +186,23 @@ export interface HealthResponse {
   integrations: IntegrationHealth[];
   /** Aggregate: worst state among "required" integrations. */
   summary: IntegrationState;
+}
+
+/** USD→INR rate. A rate is never invented; absent data is an error, not zero. */
+export interface FxRate {
+  base: "USD";
+  quote: "INR";
+  rate: number;
+  /**
+   * Provider's observation time, ISO 8601, or null when the provider supplied
+   * no observation time. Never a timestamp invented by this app.
+   */
+  asOf: string | null;
+  /**
+   * True when the reply was served from cache, or when the observation time is
+   * unknown. Unknown freshness is never labelled fresh.
+   */
+  stale: boolean;
+  provider: ProviderId;
+  fetchedAt: string;
 }

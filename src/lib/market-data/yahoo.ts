@@ -15,7 +15,7 @@
  *  - Nothing is invented: a missing array yields a warning + `null` fields.
  */
 
-import type { Candle, CandleRange, CandleResolution, Quote } from "./types.ts";
+import type { Candle, CandleRange, CandleResolution, Market, Quote } from "./types.ts";
 import { RANGE_PRESETS } from "./freshness.ts";
 import { fromYahooSymbol, toYahooSymbol } from "./symbols.ts";
 
@@ -132,7 +132,7 @@ export interface YahooQuoteResult {
 }
 
 /** Map a chart response to our Quote contract. */
-function toQuote(meta: YahooMeta, requestedSymbol: string): YahooQuoteResult {
+function toQuote(meta: YahooMeta, requestedSymbol: string, market: Market): YahooQuoteResult {
   const name = meta.longName ?? meta.shortName ?? null;
   const price = positive(meta.regularMarketPrice);
   const previousClose = positive(meta.previousClose) ?? positive(meta.chartPreviousClose);
@@ -164,11 +164,16 @@ function toQuote(meta: YahooMeta, requestedSymbol: string): YahooQuoteResult {
   track("name", name);
   if (price === null) unavailable.push("price");
 
-  const symbol = fromYahooSymbol(meta.symbol ?? "") ?? requestedSymbol;
+  // `fromYahooSymbol` returns `""` for a U.S. symbol that is absent, so a
+  // nullish fallback would let an empty symbol reach the envelope. Resolve once
+  // and fall back on empty as well.
+  const resolvedSymbol = fromYahooSymbol(meta.symbol ?? "", market);
+  const symbol = resolvedSymbol || requestedSymbol;
 
   return {
     quote: {
       symbol,
+      market,
       price,
       change,
       changePercent,
@@ -190,15 +195,16 @@ function toQuote(meta: YahooMeta, requestedSymbol: string): YahooQuoteResult {
 }
 
 /**
- * Fetch one quote. `target` is a bare NSE symbol (suffixed internally) or an
- * index symbol such as `^NSEI`.
+ * Fetch one quote. `target` is a bare symbol for `market` (suffixed internally)
+ * or an index symbol such as `^NSEI`.
  */
 export async function fetchYahooQuote(
   target: string,
+  market: Market,
   timeoutMs = 5000,
 ): Promise<YahooQuoteResult> {
   const isIndex = target.startsWith("^");
-  const yahooSymbol = isIndex ? target : toYahooSymbol(target);
+  const yahooSymbol = isIndex ? target : toYahooSymbol(target, market);
 
   const url = `${CHART_BASE}/${encodeURIComponent(yahooSymbol)}?range=1d&interval=15m`;
   const body = (await getJson(url, timeoutMs)) as YahooChartBody;
@@ -212,37 +218,7 @@ export async function fetchYahooQuote(
     throw new ProviderHttpError("yahoo", 200, "Yahoo returned no chart result");
   }
 
-  return toQuote(result.meta, target);
-}
-
-/** Fetch several quotes with bounded concurrency; per-symbol failures are isolated. */
-export async function fetchYahooQuotes(
-  targets: string[],
-  options: { timeoutMs?: number; concurrency?: number } = {},
-): Promise<Map<string, { ok: true; value: YahooQuoteResult } | { ok: false; error: string }>> {
-  const timeoutMs = options.timeoutMs ?? 5000;
-  const concurrency = Math.max(1, Math.min(options.concurrency ?? 4, 8));
-  const out = new Map<string, { ok: true; value: YahooQuoteResult } | { ok: false; error: string }>();
-
-  let cursor = 0;
-  async function worker() {
-    for (;;) {
-      const index = cursor++;
-      if (index >= targets.length) return;
-      const target = targets[index];
-      try {
-        out.set(target, { ok: true, value: await fetchYahooQuote(target, timeoutMs) });
-      } catch (error) {
-        out.set(target, {
-          ok: false,
-          error: error instanceof Error ? error.message : "unknown error",
-        });
-      }
-    }
-  }
-
-  await Promise.all(Array.from({ length: Math.min(concurrency, targets.length) }, worker));
-  return out;
+  return toQuote(result.meta, target, market);
 }
 
 export interface YahooCandlesResult {
@@ -254,7 +230,8 @@ export interface YahooCandlesResult {
 }
 
 /**
- * Fetch OHLCV candles.
+ * Fetch OHLCV candles. `target` is a bare symbol for `market` (suffixed
+ * internally) or an index symbol such as `^NSEI`.
  *
  * Alignment rule: the four price arrays and the volume array are positional. A
  * row is kept only when open/high/low/close are all finite and positive, and
@@ -264,11 +241,12 @@ export interface YahooCandlesResult {
 export async function fetchYahooCandles(
   target: string,
   range: CandleRange,
+  market: Market,
   timeoutMs = 6000,
 ): Promise<YahooCandlesResult> {
   const preset = RANGE_PRESETS[range];
   const isIndex = target.startsWith("^");
-  const yahooSymbol = isIndex ? target : toYahooSymbol(target);
+  const yahooSymbol = isIndex ? target : toYahooSymbol(target, market);
   const url =
     `${CHART_BASE}/${encodeURIComponent(yahooSymbol)}` +
     `?range=${preset.yahooRange}&interval=${preset.yahooInterval}&includePrePost=false`;
@@ -367,15 +345,21 @@ export interface YahooSearchRow {
   sector: string | null;
 }
 
+/** Yahoo exchange codes for U.S. listings. */
+const US_SEARCH_EXCHANGES = new Set(["NYQ", "NMS", "NCM", "NGM", "ASE", "PCX"]);
+
 /**
- * Yahoo symbol search.
+ * Yahoo symbol search, scoped to one listing market.
  *
- * Verified pitfall: unfiltered results include non-Indian listings (`RS` on
- * `NYQ`), and `q=INFY` ranks the NYSE ADR above the NSE line. Callers must
- * therefore only accept `exchange === "NSI"`, which this function enforces.
+ * Verified pitfalls: unfiltered results include every listing of a name, and
+ * `q=INFY` ranks the NYSE ADR above the NSE line. `NSI` is Yahoo's code for NSE;
+ * U.S. rows carry one of `US_SEARCH_EXCHANGES` and a bare (hyphenated) symbol.
+ * Every other exchange — including BSE (`.BO`) — is dropped, so a hit can only
+ * ever describe the market that was asked for.
  */
 export async function fetchYahooSearch(
   query: string,
+  market: Market,
   timeoutMs = 5000,
 ): Promise<YahooSearchRow[]> {
   const url = `${SEARCH_BASE}?q=${encodeURIComponent(query)}&quotesCount=12&newsCount=0&listsCount=0`;
@@ -395,14 +379,30 @@ export async function fetchYahooSearch(
   const rows: YahooSearchRow[] = [];
   for (const item of body.quotes ?? []) {
     const symbol = item.symbol ?? "";
-    // NSE equities only. `NSI` is Yahoo's exchange code for NSE.
-    if (item.exchange !== "NSI" || !symbol.endsWith(".NS")) continue;
-    const bare = symbol.slice(0, -3);
+    if (!symbol) continue;
+
+    if (market === "NSE") {
+      if (item.exchange !== "NSI" || !symbol.endsWith(".NS")) continue;
+      const bare = symbol.slice(0, -3);
+      if (!bare) continue;
+      rows.push({
+        symbol: bare,
+        name: item.longname ?? item.shortname ?? bare,
+        exchange: "NSE",
+        quoteType: item.quoteType ?? null,
+        sector: item.sector ?? item.industry ?? null,
+      });
+      continue;
+    }
+
+    if (!US_SEARCH_EXCHANGES.has(item.exchange ?? "")) continue;
+    if (symbol.endsWith(".NS") || symbol.endsWith(".BO")) continue;
+    const bare = fromYahooSymbol(symbol, "US");
     if (!bare) continue;
     rows.push({
       symbol: bare,
       name: item.longname ?? item.shortname ?? bare,
-      exchange: "NSE",
+      exchange: "US",
       quoteType: item.quoteType ?? null,
       sector: item.sector ?? item.industry ?? null,
     });

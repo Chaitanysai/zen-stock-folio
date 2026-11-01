@@ -63,6 +63,7 @@ export const loadFromLocal = (storageKey: string): PortfolioSnapshot | null => {
       watchlist: parsed.watchlist,
       alerts: parsed.alerts,
       fnoTrades: Array.isArray(parsed.fnoTrades) ? parsed.fnoTrades : [],
+      executions: Array.isArray(parsed.executions) ? parsed.executions : [],
     };
   } catch {
     return null;

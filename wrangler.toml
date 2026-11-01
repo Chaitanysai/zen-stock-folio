@@ -23,6 +23,17 @@ compatibility_date = "2026-10-01"
 # Toolkit token verification, so it must be present in every deployment.
 FIREBASE_API_KEY = "AIzaSyDcKFGeZv2ov8M7SYdv-Q4H3JPhpOhncXQ"
 
+# --- INDmoney broker sync (optional) ----------------------------------------
+# Non-secret only. Set this last, after the probe in
+# docs/api-integration/indmoney-probe.md is complete; while INDSTOCKS_BASE_URL
+# is unset, both broker routes answer 503 BROKER_DISABLED.
+# FIREBASE_PROJECT_ID = "<firebase-project-id>"
+# INDSTOCKS_BASE_URL = "https://<probe-confirmed-host>"
+#
+# Secrets (never in this file):
+#   wrangler pages secret put INDSTOCKS_API_KEY
+#   wrangler pages secret put BROKER_TOKEN_KEY
+
 # --- EOD price cache --------------------------------------------------------
 # Cloudflare KV binding for the EOD price cache. Created 2026-10-27 for the
 # `zenfolio` Pages project. One namespace per Pages project (preview and

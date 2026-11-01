@@ -9,6 +9,8 @@ import {
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { fetchCandles } from "@/lib/market-data/client";
+import { isValidPrice, marketOf, positionKey, quoteFor } from "@/lib/portfolio/valuation";
+import type { Instrument, Market } from "@/lib/market-data/types";
 import { useEffect, useRef, useState } from "react";
 import { candleThemeOptions, chartThemeOptions, readChartColors, useChartColors } from "@/hooks/useChartTheme";
 
@@ -26,7 +28,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="text-[11px] text-muted-foreground mb-0.5 font-mono">{label}</p>
       )}
       <p className="text-sm font-mono font-semibold text-foreground">
-        ₹{Number(payload[0]?.value).toLocaleString("en-IN")}
+        {payload[0]?.value === null || payload[0]?.value === undefined
+          ? "—"
+          : `₹${Number(payload[0].value).toLocaleString("en-IN")}`}
       </p>
     </div>
   );
@@ -37,13 +41,18 @@ type CandleRange = "1d" | "5d" | "1mo";
 
 interface CandlestickPanelProps {
   ticker: string;
+  /** Listing to chart; the same ticker on NSE and on the NYSE are different series. */
+  market: Market;
   range: CandleRange;
 }
 
-function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
+function CandlestickPanel({ ticker, market, range }: CandlestickPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const seriesRef = useRef<any>(null);
+  // The chart is created by an async import, so the data effect would otherwise
+  // run before the series exists and never be retried.
+  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const colors = useChartColors();
@@ -92,6 +101,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
         if (isMounted) {
           chartRef.current = chart;
           seriesRef.current = series;
+          setReady(true);
 
           // Resize observer
           const ro = new ResizeObserver(() => {
@@ -125,15 +135,16 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch OHLC data whenever ticker or range changes
+  // Fetch OHLC data whenever ticker, market or range changes
   useEffect(() => {
-    if (!seriesRef.current) return;
+    if (!ready || !seriesRef.current) return;
     setLoading(true);
     setError(null);
 
     // Candles come from the API, never straight from a provider: a browser
     // request to the provider is CORS-blocked and would leak the symbol list.
-    fetchCandles(ticker, range)
+    // The instrument carries the market, so a U.S. row charts its own listing.
+    fetchCandles({ market, ticker }, range)
       .then((envelope) => {
         const candles = (envelope.candles ?? []).map(({ time, open, high, low, close }) => ({
           time,
@@ -157,7 +168,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
         setError("Failed to fetch chart data. Check your network.");
         setLoading(false);
       });
-  }, [ticker, range]);
+  }, [ready, ticker, market, range]);
 
   if (error) {
     return (
@@ -208,31 +219,40 @@ interface PortfolioChartsProps {
 }
 
 const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
-  const tickers = stocks.map((s) => s.ticker);
-  const { prices } = useLivePrices(tickers);
+  const instruments: Instrument[] = stocks.map((s) => ({
+    market: s.market ?? "NSE",
+    ticker: s.ticker,
+  }));
+  const { prices } = useLivePrices(instruments);
   const market = useMarketStatus();
 
   const activeStocks = stocks.filter((s) => s.status === "Active");
+  const chartStocks = activeStocks.length > 0 ? activeStocks : stocks;
 
-  const [selectedTicker, setSelectedTicker] = useState(
-    activeStocks[0]?.ticker ?? tickers[0] ?? ""
+  // The selection is a listing (`market:ticker`), not a ticker: `INFY` on NSE
+  // and `INFY` on the NYSE are different series. When the selected row is gone,
+  // the first remaining row is charted — never a guessed market for a deleted
+  // ticker.
+  const [selectedKey, setSelectedKey] = useState(
+    chartStocks[0] ? positionKey(chartStocks[0]) : ""
   );
   const [candleRange, setCandleRange] = useState<CandleRange>("1d");
 
-  // Sync selectedTicker if stocks change
-  useEffect(() => {
-    if (activeStocks.length > 0 && !activeStocks.find((s) => s.ticker === selectedTicker)) {
-      setSelectedTicker(activeStocks[0].ticker);
-    }
-  }, [activeStocks, selectedTicker]);
+  const selectedStock =
+    chartStocks.find((s) => positionKey(s) === selectedKey) ?? chartStocks[0] ?? null;
+  const selectedKeyValue = selectedStock ? positionKey(selectedStock) : "";
+  const selectedLabel = selectedStock
+    ? `${selectedStock.ticker} (${marketOf(selectedStock)})`
+    : null;
 
   // P&L per stock
   const plData = stocks.map((s) => {
-    const live = prices[s.ticker];
+    const live = quoteFor(prices, s);
     const cmp = live?.price ?? s.cmp;
-    const pl = (cmp - s.entryPrice) * s.quantity;
+    const pl = isValidPrice(cmp) ? (cmp - s.entryPrice) * s.quantity : null;
     return { name: s.ticker, pl };
   });
+  const unpricedCount = plData.filter((entry) => entry.pl === null).length;
 
   // Allocation
   const allocationData = stocks.map((s) => ({
@@ -261,7 +281,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
         <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-semibold text-foreground">
-              Candlestick — {selectedTicker}
+              Candlestick{selectedLabel ? ` — ${selectedLabel}` : ""}
             </h3>
             <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
               Real-time OHLC · Yahoo Finance
@@ -272,13 +292,13 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
             {/* Ticker selector */}
             <select
               aria-label="Chart ticker"
-              value={selectedTicker}
-              onChange={(e) => setSelectedTicker(e.target.value)}
+              value={selectedKeyValue}
+              onChange={(e) => setSelectedKey(e.target.value)}
               className="h-9 rounded-lg border border-border bg-secondary px-3 text-xs font-medium font-mono text-foreground outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
             >
-              {(activeStocks.length > 0 ? activeStocks : stocks).map((s) => (
-                <option key={s.ticker} value={s.ticker}>
-                  {s.ticker}
+              {chartStocks.map((s) => (
+                <option key={positionKey(s)} value={positionKey(s)}>
+                  {s.ticker} ({marketOf(s)})
                 </option>
               ))}
             </select>
@@ -316,10 +336,11 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
           </div>
         </div>
 
-        {selectedTicker ? (
+        {selectedStock ? (
           <CandlestickPanel
-            key={`${selectedTicker}-${candleRange}`}
-            ticker={selectedTicker}
+            key={`${selectedKeyValue}-${candleRange}`}
+            ticker={selectedStock.ticker}
+            market={marketOf(selectedStock)}
             range={candleRange}
           />
         ) : (
@@ -340,6 +361,11 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
               <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
                 Live unrealized
               </p>
+              {unpricedCount > 0 && (
+                <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                  {unpricedCount} position{unpricedCount === 1 ? "" : "s"} without a market price {unpricedCount === 1 ? "is" : "are"} excluded from this chart.
+                </p>
+              )}
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
@@ -367,7 +393,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
                 {plData.map((entry, i) => (
                   <Cell
                     key={i}
-                    fill={entry.pl >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"}
+                    fill={entry.pl === null ? "hsl(var(--muted-foreground) / 0.35)" : entry.pl >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"}
                     fillOpacity={0.85}
                   />
                 ))}

@@ -1,14 +1,19 @@
 import { PortfolioStock, calcInvestedValue } from "@/data/sampleData";
 import { TrendingUp, TrendingDown, Wallet, BarChart3, Activity, Award } from "lucide-react";
 import { useLivePrices } from "@/hooks/useLivePrices";
+import { quoteFor } from "@/lib/portfolio/valuation";
+import type { Instrument } from "@/lib/market-data/types";
 
 interface DashboardStatsProps {
   stocks: PortfolioStock[];
 }
 
 const DashboardStats = ({ stocks }: DashboardStatsProps) => {
-  const tickers = stocks.map((s) => s.ticker);
-  const { prices } = useLivePrices(tickers);
+  const instruments: Instrument[] = stocks.map((s) => ({
+    market: s.market ?? "NSE",
+    ticker: s.ticker,
+  }));
+  const { prices } = useLivePrices(instruments);
 
   // Only count active positions for invested / current value
   const activeStocks = stocks.filter((s) => s.status === "Active");
@@ -20,7 +25,7 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
   );
 
   const totalCurrentValue = activeStocks.reduce((sum, s) => {
-    const live = prices[s.ticker];
+    const live = quoteFor(prices, s);
     const cmp = live?.price ?? s.cmp;
     return sum + cmp * s.quantity;
   }, 0);
@@ -29,7 +34,7 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
   const profitPct = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
 
   const todayPL = activeStocks.reduce((sum, s) => {
-    const live = prices[s.ticker];
+    const live = quoteFor(prices, s);
     return sum + ((live?.change ?? 0) * s.quantity);
   }, 0);
 

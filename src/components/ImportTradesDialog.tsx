@@ -6,132 +6,14 @@ import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Download } from "lu
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { formatBytes, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, parseRows, SAMPLE_CSV } from "@/lib/portfolio/csvImport";
+import { formatNative } from "@/lib/portfolio/display";
 
 interface ImportTradesDialogProps {
   onImport: (stocks: PortfolioStock[]) => void;
   /** Custom opener (rendered inside `DialogTrigger asChild`). Defaults to the standard button. */
   trigger?: ReactNode;
 }
-
-const REQUIRED_FIELDS = ["ticker", "stockName", "entryPrice", "cmp", "quantity"];
-
-const COLUMN_MAP: Record<string, string> = {
-  ticker: "ticker",
-  symbol: "ticker",
-  stock_ticker: "ticker",
-  stockname: "stockName",
-  stock_name: "stockName",
-  name: "stockName",
-  "stock name": "stockName",
-  entrydate: "entryDate",
-  entry_date: "entryDate",
-  "entry date": "entryDate",
-  date: "entryDate",
-  entryprice: "entryPrice",
-  entry_price: "entryPrice",
-  "entry price": "entryPrice",
-  "buy price": "entryPrice",
-  buyprice: "entryPrice",
-  cmp: "cmp",
-  "current price": "cmp",
-  currentprice: "cmp",
-  ltp: "cmp",
-  weekhigh52: "weekHigh52",
-  "52w high": "weekHigh52",
-  "52 week high": "weekHigh52",
-  quantity: "quantity",
-  qty: "quantity",
-  exitprice: "exitPrice",
-  exit_price: "exitPrice",
-  "exit price": "exitPrice",
-  "sell price": "exitPrice",
-  sellprice: "exitPrice",
-  exitdate: "exitDate",
-  exit_date: "exitDate",
-  "exit date": "exitDate",
-  status: "status",
-};
-
-function normalizeHeader(header: string): string | null {
-  const key = header.trim().toLowerCase().replace(/[^a-z0-9 _]/g, "");
-  return COLUMN_MAP[key] || null;
-}
-
-function parseStatus(val: string | undefined): PortfolioStock["status"] {
-  if (!val) return "Active";
-  const v = val.toLowerCase().trim();
-  if (v.includes("profit") || v === "sold profit") return "Sold Profit";
-  if (v.includes("loss") || v === "sold loss") return "Sold Loss";
-  if (v.includes("sold") || v.includes("closed") || v.includes("exit")) return "Sold Profit";
-  return "Active";
-}
-
-function parseRows(data: Record<string, string>[]): { parsed: PortfolioStock[]; errors: string[] } {
-  const parsed: PortfolioStock[] = [];
-  const errors: string[] = [];
-
-  if (data.length === 0) {
-    errors.push("No data rows found in file");
-    return { parsed, errors };
-  }
-
-  // Map headers
-  const rawHeaders = Object.keys(data[0]);
-  const headerMap: Record<string, string> = {};
-  rawHeaders.forEach((h) => {
-    const mapped = normalizeHeader(h);
-    if (mapped) headerMap[h] = mapped;
-  });
-
-  const mappedFields = new Set(Object.values(headerMap));
-  const missing = REQUIRED_FIELDS.filter((f) => !mappedFields.has(f));
-  if (missing.length > 0) {
-    errors.push(`Missing required columns: ${missing.join(", ")}. Found: ${rawHeaders.join(", ")}`);
-    return { parsed, errors };
-  }
-
-  data.forEach((row, i) => {
-    const mapped: Record<string, string> = {};
-    Object.entries(headerMap).forEach(([raw, field]) => {
-      mapped[field] = row[raw]?.toString().trim() || "";
-    });
-
-    if (!mapped.ticker || !mapped.entryPrice || !mapped.quantity) {
-      errors.push(`Row ${i + 2}: Missing ticker, entry price, or quantity`);
-      return;
-    }
-
-    const entryPrice = parseFloat(mapped.entryPrice);
-    const cmp = parseFloat(mapped.cmp) || entryPrice;
-    const quantity = parseInt(mapped.quantity);
-
-    if (isNaN(entryPrice) || isNaN(quantity) || quantity <= 0) {
-      errors.push(`Row ${i + 2}: Invalid price or quantity for ${mapped.ticker}`);
-      return;
-    }
-
-    const stock: PortfolioStock = {
-      ticker: mapped.ticker.toUpperCase(),
-      stockName: mapped.stockName || mapped.ticker.toUpperCase(),
-      entryDate: mapped.entryDate || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-      entryPrice,
-      cmp,
-      weekHigh52: parseFloat(mapped.weekHigh52) || cmp,
-      quantity,
-      status: parseStatus(mapped.status),
-      ...(mapped.exitPrice ? { exitPrice: parseFloat(mapped.exitPrice) } : {}),
-      ...(mapped.exitDate ? { exitDate: mapped.exitDate } : {}),
-    };
-
-    parsed.push(stock);
-  });
-
-  return { parsed, errors };
-}
-
-const SAMPLE_CSV = `Ticker,Stock Name,Entry Date,Entry Price,CMP,52W High,Quantity,Exit Price,Exit Date,Status
-RELIANCE,Reliance Industries,10-Jan-2026,2450,2612.35,2856.15,15,,,Active
-INFY,Infosys,12-Dec-2025,1890,1756.4,2012,20,1756.4,28-Feb-2026,Sold Loss`;
 
 const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
   const [open, setOpen] = useState(false);
@@ -153,7 +35,13 @@ const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
     if (!file) return;
 
     setFileName(file.name);
-    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    // Reject before reading: file.size is available without touching the bytes.
+    if (file.size > MAX_IMPORT_BYTES) {
+      setPreview([]);
+      setErrors([`File is too large (${formatBytes(file.size)}). The limit is ${formatBytes(MAX_IMPORT_BYTES)}.`]);
+      return;
+    }
 
     try {
       // xlsx is ~400 KB minified; load it only when a file is picked.
@@ -162,6 +50,13 @@ const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { raw: false });
 
+      if (jsonData.length > MAX_IMPORT_ROWS) {
+        setPreview([]);
+        setErrors([
+          `File has ${jsonData.length.toLocaleString()} rows; the limit is ${MAX_IMPORT_ROWS.toLocaleString()}. Split the file and import in parts.`,
+        ]);
+        return;
+      }
       const { parsed, errors: parseErrors } = parseRows(jsonData);
       setPreview(parsed);
       setErrors(parseErrors);
@@ -271,8 +166,9 @@ const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
                     <TableRow className="hover:bg-transparent border-border">
                       <TableHead className="text-xs">Ticker</TableHead>
                       <TableHead className="text-xs">Name</TableHead>
-                      <TableHead className="text-xs text-right">Entry ₹</TableHead>
-                      <TableHead className="text-xs text-right">CMP ₹</TableHead>
+                      <TableHead className="text-xs">Market</TableHead>
+                      <TableHead className="text-xs text-right">Entry</TableHead>
+                      <TableHead className="text-xs text-right">CMP</TableHead>
                       <TableHead className="text-xs text-right">Qty</TableHead>
                       <TableHead className="text-xs">Status</TableHead>
                     </TableRow>
@@ -282,8 +178,9 @@ const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
                       <TableRow key={i} className="border-border">
                         <TableCell className="font-mono text-xs text-primary">{s.ticker}</TableCell>
                         <TableCell className="text-xs truncate max-w-[120px]">{s.stockName}</TableCell>
-                        <TableCell className="text-right font-mono text-xs">₹{s.entryPrice}</TableCell>
-                        <TableCell className="text-right font-mono text-xs">₹{s.cmp}</TableCell>
+                        <TableCell className="text-xs font-mono">{s.market ?? "NSE"} · {s.currency ?? "INR"}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{formatNative(s.entryPrice, s.currency, 2)}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{formatNative(s.cmp, s.currency, 2)}</TableCell>
                         <TableCell className="text-right font-mono text-xs">{s.quantity}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-[10px]">

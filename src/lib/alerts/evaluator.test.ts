@@ -32,6 +32,7 @@ function envelope(overrides: Partial<QuoteEnvelope> = {}): QuoteEnvelope {
     warnings: [],
     quote: {
       symbol: "RELIANCE",
+      market: "NSE",
       price: 2600,
       change: 10,
       changePercent: 0.4,

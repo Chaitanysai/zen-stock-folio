@@ -54,7 +54,16 @@ describe("firestorePortfolioStore.loadSnapshot", () => {
 
     const result = await firestorePortfolioStore.loadSnapshot("user-a");
 
-    expect(result).toEqual({ status: "ok", snapshot: snapshotShape });
+    // Reads apply parseSnapshot's documented defaults: legacy rows gain
+    // market/currency/source and a missing execution ledger becomes [].
+    expect(result).toEqual({
+      status: "ok",
+      snapshot: {
+        ...snapshotShape,
+        stocks: [{ ticker: "RELIANCE", status: "Active", market: "NSE", currency: "INR", source: "manual" }],
+        executions: [],
+      },
+    });
     expect(refsFor()[0]).toEqual(["sentinel-db", PORTFOLIOS_COLLECTION, "user-a"]);
   });
 

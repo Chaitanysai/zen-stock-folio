@@ -1,11 +1,15 @@
 /**
- * Live NSE prices for the dashboard, portfolio table and charts.
+ * Live quotes for the dashboard, portfolio table and charts.
  *
- * Backed by `POST /api/quotes`, which returns a `QuoteEnvelope` per symbol
+ * Backed by `POST /api/quotes`, which returns a `QuoteEnvelope` per instrument
  * carrying provider, data mode and the provider's own exchange timestamp. The
  * previous implementation called `/api/prices`, since deleted, which returned
  * bare numbers with a `source` string and no timestamp — so the UI could only
  * guess whether a value was live, delayed, or yesterday's close.
+ *
+ * Instruments, not bare symbols: the same ticker can be listed on NSE and in
+ * the U.S., so quotes are requested and keyed by `market:ticker`. A ticker-only
+ * map silently let one listing overwrite the other.
  *
  * Rules preserved from the previous version:
  *  - Poll cadence comes from the shared market-status service, never from a
@@ -26,7 +30,8 @@ import { getMarketStatus, getPriceRefreshIntervalMs } from "@/lib/market/marketS
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { fetchQuotes, MarketDataApiError } from "@/lib/market-data/client.ts";
 import { dataModeLabel } from "@/lib/market-data/freshness.ts";
-import type { DataMode, QuoteEnvelope } from "@/lib/market-data/types.ts";
+import { instrumentKey } from "@/lib/market-data/symbols.ts";
+import type { DataMode, Instrument, QuoteEnvelope } from "@/lib/market-data/types.ts";
 
 /** Server-side cap per request (`MAX_QUOTES_PER_REQUEST`). */
 const MAX_PER_REQUEST = 40;
@@ -43,9 +48,9 @@ export interface StockPrice {
 }
 
 export interface UseLivePricesResult {
-  /** Legacy view of the data, for components that predate provenance. */
+  /** Legacy view of the data, for components that predate provenance. Keyed `market:ticker`. */
   prices: Record<string, StockPrice>;
-  /** Full provider answers, including freshness. Keyed by canonical symbol. */
+  /** Full provider answers, including freshness. Keyed `market:ticker`. */
   envelopes: Record<string, QuoteEnvelope>;
   /** Weakest data mode among the symbols that returned a quote. */
   dataMode: DataMode;
@@ -84,17 +89,17 @@ function toStockPrice(envelope: QuoteEnvelope): StockPrice | null {
   };
 }
 
-/** Split the ticker list into server-sized batches without dropping any. */
-function toBatches(tickers: string[]): string[][] {
-  if (tickers.length <= MAX_PER_REQUEST) return [tickers];
-  const batches: string[][] = [];
-  for (let index = 0; index < tickers.length; index += MAX_PER_REQUEST) {
-    batches.push(tickers.slice(index, index + MAX_PER_REQUEST));
+/** Split the instrument list into server-sized batches without dropping any. */
+function toBatches(instruments: Instrument[]): Instrument[][] {
+  if (instruments.length <= MAX_PER_REQUEST) return [instruments];
+  const batches: Instrument[][] = [];
+  for (let index = 0; index < instruments.length; index += MAX_PER_REQUEST) {
+    batches.push(instruments.slice(index, index + MAX_PER_REQUEST));
   }
   return batches;
 }
 
-export function useLivePrices(tickers: string[]): UseLivePricesResult {
+export function useLivePrices(instruments: Instrument[]): UseLivePricesResult {
   const [envelopes, setEnvelopes] = useState<Record<string, QuoteEnvelope>>({});
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -103,21 +108,23 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
   const market = useMarketStatus();
   const marketOpen = market.isOpen;
 
-  // The symbol set is derived from a content key rather than from the `tickers`
-  // array identity: callers pass a fresh array each render, and depending on it
-  // directly would resubscribe the poller (and refetch) on every render.
-  const tickerKey = useMemo(
-    () => [...new Set(tickers.filter(Boolean))].sort().join(","),
-    [tickers],
+  // The request set is derived from a content key rather than from the
+  // `instruments` array identity: callers pass a fresh array each render, and
+  // depending on it directly would resubscribe the poller (and refetch) on
+  // every render.
+  const instrumentKeyString = useMemo(
+    () => [...new Set(instruments.map(instrumentKey))].sort().join(","),
+    [instruments],
   );
-  const symbols = useMemo(() => (tickerKey ? tickerKey.split(",") : []), [tickerKey]);
+  const latestInstruments = useRef(instruments);
+  latestInstruments.current = instruments;
 
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inFlightRef = useRef<AbortController | null>(null);
   const lastFetchRef = useRef<number>(0);
 
   const fetchPrices = useCallback(async () => {
-    if (symbols.length === 0) return;
+    if (!instrumentKeyString) return;
 
     // Collapse duplicate triggers from several mounted consumers.
     const now = Date.now();
@@ -130,11 +137,12 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
     setLoading(true);
 
     try {
+      const unique = [...new Map(latestInstruments.current.map((i) => [instrumentKey(i), i])).values()];
       const merged: Record<string, QuoteEnvelope> = {};
       const notes: string[] = [];
       let fetchedAt: string | null = null;
 
-      for (const batch of toBatches(symbols)) {
+      for (const batch of toBatches(unique)) {
         const response = await fetchQuotes(batch, { signal: controller.signal });
         Object.assign(merged, response.quotes);
         notes.push(...response.notes);
@@ -156,7 +164,7 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
     } finally {
       setLoading(false);
     }
-  }, [symbols]);
+  }, [instrumentKeyString]);
 
   useEffect(() => {
     let cancelled = false;
@@ -187,11 +195,12 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
     };
   }, [fetchPrices]);
 
+  // Keys are the server's `market:ticker` keys, so no re-keying is needed.
   const prices = useMemo(() => {
     const flat: Record<string, StockPrice> = {};
-    for (const [symbol, envelope] of Object.entries(envelopes)) {
+    for (const [key, envelope] of Object.entries(envelopes)) {
       const price = toStockPrice(envelope);
-      if (price) flat[symbol] = price;
+      if (price) flat[key] = price;
     }
     return flat;
   }, [envelopes]);

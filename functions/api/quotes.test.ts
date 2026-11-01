@@ -126,10 +126,10 @@ describe("POST /api/quotes", () => {
     expect(res.status).toBe(200);
     expect(body.providerCounts).toEqual({ yahoo: 2 });
     expect(body.missing).toEqual([]);
-    expect(body.quotes.RELIANCE.provider).toBe("yahoo");
-    expect(body.quotes.RELIANCE.cached).toBe(false);
-    expect(body.quotes.RELIANCE.quote.price).toBe(2500.5);
-    expect(typeof body.quotes.RELIANCE.exchangeTimestamp).toBe("string");
+    expect(body.quotes["NSE:RELIANCE"].provider).toBe("yahoo");
+    expect(body.quotes["NSE:RELIANCE"].cached).toBe(false);
+    expect(body.quotes["NSE:RELIANCE"].quote.price).toBe(2500.5);
+    expect(typeof body.quotes["NSE:RELIANCE"].exchangeTimestamp).toBe("string");
     expect(body.notes.some((note) => note.includes("Ignored invalid symbol"))).toBe(true);
   });
 
@@ -146,8 +146,8 @@ describe("POST /api/quotes", () => {
     };
     expect(res.status).toBe(200);
     expect(body.providerCounts.upstox).toBe(2);
-    expect(body.quotes.RELIANCE.provider).toBe("upstox");
-    expect(body.quotes.RELIANCE.quote.price).toBe(2500);
+    expect(body.quotes["NSE:RELIANCE"].provider).toBe("upstox");
+    expect(body.quotes["NSE:RELIANCE"].quote.price).toBe(2500);
     expect(JSON.stringify(body)).not.toContain("upstox-secret-token");
     expect(JSON.stringify(body)).not.toContain("test-api-key");
   });
@@ -195,7 +195,7 @@ describe("POST /api/quotes", () => {
     });
     const body = (await res.json()) as { missing: string[]; notes: string[] };
     expect(res.status).toBe(200);
-    expect(body.missing).toEqual(["TCS"]);
+    expect(body.missing).toEqual(["NSE:TCS"]);
     expect(body.notes.some((note) => note.includes("Provider unreachable"))).toBe(true);
   });
 
@@ -208,20 +208,20 @@ describe("POST /api/quotes", () => {
     const first = await onRequestPost({ request: post({ tickers: ["RELIANCE"] }), env, params: {} });
     const firstBody = (await first.json()) as { providerCounts: Record<string, number>; quotes: Record<string, { cached: boolean }> };
     expect(firstBody.providerCounts.yahoo).toBe(1);
-    expect(firstBody.quotes.RELIANCE.cached).toBe(false);
+    expect(firstBody.quotes["NSE:RELIANCE"].cached).toBe(false);
 
     const second = await onRequestPost({ request: post({ tickers: ["RELIANCE"] }), env, params: {} });
     const secondBody = (await second.json()) as { providerCounts: Record<string, number>; quotes: Record<string, { cached: boolean; cacheAgeMs: number }> };
     expect(fetchMock).toHaveBeenCalledTimes(1); // no second upstream call
     expect(secondBody.providerCounts.cache).toBe(1);
-    expect(secondBody.quotes.RELIANCE.cached).toBe(true);
+    expect(secondBody.quotes["NSE:RELIANCE"].cached).toBe(true);
 
     // refresh=1 must bypass the cache and hit the provider again.
     const refreshed = await onRequestPost({ request: post({ tickers: ["RELIANCE"], refresh: true }), env, params: {} });
     const refreshedBody = (await refreshed.json()) as { providerCounts: Record<string, number>; quotes: Record<string, { cached: boolean }> };
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(refreshedBody.providerCounts.yahoo).toBe(1);
-    expect(refreshedBody.quotes.RELIANCE.cached).toBe(false);
+    expect(refreshedBody.quotes["NSE:RELIANCE"].cached).toBe(false);
   });
 
   it("rejects oversized bodies with 413", async () => {
@@ -245,5 +245,158 @@ describe("POST /api/quotes", () => {
     }
     expect(last?.status).toBe(429);
     expect(last?.headers.get("Retry-After")).toBeTruthy();
+  });
+
+  it("prices a U.S. instrument and keys the response by market", async () => {
+    stubUpstreamRoutes([
+      {
+        match: "/v8/finance/chart/AAPL?",
+        body: {
+          chart: {
+            result: [
+              {
+                meta: {
+                  symbol: "AAPL",
+                  currency: "USD",
+                  regularMarketPrice: 190,
+                  previousClose: 188,
+                  regularMarketTime: 1793008688,
+                  fullExchangeName: "NasdaqGS",
+                  longName: "Apple Inc.",
+                },
+              },
+            ],
+            error: null,
+          },
+        },
+      },
+    ]);
+
+    const response = await onRequestPost({
+      request: authedRequest(`${API_ORIGIN}/api/quotes`, {
+        instruments: [{ market: "US", ticker: "AAPL" }],
+      }),
+      env: makeEnv(),
+      params: {},
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      quotes: Record<string, { quote: { symbol: string; market: string; price: number } | null }>;
+    };
+    expect(body.quotes["US:AAPL"].quote).toMatchObject({
+      symbol: "AAPL",
+      market: "US",
+      price: 190,
+    });
+    expect(body.quotes.AAPL).toBeUndefined();
+  });
+
+  it("rejects a mixed instrument list when a market is impossible", async () => {
+    const response = await onRequestPost({
+      request: authedRequest(`${API_ORIGIN}/api/quotes`, {
+        instruments: [{ market: "LSE", ticker: "VOD" }],
+      }),
+      env: makeEnv(),
+      params: {},
+    });
+    expect(response.status).toBe(400);
+  });
+
+  it("keeps NSE and U.S. entries with the same ticker apart in one response", async () => {
+    // The collision this whole task exists to prevent: `INFY` is listed on NSE
+    // and on the NYSE, and a ticker-only response key let one overwrite the other.
+    stubUpstreamRoutes([
+      {
+        match: "api.upstox.com",
+        body: {
+          status: "success",
+          data: {
+            "NSE_EQ:INFY": {
+              last_price: 1500,
+              ohlc: { open: 1490, high: 1510, low: 1485, close: 1495 },
+              volume: 1000,
+              last_trade_time: "2026-10-27T10:00:00+05:30",
+            },
+          },
+        },
+      },
+      { match: "chart/INFY.NS", body: yahooBody("INFY", 1501, 1490) },
+      {
+        match: "chart/INFY?",
+        body: {
+          chart: {
+            result: [
+              {
+                meta: {
+                  symbol: "INFY",
+                  currency: "USD",
+                  regularMarketPrice: 20,
+                  previousClose: 19,
+                  regularMarketTime: 1793008688,
+                  fullExchangeName: "NYSE",
+                },
+              },
+            ],
+            error: null,
+          },
+        },
+      },
+    ]);
+
+    const response = await onRequestPost({
+      request: post({
+        instruments: [
+          { market: "NSE", ticker: "INFY" },
+          { market: "US", ticker: "INFY" },
+        ],
+      }),
+      env: makeEnv({ UPSTOX_ACCESS_TOKEN: "upstox-secret-token" }),
+      params: {},
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      quotes: Record<string, { provider: string; quote: { price: number; market: string; currency: string | null } }>;
+    };
+    expect(Object.keys(body.quotes).sort()).toEqual(["NSE:INFY", "US:INFY"]);
+    expect(body.quotes["NSE:INFY"].quote).toMatchObject({ price: 1500, market: "NSE" });
+    expect(body.quotes["US:INFY"].quote).toMatchObject({ price: 20, market: "US", currency: "USD" });
+    expect(body.quotes["US:INFY"].provider).toBe("yahoo");
+  });
+
+  it("issues no Upstox call for a U.S.-only batch", async () => {
+    const fetchMock = stubUpstreamRoutes([
+      {
+        match: "chart/AAPL?",
+        body: {
+          chart: {
+            result: [
+              {
+                meta: {
+                  symbol: "AAPL",
+                  currency: "USD",
+                  regularMarketPrice: 190,
+                  previousClose: 188,
+                  regularMarketTime: 1793008688,
+                },
+              },
+            ],
+            error: null,
+          },
+        },
+      },
+    ]);
+
+    const response = await onRequestPost({
+      request: post({ instruments: [{ market: "US", ticker: "AAPL" }] }),
+      env: makeEnv({ UPSTOX_ACCESS_TOKEN: "upstox-secret-token" }),
+      params: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(
+      fetchMock.mock.calls.some(([input]) => String(input).includes("api.upstox.com")),
+    ).toBe(false);
   });
 });

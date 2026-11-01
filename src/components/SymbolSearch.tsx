@@ -8,12 +8,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Search as SearchIcon } from "lucide-react";
-import type { SearchHit, SearchResponse } from "@/lib/market-data/types.ts";
+import type { Market, SearchHit, SearchResponse } from "@/lib/market-data/types.ts";
 import { searchSymbols } from "@/lib/market-data/client.ts";
 
 export interface SymbolSearchProps {
   /** Called with the chosen hit. The caller decides what to do with it. */
   onSelect: (hit: SearchHit) => void;
+  /** Listing market to search. Sent as `market=`; the route defaults to NSE. */
+  market?: Market;
   placeholder?: string;
   /** Characters required before a request is sent. */
   minChars?: number;
@@ -28,6 +30,7 @@ type SearchState =
 
 export function SymbolSearch({
   onSelect,
+  market = "NSE",
   placeholder = "Search stocks…",
   minChars = 2,
   debounceMs = 300,
@@ -60,7 +63,7 @@ export function SymbolSearch({
     const timer = setTimeout(() => {
       void (async () => {
         try {
-          const response = await searchSymbols(trimmed, { signal: controller.signal, limit: 12 });
+          const response = await searchSymbols(trimmed, { signal: controller.signal, limit: 12, market });
           if (!controller.signal.aborted) setState({ kind: "done", response });
         } catch (error) {
           if (controller.signal.aborted) return;
@@ -74,7 +77,7 @@ export function SymbolSearch({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [query, minChars, debounceMs]);
+  }, [query, minChars, debounceMs, market]);
 
   const pick = (hit: SearchHit) => {
     onSelect(hit);

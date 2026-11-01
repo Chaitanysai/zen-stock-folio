@@ -31,11 +31,40 @@ describe("computeMetrics", () => {
   });
 
   it("derives the day move from received quote changes only", () => {
-    const m = computeMetrics([stock({ cmp: 110 })], [], { AAA: { change: 2 } });
+    const m = computeMetrics([stock({ cmp: 110 })], [], { "NSE:AAA": { change: 2 } });
     expect(m.dayMove).toBe(20);
     expect(m.hasDayData).toBe(true);
     // previous value = 1100 − 20
     expect(m.dayMovePct).toBeCloseTo((20 / 1080) * 100);
+  });
+
+  it("keys quotes by market, so a bare ticker never matches", () => {
+    const m = computeMetrics([stock({ cmp: 110 })], [], {
+      AAA: { change: 2 },
+      "US:AAA": { change: 5 },
+    });
+    expect(m.hasDayData).toBe(false);
+    expect(m.dayMove).toBe(0);
+  });
+
+  it("excludes unpriced and unconvertible rows from every rupee total", () => {
+    const rows = [
+      stock({}),
+      stock({ ticker: "NOPRICE", cmp: null as unknown as number }),
+      stock({ ticker: "AAPL", market: "US", currency: "USD" }),
+    ];
+    const untimed = computeMetrics(rows, [], {}, new Date(), null);
+    expect(untimed.current).toBe(1200);
+    expect(untimed.invested).toBe(1000);
+    expect(untimed.pricedCount).toBe(1);
+    expect(untimed.unpricedCount).toBe(1);
+    expect(untimed.fxIncomplete).toBe(true);
+
+    const converted = computeMetrics(rows, [], {}, new Date(), 85);
+    expect(converted.current).toBe(1200 + 1200 * 85);
+    expect(converted.invested).toBe(1000 + 1000 * 85);
+    expect(converted.pricedCount).toBe(2);
+    expect(converted.fxIncomplete).toBe(false);
   });
 
   it("has no win rate until a trade is closed, then counts equity and F&O", () => {

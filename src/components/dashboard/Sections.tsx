@@ -5,8 +5,10 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { WatchlistStock } from "@/data/sampleData";
+import type { Market } from "@/lib/market-data/types";
 import { formatStoredPrice } from "@/lib/dashboard/presentation";
 import type { OverviewMetrics } from "@/lib/dashboard/overview";
+import { formatNative } from "@/lib/portfolio/display";
 import { compact, signedInr, stagger } from "@/lib/dashboard/format";
 import MarketCandlestick from "@/components/MarketCandlestick";
 import { EmptyState, Skel } from "./ui";
@@ -15,7 +17,9 @@ import type { ActiveTab } from "./nav";
 // ─── Sector concentration ─────────────────────────────────────────────────────
 export interface SectorSlice { sector: string; value: number; percentage: number }
 
-export function SectorCard({ sectors, loading, goTo }: { sectors: SectorSlice[]; loading: boolean; goTo: (id: ActiveTab) => void }) {
+export function SectorCard({
+  sectors, loading, goTo, note = null,
+}: { sectors: SectorSlice[]; loading: boolean; goTo: (id: ActiveTab) => void; note?: string | null }) {
   const top = sectors[0];
   const pct = top ? Math.round(top.percentage) : 0;
   return (
@@ -27,6 +31,9 @@ export function SectorCard({ sectors, loading, goTo }: { sectors: SectorSlice[];
         </div>
         <span className="zf-chip-ico" aria-hidden="true"><PieChart /></span>
       </div>
+      {note && !loading && (
+        <p className="zf-pnl-foot" role="status" style={{ color: "var(--amber)" }}>{note}</p>
+      )}
       <div className="zf-card-body">
         {loading ? (
           <div aria-busy="true"><Skel w="40%" h={40} /><div style={{ height: 12 }} /><Skel w="100%" h={12} /></div>
@@ -191,27 +198,40 @@ export function FnoCard({ m, loading, openFno }: { m: OverviewMetrics; loading: 
 // ─── Price chart ──────────────────────────────────────────────────────────────
 type Range = "1d" | "5d" | "1mo";
 
-interface ChartProps {
-  tickers: string[];
-  selected: string | null;
-  onSelect: (ticker: string) => void;
-  range: Range;
-  onRange: (range: Range) => void;
-  quote: { price: number; pct: number | null } | null;
+export interface ChartInstrument {
+  /** `market:ticker`; the same ticker can list on two markets. */
+  key: string;
+  ticker: string;
 }
 
-export function PriceChartCard({ tickers, selected, onSelect, range, onRange, quote }: ChartProps) {
+interface ChartProps {
+  instruments: ChartInstrument[];
+  /** Instrument key of the charted row; null when a searched symbol is shown. */
+  selected: string | null;
+  /** Ticker to chart, or null when there is nothing to chart. */
+  symbol: string | null;
+  /** Listing whose series to request. */
+  market: Market;
+  onSelect: (key: string) => void;
+  range: Range;
+  onRange: (range: Range) => void;
+  quote: { price: number; pct: number | null; currency: "INR" | "USD" } | null;
+}
+
+export function PriceChartCard({
+  instruments, selected, symbol, market, onSelect, range, onRange, quote,
+}: ChartProps) {
   return (
     <section className="zf-card zf-pricechart zf-in" style={stagger(8)} aria-labelledby="zf-chart-title">
       <div className="zf-card-head">
         <div style={{ minWidth: 0 }}>
-          <h2 className="zf-card-title" id="zf-chart-title">{selected ? `${selected} price` : "Price chart"}</h2>
+          <h2 className="zf-card-title" id="zf-chart-title">{symbol ? `${symbol} price` : "Price chart"}</h2>
           <p className="zf-card-sub">Candles from the market-data service</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           {quote && (
             <div className="zf-quote">
-              <b>₹{quote.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</b>
+              <b>{formatNative(quote.price, quote.currency, 2)}</b>
               {quote.pct !== null && (
                 <span className={quote.pct >= 0 ? "zf-up" : "zf-down"}>{quote.pct >= 0 ? "+" : "−"}{Math.abs(quote.pct).toFixed(2)}% today</span>
               )}
@@ -225,12 +245,20 @@ export function PriceChartCard({ tickers, selected, onSelect, range, onRange, qu
         </div>
       </div>
       <div className="zf-card-body">
-        {selected ? (
+        {symbol ? (
           <>
-            <MarketCandlestick symbol={selected} range={range} height={250} />
+            <MarketCandlestick symbol={symbol} market={market} range={range} height={250} />
             <div className="zf-chartbar" role="group" aria-label="Chart symbol">
-              {tickers.slice(0, 10).map((t) => (
-                <button key={t} type="button" className="zf-chipbtn" aria-pressed={selected === t} onClick={() => onSelect(t)}>{t}</button>
+              {instruments.slice(0, 10).map((instrument) => (
+                <button
+                  key={instrument.key}
+                  type="button"
+                  className="zf-chipbtn"
+                  aria-pressed={selected === instrument.key}
+                  onClick={() => onSelect(instrument.key)}
+                >
+                  {instrument.ticker}
+                </button>
               ))}
             </div>
           </>

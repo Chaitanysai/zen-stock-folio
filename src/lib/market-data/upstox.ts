@@ -152,6 +152,7 @@ function quoteFromRow(row: UpstoxQuoteRow, price: number, symbol: string): Upsto
   return {
     quote: {
       symbol,
+      market: "NSE",
       price,
       change,
       changePercent,

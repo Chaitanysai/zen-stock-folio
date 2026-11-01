@@ -8,14 +8,24 @@
  */
 
 import { describe, expect, it } from "vitest";
+import type { PortfolioStock } from "../../data/sampleData.ts";
 import type { DataMode, QuoteEnvelope } from "../market-data/types.ts";
 import {
   classifyPosition,
+  dayPnlInr,
   describeValuation,
   formatMoney,
+  fxPnlInr,
   headlineFor,
+  currencyOf,
   isValidPrice,
+  portfolioTotals,
+  positionKey,
+  pricePnlInr,
+  realisedPnlInr,
   summarizeValuation,
+  toInrStocks,
+  valueInr,
   type ValuationPosition,
 } from "./valuation.ts";
 
@@ -39,6 +49,7 @@ function envelope(symbol: string, price: number | null, mode: DataMode = "delaye
         ? null
         : {
             symbol,
+            market: "NSE",
             price,
             change: null,
             changePercent: null,
@@ -222,5 +233,203 @@ describe("formatMoney", () => {
   it("keeps two decimals and Indian grouping", () => {
     expect(formatMoney(1234567.891)).toBe("₹12,34,567.89");
     expect(formatMoney(0)).toBe("₹0.00");
+  });
+});
+
+const usStock = (over: Partial<PortfolioStock> = {}): PortfolioStock => ({
+  ticker: "AAPL",
+  stockName: "Apple",
+  entryDate: "2025-01-10",
+  entryPrice: 100,
+  cmp: 120,
+  weekHigh52: 200,
+  quantity: 10,
+  status: "Active",
+  market: "US",
+  currency: "USD",
+  fxAtCost: 80,
+  source: "manual",
+  ...over,
+});
+
+describe("market valuation", () => {
+  it("keys positions by market and ticker", () => {
+    expect(positionKey({ market: "US", ticker: "INFY" })).toBe("US:INFY");
+    expect(positionKey({ ticker: "INFY" } as PortfolioStock)).toBe("NSE:INFY");
+  });
+
+  it("converts USD value and price P&L at the current rate", () => {
+    expect(valueInr(usStock(), 120, 85)).toBe(102_000);
+    expect(pricePnlInr(usStock(), 120, 85)).toBe(17_000);
+  });
+
+  it("treats a US row with no currency as USD, not INR", () => {
+    const unlabelled = usStock({ currency: undefined });
+
+    expect(currencyOf(unlabelled)).toBe("USD");
+    // A USD row needs the current rate; without it the INR value is unknown.
+    expect(valueInr(unlabelled, 120, 85)).toBe(102_000);
+    expect(valueInr(unlabelled, 120, null)).toBeNull();
+  });
+
+  it("does not value a US row with no currency at an implied fx of 1", () => {
+    const unlabelled = usStock({ currency: undefined });
+    expect(valueInr(unlabelled, 120, 85)).not.toBe(1_200); // 10 × 120 at fx 1
+  });
+
+  it("separates FX P&L from price P&L", () => {
+    expect(fxPnlInr(usStock(), 85)).toBe(5_000); // 10 × 100 × (85 − 80)
+  });
+
+  it("never estimates FX P&L without the rate at cost", () => {
+    expect(fxPnlInr(usStock({ fxAtCost: undefined }), 85)).toBeNull();
+  });
+
+  it("treats a null or non-finite rate at cost as unavailable", () => {
+    // Firestore can hand back an explicit null; casting reproduces that read.
+    const storedNull = { ...usStock(), fxAtCost: null } as unknown as PortfolioStock;
+    expect(fxPnlInr(storedNull, 85)).toBeNull();
+    expect(fxPnlInr(usStock({ fxAtCost: Number.NaN }), 85)).toBeNull();
+    expect(fxPnlInr(usStock({ fxAtCost: Number.POSITIVE_INFINITY }), 85)).toBeNull();
+  });
+
+  it("returns null INR value when the rate is unavailable", () => {
+    expect(valueInr(usStock(), 120, null)).toBeNull();
+    expect(pricePnlInr(usStock(), 120, null)).toBeNull();
+  });
+
+  it("sums the FX P&L it can compute and marks a partial total as estimated", () => {
+    const totals = portfolioTotals(
+      [
+        { stock: usStock(), cmp: 120 },
+        { stock: usStock({ ticker: "MSFT", fxAtCost: undefined }), cmp: 200 },
+      ],
+      85,
+    );
+    expect(totals.investedInr).toBe(170_000);
+    expect(totals.valueInr).toBe(102_000 + 170_000);
+    expect(totals.pricePnlInr).toBe(17_000 + 85_000);
+    expect(totals.fxPnlInr).toBe(5_000); // only AAPL's lot has a rate at cost
+    expect(totals.fxEstimated).toBe(true);
+    expect(totals.usdExposureInr).toBe((120 * 10 + 200 * 10) * 85);
+  });
+
+  it("reports a complete FX total when every USD lot has a rate at cost", () => {
+    const totals = portfolioTotals([{ stock: usStock(), cmp: 120 }], 85);
+    expect(totals.fxPnlInr).toBe(5_000);
+    expect(totals.fxEstimated).toBe(false);
+  });
+
+  it("omits FX P&L entirely for an all-INR portfolio", () => {
+    const totals = portfolioTotals(
+      [{ stock: usStock({ ticker: "INFY", market: "NSE", currency: "INR", fxAtCost: undefined }), cmp: 120 }],
+      85,
+    );
+    expect(totals.fxPnlInr).toBeNull();
+    expect(totals.fxEstimated).toBe(false);
+    expect(totals.usdExposureInr).toBe(0);
+  });
+
+  it("omits FX P&L when no USD lot carries a rate at cost", () => {
+    const totals = portfolioTotals([{ stock: usStock({ fxAtCost: undefined }), cmp: 120 }], 85);
+    expect(totals.fxPnlInr).toBeNull();
+    expect(totals.fxEstimated).toBe(true);
+  });
+
+  it("reports unknown USD exposure when the current rate is missing", () => {
+    const totals = portfolioTotals([{ stock: usStock(), cmp: 120 }], null);
+    expect(totals.usdExposureInr).toBeNull();
+    expect(totals.incomplete).toBe(true);
+  });
+
+  it("reports zero USD exposure when the portfolio holds no USD rows", () => {
+    const totals = portfolioTotals(
+      [{ stock: usStock({ ticker: "INFY", market: "NSE", currency: "INR", fxAtCost: undefined }), cmp: 120 }],
+      null,
+    );
+    expect(totals.usdExposureInr).toBe(0);
+  });
+
+  it("skips a cmp:0 sentinel row and counts it as unpriced", () => {
+    const inr = (ticker: string, entryPrice: number) =>
+      usStock({ ticker, market: "NSE", currency: "INR", entryPrice, fxAtCost: undefined });
+    const totals = portfolioTotals(
+      [
+        { stock: inr("RELIANCE", 100), cmp: 120 },
+        { stock: inr("TCS", 200), cmp: 0 },
+      ],
+      85,
+    );
+
+    // Only the priced row contributes to value, cost and P&L.
+    expect(totals.pricedCount).toBe(1);
+    expect(totals.unpricedCount).toBe(1);
+    expect(totals.investedInr).toBe(1_000);
+    expect(totals.valueInr).toBe(1_200);
+    expect(totals.pricePnlInr).toBe(200);
+    expect(totals.incomplete).toBe(false);
+  });
+
+  it("reports unknown USD exposure when a USD row has no price", () => {
+    const totals = portfolioTotals([{ stock: usStock(), cmp: 0 }], 85);
+
+    expect(totals.unpricedCount).toBe(1);
+    expect(totals.pricedCount).toBe(0);
+    expect(totals.usdExposureInr).toBeNull();
+  });
+
+  it("counts an unpriced row once, before the rate check", () => {
+    const inr = (ticker: string) =>
+      usStock({ ticker, market: "NSE", currency: "INR", fxAtCost: undefined });
+    const totals = portfolioTotals(
+      [
+        { stock: inr("RELIANCE"), cmp: 120 },
+        { stock: inr("TCS"), cmp: 0 },
+      ],
+      null,
+    );
+
+    // The unpriced row is skipped before FX, so it is not also "incomplete".
+    expect(totals.incomplete).toBe(false);
+    expect(totals.unpricedCount).toBe(1);
+    expect(totals.pricedCount).toBe(1);
+    expect(totals.valueInr).toBe(1_200);
+  });
+});
+
+describe("realised, daily, and display conversions", () => {
+  it("converts realised P&L at the current rate using the exit price", () => {
+    const closed = usStock({ status: "Sold Profit", exitPrice: 130, cmp: 130 });
+    expect(realisedPnlInr(closed, 85)).toBe(25_500); // 10 × (130 − 100) × 85
+    expect(realisedPnlInr(closed, null)).toBeNull();
+  });
+
+  it("converts the day's per-share move, and refuses absent moves", () => {
+    expect(dayPnlInr(usStock(), 2, 85)).toBe(1_700); // 10 × 2 × 85
+    expect(dayPnlInr(usStock(), null, 85)).toBeNull();
+    expect(dayPnlInr(usStock(), 2, null)).toBeNull();
+  });
+
+  it("converts aggregate views and drops USD rows without a rate", () => {
+    const rows = toInrStocks([usStock(), usStock({ ticker: "INFY", market: "NSE", currency: "INR", fxAtCost: undefined })], 85);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ currency: "INR", entryPrice: 8_500, cmp: 10_200 });
+    expect(rows[1].entryPrice).toBe(100);
+    expect(toInrStocks([usStock()], null)).toEqual([]);
+  });
+
+  it("leaves an unknown 52-week high unknown instead of converting null to zero", () => {
+    // A stored document can hold an explicit null despite the required type.
+    const storedNull = { ...usStock(), weekHigh52: null } as unknown as PortfolioStock;
+    const [row] = toInrStocks([storedNull], 85);
+    expect(row.weekHigh52).toBeNull();
+    expect(row.cmp).toBe(10_200);
+  });
+
+  it("leaves an unknown mark or entry price unknown instead of converting null to zero", () => {
+    const storedNull = { ...usStock(), cmp: null, entryPrice: null } as unknown as PortfolioStock;
+    const [row] = toInrStocks([storedNull], 85);
+    expect(row.cmp).toBeNull();
+    expect(row.entryPrice).toBeNull();
   });
 });

@@ -17,10 +17,19 @@ interface BalanceProps {
   onImport: (stocks: PortfolioStock[]) => void;
   goTo: (id: ActiveTab) => void;
   openFno: () => void;
+  /** INR P&L from USD→INR movement, reported separately from price P&L. */
+  fxPnl?: number | null;
+  /** True when some USD lots have no rate at cost, so the FX figure is partial. */
+  fxEstimated?: boolean;
+  /** "cached FX" / "unverified FX" when the rate was not a live quote. */
+  fxNote?: string | null;
 }
 
-export function BalanceCard({ loading, m, watchCount, onAdd, onImport, goTo, openFno }: BalanceProps) {
-  const hasEquity = m.active.length > 0;
+export function BalanceCard({
+  loading, m, watchCount, onAdd, onImport, goTo, openFno,
+  fxPnl = null, fxEstimated = false, fxNote = null,
+}: BalanceProps) {
+  const hasEquity = m.pricedCount > 0;
   const hasFno = m.fnoOpen.length > 0;
   return (
     <article className="zf-card zf-balance zf-in" style={stagger(0)} aria-labelledby="zf-balance-label">
@@ -42,12 +51,36 @@ export function BalanceCard({ loading, m, watchCount, onAdd, onImport, goTo, ope
         ) : (
           <span className="zf-delta-cap">Day change appears once live quotes load</span>
         )}
+        {!loading && fxPnl !== null && (
+          <span className="zf-delta-cap" title="USD→INR movement, separate from price P&L">
+            FX {signedInr(fxPnl)}{fxEstimated ? " est." : ""}{fxNote ? ` · ${fxNote}` : ""}
+          </span>
+        )}
       </div>
       <p className="zf-balance-note">
         {loading ? <Skel w="80%" h={14} /> : m.invested > 0
           ? <>Unrealised {signedInr(m.pnl)} ({signedPct(m.pnlPct)}) on {inr(m.invested)} invested</>
-          : "Nothing invested yet"}
+          : m.fxIncomplete
+            ? "INR totals are unavailable until the USD→INR rate loads."
+            : "Nothing invested yet"}
       </p>
+
+      {!loading && (m.fxIncomplete || m.unpricedCount > 0) && (
+        <div role="status">
+          {m.fxIncomplete && (
+            <p className="zf-balance-note" style={{ color: "var(--amber)" }}>
+              U.S. holdings are excluded from INR totals until the USD→INR rate is available.
+            </p>
+          )}
+          {m.unpricedCount > 0 && (
+            <p className="zf-balance-note" style={{ color: "var(--amber)" }}>
+              {m.unpricedCount} open position{m.unpricedCount === 1 ? "" : "s"}{" "}
+              {m.unpricedCount === 1 ? "has" : "have"} no market price and{" "}
+              {m.unpricedCount === 1 ? "is" : "are"} excluded from value, cost and P&amp;L.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="zf-balance-actions">
         <AddTradeButton onAdd={onAdd} variant="primary" />
@@ -121,23 +154,27 @@ export function StatGrid({ loading, m }: { loading: boolean; m: OverviewMetrics 
       <Stat
         index={1} highlight label="Today's P&L" icon={Zap} loading={loading} value={todayValue}
         pill={m.todayPct !== null ? { tone: toneOf(m.todayPnl), text: signedPct(m.todayPct) } : null}
-        cap={m.hasDayData ? "Today" : "Awaiting live quotes"}
+        cap={m.hasDayData ? (m.fxIncomplete ? "Today · USD rows excluded" : "Today") : "Awaiting live quotes"}
       />
       <Stat
         index={2} label="Total invested" icon={Wallet} loading={loading} value={inr(m.invested)}
-        cap={`${m.active.length + m.fnoOpen.length} open position${m.active.length + m.fnoOpen.length === 1 ? "" : "s"}`}
+        cap={`${m.active.length + m.fnoOpen.length} open position${m.active.length + m.fnoOpen.length === 1 ? "" : "s"}${m.fxIncomplete ? " · USD excluded" : ""}`}
       />
       <Stat
         index={3} label="Unrealised P&L" icon={TrendingUp} loading={loading}
         value={m.invested > 0 ? signedInr(m.pnl) : "—"}
         pill={m.invested > 0 ? { tone: toneOf(m.pnl), text: signedPct(m.pnlPct) } : null}
-        cap={m.invested > 0 ? "on cost" : "No open positions"}
+        cap={m.invested > 0
+          ? (m.unpricedCount > 0 ? `${m.unpricedCount} unpriced excluded` : "on cost")
+          : (m.active.length > 0 ? "No priced position" : "No open positions")}
       />
       <Stat
         index={4} label="Win rate" icon={Award} loading={loading}
         value={m.winRate !== null ? `${m.winRate.toFixed(0)}%` : "—"}
         pill={m.closedCount > 0 ? { tone: toneOf(m.totalRealised), text: `${signedInr(m.totalRealised)} realised` } : null}
-        cap={m.closedCount > 0 ? `${m.wins} of ${m.closedCount} closed won` : "No closed trades yet"}
+        cap={m.closedCount > 0
+          ? `${m.wins} of ${m.closedCount} closed won${m.realisedExcluded > 0 ? ` · ${m.realisedExcluded} USD unvalued` : ""}`
+          : "No closed trades yet"}
       />
     </section>
   );
@@ -150,9 +187,11 @@ interface PnlProps {
   undated: number;
   onAdd: (stock: PortfolioStock) => void;
   onImport: (stocks: PortfolioStock[]) => void;
+  /** Shown when some rows were excluded from the monthly INR totals. */
+  note?: string | null;
 }
 
-export function PnlCard({ loading, months, undated, onAdd, onImport }: PnlProps) {
+export function PnlCard({ loading, months, undated, onAdd, onImport, note = null }: PnlProps) {
   return (
     <section className="zf-card zf-pnl zf-in" style={stagger(5)} aria-labelledby="zf-pnl-title">
       <div>
@@ -196,6 +235,9 @@ export function PnlCard({ loading, months, undated, onAdd, onImport }: PnlProps)
           </>
         )}
       </div>
+      {note && !loading && (
+        <p className="zf-pnl-foot" role="status" style={{ color: "var(--amber)" }}>{note}</p>
+      )}
       {undated > 0 && !loading && (
         <p className="zf-pnl-foot">{undated} closed trade{undated === 1 ? " has" : "s have"} no exit date and {undated === 1 ? "is" : "are"} not shown.</p>
       )}

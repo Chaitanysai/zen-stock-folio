@@ -5,13 +5,15 @@ import {
   fetchYahooQuote,
   ProviderHttpError,
 } from "../../../src/lib/market-data/yahoo.ts";
-import { SUPPORTED_INDICES } from "../../../src/lib/market-data/symbols.ts";
+import { SUPPORTED_INDICES, instrumentKey } from "../../../src/lib/market-data/symbols.ts";
 import type {
   CandleRange,
   CandlesEnvelope,
   CandleResolution,
   DataMode,
   IndexQuote,
+  Instrument,
+  Market,
   MarketOverviewResponse,
   ProviderId,
   Quote,
@@ -59,6 +61,8 @@ export interface QuoteServiceOptions {
 /** Everything a provenance envelope needs, kept provider-shape-agnostic. */
 export interface ProviderObservation {
   quote: Quote;
+  /** Listing market whose session decides the freshness label. */
+  market: Market;
   provider: ProviderId;
   exchangeTimestampMs: number | null;
   unavailable: string[];
@@ -92,17 +96,19 @@ const failureFrom = (error: unknown): ObservationFailure => {
   return { kind: "outage", message };
 };
 
-/** Try Yahoo for one target. Targets may be bare NSE symbols or `^NSEI`. */
+/** Try Yahoo for one instrument. `target` is a bare symbol for `market` or `^NSEI`. */
 export async function yahooObservation(
   target: string,
+  market: Market,
   timeoutMs = 5000,
 ): Promise<ObservationResult> {
   try {
-    const result = await fetchYahooQuote(target, timeoutMs);
+    const result = await fetchYahooQuote(target, market, timeoutMs);
     return {
       ok: true,
       observation: {
         quote: result.quote,
+        market,
         provider: "yahoo",
         exchangeTimestampMs: result.exchangeTimestampMs,
         unavailable: result.unavailable,
@@ -141,6 +147,7 @@ export async function upstoxObservations(
       const symbol = key.slice("NSE_EQ|".length);
       out.set(symbol, {
         quote: row.quote,
+        market: "NSE",
         provider: "upstox",
         exchangeTimestampMs: row.exchangeTimestampMs,
         unavailable: row.unavailable,
@@ -161,6 +168,7 @@ export function envelopeFor(
 ): QuoteEnvelope {
   const provenance = buildProvenance({
     provider: observation.provider,
+    market: observation.market,
     exchangeTimestampMs: observation.exchangeTimestampMs,
     now: params.now,
     cached: params.cached,
@@ -177,14 +185,15 @@ export type QuotesOutcome =
   | { status: "outage"; message: string };
 
 /**
- * Resolve quotes for an already-normalized, already-capped symbol list.
+ * Resolve quotes for an already-normalized, already-capped instrument list.
  *
- * `symbols` must be valid NSE symbols; this function does no admission control
- * of its own (same contract as the reference).
+ * `instruments` must be valid for their market; this function does no admission
+ * control of its own (same contract as the reference). Results are keyed by
+ * `market:ticker` so the same ticker on two listings cannot collide.
  */
 export async function resolveQuotes(
   env: Env,
-  symbols: string[],
+  instruments: Instrument[],
   options: QuoteServiceOptions = {},
 ): Promise<QuotesOutcome> {
   const now = options.now ?? Date.now();
@@ -202,40 +211,45 @@ export async function resolveQuotes(
   // Phase 1: cache — bounded by each mode's TTL. A cached observation that can
   // no longer support a freshness label is dropped rather than shown:
   // retrying is better than mislabelling.
-  const pending: string[] = [];
-  for (const symbol of symbols) {
+  const pending: Instrument[] = [];
+  for (const instrument of instruments) {
+    const key = instrumentKey(instrument);
     if (!options.bypassCache) {
-      const hit = cacheGet<ProviderObservation>(`quote:${symbol}`);
+      const hit = cacheGet<ProviderObservation>(`quote:${key}`);
       if (hit) {
         const envelope = envelopeFor(hit.value, { now, cached: true, cacheAgeMs: hit.ageMs });
         if (envelope.dataMode !== "unknown") {
-          quotes[symbol] = envelope;
+          quotes[key] = envelope;
           bump("cache");
           continue;
         }
       }
     }
-    pending.push(symbol);
+    pending.push(instrument);
   }
 
-  // Phase 2: Upstox — one batched call when a token is set.
+  // Phase 2: Upstox — one batched call for the NSE instruments when a token is
+  // set. Upstox has no U.S. feed, so those instruments skip straight to Yahoo.
   if (pending.length > 0) {
-    const upstox = await upstoxObservations(env, pending, timeoutMs);
-    for (const symbol of pending) {
-      const observation = upstox.get(symbol);
+    const nseTickers = pending.filter((i) => i.market === "NSE").map((i) => i.ticker);
+    const upstox = await upstoxObservations(env, nseTickers, timeoutMs);
+    for (const instrument of pending) {
+      if (instrument.market !== "NSE") continue;
+      const observation = upstox.get(instrument.ticker);
       if (!observation) continue;
+      const key = instrumentKey(instrument);
       const envelope = envelopeFor(observation, { now, cached: false, cacheAgeMs: 0 });
-      quotes[symbol] = envelope;
+      quotes[key] = envelope;
       bump(observation.provider);
       // Never cache an observation whose freshness is unknown: the next
       // request must attempt to establish it.
-      cacheSet(`quote:${symbol}`, observation, cacheTtlMs(envelope.dataMode), now);
+      cacheSet(`quote:${key}`, observation, cacheTtlMs(envelope.dataMode), now);
     }
   }
 
   // Phase 3: Yahoo for what remains — bounded concurrency. Four keeps a
   // 40-symbol request inside its 5 s budget (reference value).
-  const remaining = symbols.filter((symbol) => !quotes[symbol]);
+  const remaining = instruments.filter((instrument) => !quotes[instrumentKey(instrument)]);
   const CONCURRENCY = 4;
   let cursor = 0;
   await Promise.all(
@@ -243,16 +257,17 @@ export async function resolveQuotes(
       for (;;) {
         const position = cursor++;
         if (position >= remaining.length) return;
-        const symbol = remaining[position];
-        const result = await yahooObservation(symbol, timeoutMs);
+        const instrument = remaining[position];
+        const key = instrumentKey(instrument);
+        const result = await yahooObservation(instrument.ticker, instrument.market, timeoutMs);
         if (result.ok) {
           const envelope = envelopeFor(result.observation, { now, cached: false, cacheAgeMs: 0 });
-          quotes[symbol] = envelope;
+          quotes[key] = envelope;
           bump(result.observation.provider);
-          cacheSet(`quote:${symbol}`, result.observation, cacheTtlMs(envelope.dataMode), now);
+          cacheSet(`quote:${key}`, result.observation, cacheTtlMs(envelope.dataMode), now);
         } else {
-          missing.push(symbol);
-          if (result.failure.kind === "outage") outages.push(symbol);
+          missing.push(key);
+          if (result.failure.kind === "outage") outages.push(key);
         }
       }
     }),
@@ -290,27 +305,33 @@ export type CandlesOutcome =
   | { status: "outage"; message: string };
 
 /**
- * Resolve one symbol's candles. Yahoo is the source (reference order): it is
+ * Resolve one instrument's candles. Yahoo is the source (reference order): it is
  * the only zero-credential endpoint with real NSE OHLCV; Upstox's historical
  * endpoint is not used (undocumented when unauthenticated).
+ *
+ * `instrument` decides both the upstream symbol and the freshness session, so
+ * `AAPL` on NYSE never charts `AAPL.NS` and a U.S. series is labelled by the
+ * U.S. calendar. The cache key is `market:ticker:range` for the same reason.
  */
 export async function resolveCandles(
-  symbol: string,
+  instrument: Instrument,
   range: CandleRange,
   options: QuoteServiceOptions = {},
 ): Promise<CandlesOutcome> {
   const now = options.now ?? Date.now();
   const timeoutMs = options.timeoutMs ?? 6000;
   const preset = RANGE_PRESETS[range];
+  const key = instrumentKey(instrument);
 
-  const loadCandles = () => fetchYahooCandles(symbol, range, timeoutMs);
+  const loadCandles = () =>
+    fetchYahooCandles(instrument.ticker, range, instrument.market, timeoutMs);
 
   let loaded: { value: Awaited<ReturnType<typeof loadCandles>>; cached: boolean; ageMs: number };
   try {
     loaded = options.bypassCache
       ? { value: await loadCandles(), cached: false, ageMs: 0 }
       : await cached(
-          `candles:${symbol}:${range}`,
+          `candles:${key}:${range}`,
           loadCandles,
           () => {
             // A daily series cannot change for a closed market; intraday can.
@@ -321,7 +342,7 @@ export async function resolveCandles(
   } catch (error) {
     const failure = failureFrom(error);
     if (failure.kind === "notfound") {
-      return { status: "notfound", message: `No chart data for ${symbol}` };
+      return { status: "notfound", message: `No chart data for ${key}` };
     }
     return { status: "outage", message: "Candle provider is temporarily unavailable" };
   }
@@ -329,6 +350,7 @@ export async function resolveCandles(
   const result = loaded.value;
   const provenance = buildProvenance({
     provider: "yahoo",
+    market: instrument.market,
     exchangeTimestampMs: result.exchangeTimestampMs,
     now,
     cached: loaded.cached,
@@ -349,7 +371,7 @@ export async function resolveCandles(
   // must say so rather than look like a successful chart with no data.
   if (result.candles.length === 0) {
     provenance.warnings.push(
-      `Provider returned no candles for ${symbol} over ${range} (${preset.resolution as CandleResolution} bars).`,
+      `Provider returned no candles for ${key} over ${range} (${preset.resolution as CandleResolution} bars).`,
     );
   }
 
@@ -357,7 +379,7 @@ export async function resolveCandles(
     status: "ok",
     envelope: {
       ...provenance,
-      symbol,
+      symbol: instrument.ticker,
       resolution: result.resolution,
       range,
       candles: result.candles,
@@ -421,7 +443,7 @@ export async function resolveMarketOverview(
         const hit = cacheGet<ProviderObservation>(cacheKey);
         if (hit) return { definition, hit };
       }
-      const outcome = await yahooObservation(definition.providerSymbol, timeoutMs);
+      const outcome = await yahooObservation(definition.providerSymbol, "NSE", timeoutMs);
       return { definition, outcome };
     }),
   );

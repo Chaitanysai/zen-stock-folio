@@ -1,11 +1,71 @@
-import type { PortfolioSnapshot } from "./snapshotTypes";
+import type { PortfolioStock } from "../../data/sampleData.ts";
+import type { Execution, PortfolioSnapshot } from "./snapshotTypes.ts";
 
 /**
  * Shared structural validation for snapshot payloads coming from any cloud
- * provider. Mirrors the validation the original usePortfolioSync applied to
- * Supabase rows: all four array fields must be present; fnoTrades defaults
- * to an empty array for snapshots written before that field existed.
+ * provider. Applies the design's read defaults so old documents keep working:
+ * missing `market`/`currency`/`source` become NSE/INR/manual and a missing
+ * `executions` array becomes `[]`.
  */
+
+const asMarket = (value: unknown): "NSE" | "US" => (value === "US" ? "US" : "NSE");
+
+/**
+ * The market decides the currency, matching `currencyOf`: a US row is always
+ * USD and every other row INR. A contradicting stored currency is corrected
+ * here rather than preserved, because valuation ignores it and the preserved
+ * value would be inert and misleading downstream.
+ */
+const asCurrency = (market: "NSE" | "US"): "INR" | "USD" => (market === "US" ? "USD" : "INR");
+
+function normalizeStock(value: unknown): PortfolioStock | null {
+  if (typeof value !== "object" || value === null) return null;
+  const row = value as PortfolioStock;
+  if (typeof row.ticker !== "string" || !row.ticker) return null;
+  const market = asMarket(row.market);
+  return {
+    ...row,
+    market,
+    currency: asCurrency(market),
+    source: row.source === "indmoney" ? "indmoney" : "manual",
+  };
+}
+
+function normalizeExecution(value: unknown): Execution | null {
+  if (typeof value !== "object" || value === null) return null;
+  const row = value as Partial<Execution>;
+  if (
+    typeof row.id !== "string" ||
+    !row.id ||
+    (row.market !== "NSE" && row.market !== "US") ||
+    typeof row.ticker !== "string" ||
+    !row.ticker ||
+    (row.side !== "BUY" && row.side !== "SELL") ||
+    typeof row.quantity !== "number" ||
+    !Number.isFinite(row.quantity) ||
+    row.quantity <= 0 ||
+    typeof row.price !== "number" ||
+    !Number.isFinite(row.price) ||
+    row.price < 0 ||
+    typeof row.executedAt !== "string" ||
+    Number.isNaN(Date.parse(row.executedAt)) ||
+    (row.currency !== "INR" && row.currency !== "USD")
+  ) {
+    return null;
+  }
+  return {
+    id: row.id,
+    source: "indmoney",
+    market: row.market,
+    ticker: row.ticker,
+    side: row.side,
+    quantity: row.quantity,
+    price: row.price,
+    executedAt: row.executedAt,
+    currency: row.currency,
+  };
+}
+
 export const parseSnapshot = (value: unknown): PortfolioSnapshot | null => {
   const parsed = value as Partial<PortfolioSnapshot> | null;
   if (
@@ -18,10 +78,15 @@ export const parseSnapshot = (value: unknown): PortfolioSnapshot | null => {
     return null;
   }
   return {
-    stocks: parsed.stocks,
+    stocks: parsed.stocks.map(normalizeStock).filter((row): row is PortfolioStock => row !== null),
     trades: parsed.trades,
     watchlist: parsed.watchlist,
     alerts: parsed.alerts,
     fnoTrades: Array.isArray(parsed.fnoTrades) ? parsed.fnoTrades : [],
+    executions: Array.isArray(parsed.executions)
+      ? parsed.executions
+          .map(normalizeExecution)
+          .filter((row): row is Execution => row !== null)
+      : [],
   };
 };

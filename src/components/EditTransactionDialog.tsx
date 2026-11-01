@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { currencyOf } from "@/lib/portfolio/valuation";
+import { currencySymbol } from "@/lib/portfolio/display";
 
 interface EditTransactionDialogProps {
   stock: PortfolioStock | null;
@@ -16,6 +18,10 @@ interface EditTransactionDialogProps {
 
 const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransactionDialogProps) => {
   const { toast } = useToast();
+  // Labels follow the row's native currency. This is derived presentation, not
+  // form state: the submit path must not rewrite `market`/`currency`.
+  const currency = currencyOf(stock ?? {});
+  const symbol = currencySymbol(currency);
   const [form, setForm] = useState({
     ticker: "",
     stockName: "",
@@ -53,7 +59,12 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
       return;
     }
 
+    // The form only owns the fields below. Everything else on the row --
+    // market, currency, source, fxAtCost, brokerRef -- is identity and must
+    // survive an edit: dropping `market: "US"` would turn the row into
+    // `NSE:<ticker>` on save and silently relabel a U.S. position as INR.
     const updated: PortfolioStock = {
+      ...stock,
       ticker: form.ticker.toUpperCase(),
       stockName: form.stockName,
       entryDate: form.entryDate,
@@ -63,9 +74,18 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
       weekHigh52: parseFloat(form.weekHigh52) || null,
       quantity: parseInt(form.quantity),
       status: form.status,
-      ...(form.exitPrice ? { exitPrice: parseFloat(form.exitPrice) } : {}),
-      ...(form.exitDate ? { exitDate: form.exitDate } : {}),
     };
+
+    // A blank exit is *removed*, not set to `undefined`: setting `undefined`
+    // would leave the key on the row, and the whole snapshot is written to
+    // Firestore, which rejects documents containing `undefined` (no
+    // `ignoreUndefinedProperties` is configured), failing the save silently.
+    // Deleting the property also clears a stale exit that `...stock` above
+    // would otherwise resurrect.
+    if (form.exitPrice) updated.exitPrice = parseFloat(form.exitPrice);
+    else delete updated.exitPrice;
+    if (form.exitDate) updated.exitDate = form.exitDate;
+    else delete updated.exitDate;
 
     onSave(updated);
     toast({ title: "Transaction updated", description: `${updated.ticker} has been updated` });
@@ -78,7 +98,7 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Edit Transaction — {form.ticker} (₹ INR)</DialogTitle>
+          <DialogTitle className="text-foreground">Edit Transaction — {form.ticker} ({symbol} {currency})</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -93,11 +113,11 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label className="text-xs text-muted-foreground">Entry Price (₹) *</Label>
+              <Label className="text-xs text-muted-foreground">Entry Price ({symbol}) *</Label>
               <Input type="number" step="0.01" value={form.entryPrice} onChange={(e) => updateField("entryPrice", e.target.value)} className="bg-secondary border-border text-sm font-mono" />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">CMP (₹) *</Label>
+              <Label className="text-xs text-muted-foreground">CMP ({symbol}) *</Label>
               <Input type="number" step="0.01" value={form.cmp} onChange={(e) => updateField("cmp", e.target.value)} className="bg-secondary border-border text-sm font-mono" />
             </div>
             <div>
@@ -111,7 +131,7 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
               <Input value={form.entryDate} onChange={(e) => updateField("entryDate", e.target.value)} className="bg-secondary border-border text-sm" />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">52W High (₹)</Label>
+              <Label className="text-xs text-muted-foreground">52W High ({symbol})</Label>
               <Input type="number" step="0.01" value={form.weekHigh52} onChange={(e) => updateField("weekHigh52", e.target.value)} className="bg-secondary border-border text-sm font-mono" />
             </div>
             <div>
@@ -131,7 +151,7 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
           {form.status !== "Active" && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs text-muted-foreground">Exit Price (₹)</Label>
+                <Label className="text-xs text-muted-foreground">Exit Price ({symbol})</Label>
                 <Input type="number" step="0.01" value={form.exitPrice} onChange={(e) => updateField("exitPrice", e.target.value)} className="bg-secondary border-border text-sm font-mono" />
               </div>
               <div>

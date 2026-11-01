@@ -14,7 +14,10 @@ import { apiFetch } from "@/lib/api.ts";
 import type {
   CandleRange,
   CandlesEnvelope,
+  FxRate,
   HealthResponse,
+  Instrument,
+  Market,
   MarketOverviewResponse,
   QuotesResponse,
   SearchResponse,
@@ -81,11 +84,15 @@ async function requestJson<T>(input: { path: string; init?: RequestInit }): Prom
 /**
  * `POST /api/quotes`.
  *
- * POST (not GET) so the ticker list stays out of URLs, logs, and Referer
+ * Instruments (market + ticker), not bare symbols: `INFY` exists on both NSE
+ * and the NYSE, so a ticker-only request cannot say which listing it means.
+ * The reply is keyed `market:ticker` to match.
+ *
+ * POST (not GET) so the instrument list stays out of URLs, logs, and Referer
  * headers, and so the server can cap the list from a JSON array.
  */
 export function fetchQuotes(
-  tickers: string[],
+  instruments: Instrument[],
   options: { refresh?: boolean; signal?: AbortSignal } = {},
 ): Promise<QuotesResponse> {
   return requestJson<QuotesResponse>({
@@ -93,19 +100,28 @@ export function fetchQuotes(
     init: {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tickers, refresh: options.refresh ?? false }),
+      body: JSON.stringify({ instruments, refresh: options.refresh ?? false }),
       signal: options.signal,
     },
   });
 }
 
-/** `GET /api/candles` — OHLCV series plus the provenance needed to label it. */
+/**
+ * `GET /api/candles` — OHLCV series plus the provenance needed to label it.
+ *
+ * Takes an `Instrument`, not a bare ticker: `AAPL` exists on both NSE and the
+ * NYSE, and the server charts whichever listing the request names.
+ */
 export function fetchCandles(
-  symbol: string,
+  instrument: Instrument,
   range: CandleRange,
   options: { refresh?: boolean; signal?: AbortSignal } = {},
 ): Promise<CandlesEnvelope> {
-  const query = new URLSearchParams({ symbol, range });
+  const query = new URLSearchParams({
+    symbol: instrument.ticker,
+    range,
+    market: instrument.market,
+  });
   if (options.refresh) query.set("refresh", "1");
   return requestJson<CandlesEnvelope>({
     path: `/api/candles?${query.toString()}`,
@@ -123,13 +139,15 @@ export function fetchMarketOverview(
   });
 }
 
-/** `GET /api/search?q=` — server-side symbol search; never query a provider from the browser. */
+/** `GET /api/search?q=&market=` — server-side symbol search; never query a provider from the browser. */
 export function searchSymbols(
   query: string,
-  options: { limit?: number; signal?: AbortSignal } = {},
+  options: { limit?: number; market?: Market; signal?: AbortSignal } = {},
 ): Promise<SearchResponse> {
   const params = new URLSearchParams({ q: query });
   if (options.limit) params.set("limit", String(options.limit));
+  // The route defaults to NSE, but a caller that names a market must reach it.
+  if (options.market) params.set("market", options.market);
   return requestJson<SearchResponse>({
     path: `/api/search?${params.toString()}`,
     init: { signal: options.signal },
@@ -145,6 +163,22 @@ export function searchSymbols(
 export function fetchHealth(options: { deep?: boolean; signal?: AbortSignal } = {}): Promise<HealthResponse> {
   return requestJson<HealthResponse>({
     path: options.deep ? "/api/health?deep=1" : "/api/health",
+    init: { signal: options.signal },
+  });
+}
+
+/**
+ * `GET /api/fx` — the USD→INR rate the INR valuation needs.
+ *
+ * One call per dashboard refresh, shared by every U.S. row. `stale: true` marks
+ * a cached rate served while the provider was down, or one whose observation
+ * time the provider never supplied; `asOf` is passed through unchanged and is
+ * null in the latter case. There is no numeric fallback here — an unavailable
+ * rate arrives as an error, never as 0.
+ */
+export function fetchFxRate(options: { signal?: AbortSignal } = {}): Promise<FxRate> {
+  return requestJson<FxRate>({
+    path: "/api/fx?base=USD&quote=INR",
     init: { signal: options.signal },
   });
 }

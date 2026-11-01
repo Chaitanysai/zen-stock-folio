@@ -7,8 +7,15 @@
  * unknown", so no handler or component can invent its own answer.
  */
 
-import type { CandleRange, CandleResolution, DataMode, Provenance, ProviderId } from "./types.ts";
-import { getMarketStatus } from "../market/marketStatus.ts";
+import type {
+  CandleRange,
+  CandleResolution,
+  DataMode,
+  Market,
+  Provenance,
+  ProviderId,
+} from "./types.ts";
+import { marketSessionState } from "../market/sessions.ts";
 
 /**
  * How old a value may be before we call it stale, per mode.
@@ -34,6 +41,8 @@ export function deriveDataMode(params: {
   exchangeTimestampMs: number | null;
   now: number;
   realtimeProvider: boolean;
+  /** Defaults to NSE for existing callers. */
+  market?: Market;
 }): DataMode {
   const { exchangeTimestampMs, now, realtimeProvider } = params;
   // No provider timestamp means no defensible freshness claim.
@@ -43,15 +52,20 @@ export function deriveDataMode(params: {
     return "unknown";
   }
 
-  const market = getMarketStatus(new Date(now));
-  if (market.phase === "unknown") return "unknown";
+  const market = params.market ?? "NSE";
+  const session = marketSessionState(market, new Date(now));
+  if (session === "unknown") return "unknown";
 
   if (realtimeProvider) {
-    // Still only realtime while a session is actually running.
-    return market.isOpen ? "realtime" : "eod";
+    // Upstox is the only verified realtime feed, and it is NSE-only. A caller
+    // flag cannot upgrade a U.S. observation to live, so it is downgraded to a
+    // settled observation instead.
+    if (market === "US") return "eod";
+    // A verified realtime feed is still only realtime while a session runs.
+    return session === "open" ? "realtime" : "eod";
   }
 
-  if (!market.isOpen) {
+  if (session !== "open") {
     // Outside a session the last trade IS the close of the previous session.
     return "eod";
   }
@@ -69,6 +83,8 @@ export interface ProvenanceInput {
   warnings?: string[];
   /** True only when a verified realtime-capable provider answered. */
   realtimeProvider?: boolean;
+  /** Listing market whose session decides freshness. Defaults to NSE. */
+  market?: Market;
 }
 
 /** Build the provenance block attached to every market-data response. */
@@ -77,6 +93,7 @@ export function buildProvenance(input: ProvenanceInput): Provenance {
     exchangeTimestampMs: input.exchangeTimestampMs,
     now: input.now,
     realtimeProvider: input.realtimeProvider ?? false,
+    market: input.market,
   });
 
   const age = input.exchangeTimestampMs === null ? null : input.now - input.exchangeTimestampMs;

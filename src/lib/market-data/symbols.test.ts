@@ -8,11 +8,14 @@
 import { describe, expect, it } from "vitest";
 import {
   fromYahooSymbol,
+  instrumentKey,
   isSupportedIndexSymbol,
+  normalizeInstrumentList,
   normalizeSymbol,
   normalizeSymbolList,
+  parseInstrument,
   toYahooSymbol,
-} from "@/lib/market-data/symbols.ts";
+} from "./symbols.ts";
 
 describe("normalizeSymbol", () => {
   it("uppercases and trims a bare NSE symbol", () => {
@@ -96,5 +99,67 @@ describe("provider symbol mapping", () => {
   it("whitelists only the indices with a configured provider symbol", () => {
     expect(isSupportedIndexSymbol("^NSEI")).toBe(true);
     expect(isSupportedIndexSymbol("^GSPC")).toBe(false);
+  });
+});
+
+describe("market-aware symbols", () => {
+  it("keeps NSE canonicalisation unchanged", () => {
+    expect(normalizeSymbol(" reliance ")).toBe("RELIANCE");
+    expect(normalizeSymbol("INFY.NS")).toBe("INFY");
+    expect(normalizeSymbol("infy.bo")).toBeNull();
+    expect(normalizeSymbol("^NSEI")).toBeNull();
+  });
+
+  it("accepts US tickers and canonicalises class shares", () => {
+    expect(normalizeSymbol("aapl", "US")).toBe("AAPL");
+    expect(normalizeSymbol("BRK.B", "US")).toBe("BRK.B");
+    expect(normalizeSymbol("BRK-B", "US")).toBe("BRK.B");
+    expect(normalizeSymbol("1234", "US")).toBeNull();
+    expect(normalizeSymbol("", "US")).toBeNull();
+  });
+
+  it("maps US tickers to Yahoo's class-share form and back", () => {
+    expect(toYahooSymbol("AAPL", "US")).toBe("AAPL");
+    expect(toYahooSymbol("BRK.B", "US")).toBe("BRK-B");
+    expect(toYahooSymbol("RELIANCE", "NSE")).toBe("RELIANCE.NS");
+    expect(fromYahooSymbol("BRK-B", "US")).toBe("BRK.B");
+    expect(fromYahooSymbol("RELIANCE.NS", "NSE")).toBe("RELIANCE");
+  });
+
+  it("keys instruments by market", () => {
+    expect(instrumentKey({ market: "NSE", ticker: "INFY" })).toBe("NSE:INFY");
+    expect(instrumentKey({ market: "US", ticker: "INFY" })).toBe("US:INFY");
+  });
+
+  it("parses instruments and drops impossible markets", () => {
+    expect(parseInstrument({ ticker: "RELIANCE" })).toEqual({ market: "NSE", ticker: "RELIANCE" });
+    expect(parseInstrument({ market: "US", ticker: "brk-b" })).toEqual({ market: "US", ticker: "BRK.B" });
+    expect(parseInstrument({ market: "LSE", ticker: "VOD" })).toBeNull();
+    expect(parseInstrument("RELIANCE")).toBeNull();
+  });
+
+  it("normalizes, de-duplicates, and truncates instrument lists", () => {
+    const result = normalizeInstrumentList(
+      [
+        { market: "US", ticker: "AAPL" },
+        { ticker: "RELIANCE" },
+        { market: "US", ticker: "aapl" },
+        { market: "LSE", ticker: "VOD" },
+      ],
+      10,
+    );
+    expect(result.instruments).toEqual([
+      { market: "US", ticker: "AAPL" },
+      { market: "NSE", ticker: "RELIANCE" },
+    ]);
+    expect(result.rejected).toHaveLength(1);
+    expect(result.truncated).toBe(false);
+
+    const capped = normalizeInstrumentList(
+      Array.from({ length: 3 }, (_, index) => ({ market: "US", ticker: `A${index}` })),
+      2,
+    );
+    expect(capped.instruments).toHaveLength(2);
+    expect(capped.truncated).toBe(true);
   });
 });

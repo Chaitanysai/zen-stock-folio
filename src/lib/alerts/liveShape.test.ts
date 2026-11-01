@@ -30,6 +30,7 @@ const LIVE_RESPONSE: QuotesResponse = {
       warnings: [],
       quote: {
         symbol: "RELIANCE",
+        market: "NSE",
         price: 1196.2,
         change: -5.6,
         changePercent: -0.466,

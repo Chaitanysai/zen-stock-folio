@@ -120,6 +120,35 @@ describe("SymbolSearch", () => {
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ symbol: "RELIANCE" }));
     expect((screen.getByRole("combobox") as HTMLInputElement).value).toBe("");
   });
+
+  it("scopes search to the market, re-runs on change, and keeps the hit's market", async () => {
+    const onSelect = vi.fn();
+    const spy = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async () => jsonResponse({
+      ...searchPayload,
+      query: "aapl",
+      hits: [{ symbol: "AAPL", market: "US", name: "Apple Inc.", exchange: "NASDAQ", instrumentType: "EQUITY", sector: null, provider: "yahoo", isin: null }],
+    }));
+    globalThis.fetch = spy as unknown as typeof fetch;
+
+    const { rerender } = render(<SymbolSearch onSelect={onSelect} market="NSE" debounceMs={0} />);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "aapl" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(String(spy.mock.calls[0][0])).toContain("market=NSE");
+
+    // Changing the market must re-query with the new scope, not reuse NSE results.
+    rerender(<SymbolSearch onSelect={onSelect} market="US" debounceMs={0} />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(String(spy.mock.calls.at(-1)?.[0])).toContain("market=US");
+
+    fireEvent.click(screen.getByText("AAPL"));
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ symbol: "AAPL", market: "US" }),
+    );
+  });
 });
 
 describe("HealthPanel", () => {

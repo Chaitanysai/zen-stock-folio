@@ -12,7 +12,7 @@ import { fetchQuotes } from "./client";
 /** Captured from the running local handler (provider yahoo, market closed). */
 const liveBody = {
   quotes: {
-    RELIANCE: {
+    "NSE:RELIANCE": {
       provider: "yahoo",
       dataMode: "eod",
       fetchedAt: "2026-10-27T10:44:08.875Z",
@@ -24,6 +24,7 @@ const liveBody = {
       warnings: [],
       quote: {
         symbol: "RELIANCE",
+        market: "NSE",
         price: 1196.2,
         change: -5.6,
         changePercent: -0.466,
@@ -56,8 +57,8 @@ describe("fetchQuotes normalization", () => {
       }),
     );
 
-    const result = await fetchQuotes(["RELIANCE"]);
-    const env = result.quotes.RELIANCE;
+    const result = await fetchQuotes([{ market: "NSE", ticker: "RELIANCE" }]);
+    const env = result.quotes["NSE:RELIANCE"];
 
     expect(env.provider).toBe("yahoo");
     expect(env.dataMode).toBe("eod");
@@ -70,7 +71,10 @@ describe("fetchQuotes normalization", () => {
     const [url, init] = spy.mock.calls[0];
     expect(url).toBe("/api/quotes");
     expect(init?.method).toBe("POST");
-    expect(JSON.parse(String(init?.body))).toEqual({ tickers: ["RELIANCE"], refresh: false });
+    expect(JSON.parse(String(init?.body))).toEqual({
+      instruments: [{ market: "NSE", ticker: "RELIANCE" }],
+      refresh: false,
+    });
     // Freshness-sensitive: the request must not reuse a browser-cached body.
     expect((init as RequestInit)?.cache).toBe("no-store");
   });
@@ -83,7 +87,7 @@ describe("fetchQuotes normalization", () => {
       }),
     );
 
-    await expect(fetchQuotes(["!!!"])).rejects.toMatchObject({
+    await expect(fetchQuotes([{ market: "NSE", ticker: "!!!" }])).rejects.toMatchObject({
       status: 400,
       code: "invalid_tickers",
     });

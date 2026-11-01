@@ -31,18 +31,27 @@ afterEach(() => {
 });
 
 describe("success paths", () => {
-  it("POSTs the ticker list rather than putting it in the URL", async () => {
+  it("POSTs the instrument list rather than putting it in the URL", async () => {
     const spy = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>(
       async () => jsonResponse({ quotes: {}, fetchedAt: "x", providerCounts: {}, missing: [], notes: [] }),
     );
     globalThis.fetch = spy as unknown as typeof fetch;
 
-    await fetchQuotes(["RELIANCE", "TCS"]);
+    await fetchQuotes([
+      { market: "NSE", ticker: "RELIANCE" },
+      { market: "NSE", ticker: "TCS" },
+    ]);
 
     const [url, init] = spy.mock.calls[0];
     expect(String(url)).toBe("/api/quotes");
     expect(init?.method).toBe("POST");
-    expect(JSON.parse(String(init?.body))).toEqual({ tickers: ["RELIANCE", "TCS"], refresh: false });
+    expect(JSON.parse(String(init?.body))).toEqual({
+      instruments: [
+        { market: "NSE", ticker: "RELIANCE" },
+        { market: "NSE", ticker: "TCS" },
+      ],
+      refresh: false,
+    });
   });
 
   it("sends cache: no-store so a browser never replays a quote", async () => {
@@ -62,10 +71,25 @@ describe("success paths", () => {
     );
     globalThis.fetch = spy as unknown as typeof fetch;
 
-    await fetchCandles("RELIANCE", "1d");
+    await fetchCandles({ market: "NSE", ticker: "RELIANCE" }, "1d");
 
     expect(String(spy.mock.calls[0][0])).toContain("symbol=RELIANCE");
     expect(String(spy.mock.calls[0][0])).toContain("range=1d");
+    expect(String(spy.mock.calls[0][0])).toContain("market=NSE");
+  });
+
+  it("sends the U.S. market on the candle request", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      calls.push(String(input));
+      return new Response(JSON.stringify({ candles: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    await fetchCandles({ market: "US", ticker: "AAPL" }, "1d");
+    expect(calls[0]).toContain("market=US");
+    expect(calls[0]).toContain("symbol=AAPL");
   });
 
   it("never fires a deep health probe unless asked", async () => {
@@ -97,7 +121,7 @@ describe("failure paths", () => {
   it("maps a server error body to the server's code", async () => {
     globalThis.fetch = vi.fn(async () => jsonResponse({ error: "No chart data for X", code: "symbol_not_found" }, 404)) as unknown as typeof fetch;
 
-    const error = await fetchCandles("X", "1d").catch((caught: unknown) => caught);
+    const error = await fetchCandles({ market: "NSE", ticker: "X" }, "1d").catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(MarketDataApiError);
     expect(error).toMatchObject({ status: 404, code: "symbol_not_found" });
@@ -106,7 +130,7 @@ describe("failure paths", () => {
   it("reports a network failure with status 0 rather than a fake success", async () => {
     globalThis.fetch = vi.fn(async () => { throw new TypeError("Failed to fetch"); }) as unknown as typeof fetch;
 
-    const error = await fetchQuotes(["RELIANCE"]).catch((caught: unknown) => caught);
+    const error = await fetchQuotes([{ market: "NSE", ticker: "RELIANCE" }]).catch((caught: unknown) => caught);
 
     expect(error).toMatchObject({ status: 0, code: "network_error" });
   });

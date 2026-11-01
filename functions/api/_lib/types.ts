@@ -10,6 +10,12 @@ export interface Env {
   FIREBASE_API_KEY?: string;
   /** Comma-separated origins allowed to call the API cross-origin. Same-origin SPA calls need no CORS headers. */
   ALLOWED_ORIGINS?: string;
+  /**
+   * Comma-separated Firebase uids allowed to see /api/health. Authenticated is
+   * not privileged: the payload names configured integrations. Empty or unset
+   * disables the endpoint entirely (fail closed).
+   */
+  HEALTH_OPERATOR_UIDS?: string;
   /** Market data providers. */
   UPSTOX_ACCESS_TOKEN?: string;
   NEWS_API_KEY?: string;
@@ -21,6 +27,14 @@ export interface Env {
   UPSTOX_API_KEY?: string;
   UPSTOX_API_SECRET?: string;
   UPSTOX_OPS_KEY?: string;
+  /** Firebase project id for Firestore REST calls made with the caller's token. */
+  FIREBASE_PROJECT_ID?: string;
+  /** INDstocks API origin. Unset means broker sync is disabled (503). */
+  INDSTOCKS_BASE_URL?: string;
+  /** INDstocks API key. Server-side only; never exposed to the browser. */
+  INDSTOCKS_API_KEY?: string;
+  /** Base64-encoded 32-byte AES-256 key for broker tokens. */
+  BROKER_TOKEN_KEY?: string;
   /**
    * EOD price-cache KV binding (resource creation awaiting approval).
    * When absent the endpoints degrade gracefully to no-cache mode.
