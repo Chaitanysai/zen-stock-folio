@@ -1,7 +1,10 @@
 # INDmoney broker sync
 
-Status: implemented, **disabled by configuration** until the API probe
-(`docs/api-integration/indmoney-probe.md`) is complete.
+Status: implemented. Production configuration was enabled on 2026-11-01 at the
+operator's request **before** the API probe
+(`docs/api-integration/indmoney-probe.md`) was completed, so field mappings are
+unverified against a live account. Removing `INDSTOCKS_BASE_URL` from an
+environment disables both routes there.
 
 ## What it does
 

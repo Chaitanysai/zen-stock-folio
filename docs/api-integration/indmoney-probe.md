@@ -1,8 +1,10 @@
 # INDstocks read-API probe
 
-Status: **not run** — `INDSTOCKS_BASE_URL` must stay unset until every item below
-is answered. While it is unset, both broker routes answer `503 BROKER_DISABLED`
-and no unverified field mapping is reachable.
+Status: **not run.** Production `INDSTOCKS_BASE_URL` was set on 2026-11-01 at the
+operator's explicit request, before this probe was completed, so the field
+mappings below are unverified against a live account. Every other environment
+keeps `INDSTOCKS_BASE_URL` unset: while it is unset, both broker routes answer
+`503 BROKER_DISABLED` and no unverified field mapping is reachable.
 
 Run this once against the account owner's own INDmoney/INDstocks token, then
 redact every account identifier (client id, user id, order/trade ids, PAN, email,
