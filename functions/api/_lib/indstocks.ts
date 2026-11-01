@@ -311,7 +311,9 @@ export function createIndstocksClient(config: IndstocksConfig): IndstocksClient 
           "tradingsymbol", "trading_symbol", "tradingSymbol", "symbol", "securitySymbol", "security_symbol",
         ])));
         const exchange = exchangeMarket(pick(raw, ["exchange", "exchangeSegment", "exchange_segment"]));
-        const quantity = asNumber(pick(raw, ["quantity", "qty", "holdingQuantity", "holding_quantity", "totalQty"]));
+        const quantity = asNumber(pick(raw, [
+          "quantity", "qty", "holdingQuantity", "holding_quantity", "totalQty", "total_qty",
+        ]));
         const averagePrice = asNumber(pick(raw, [
           "averagePrice", "average_price", "avgPrice", "avg_price", "averageCost", "avg_cost",
         ]));
@@ -366,7 +368,13 @@ export function createIndstocksClient(config: IndstocksConfig): IndstocksClient 
     },
 
     async tradeBook() {
-      const rows = listFrom(await request("/trade-book"), ["trades", "tradeBook", "tradebook"], redact);
+      // INDstocks rejects the call with a 4xx when `segment` is absent; EQUITY
+      // is the only segment this read-only equity sync consumes.
+      const rows = listFrom(
+        await request("/trade-book?segment=EQUITY"),
+        ["trades", "tradeBook", "tradebook"],
+        redact,
+      );
       const fills: NormalizedFill[] = [];
       const warnings: string[] = [];
       let skipped = 0;
@@ -409,7 +417,7 @@ export function createIndstocksClient(config: IndstocksConfig): IndstocksClient 
         ]));
         const executedAt = toIso(pick(raw, [
           "exchangeTimestamp", "exchange_timestamp", "fillTime", "fill_time", "tradeTime", "trade_time",
-          "executedAt", "executed_at", "orderTimestamp", "order_timestamp",
+          "executedAt", "executed_at", "orderTimestamp", "order_timestamp", "trade_date",
         ]));
 
         if (

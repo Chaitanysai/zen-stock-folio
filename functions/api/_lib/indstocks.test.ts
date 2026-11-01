@@ -112,6 +112,35 @@ describe("INDstocks adapter", () => {
     });
   });
 
+  it("reads the documented holdings field names (symbol, total_qty, avg_price)", async () => {
+    const rows = [
+      { exchange: "NSE", symbol: "CUPID", isin: "INE509F01029", total_qty: 1, avg_price: 217.3 },
+    ];
+    const client = createIndstocksClient(config(routed({
+      "/portfolio/holdings": json({ status: "success", data: rows }),
+    })));
+
+    const result = await client.holdings();
+    expect(result.holdings).toEqual([
+      {
+        market: "NSE", ticker: "CUPID", isin: "INE509F01029",
+        quantity: 1, averagePrice: 217.3, lastPrice: null, brokerRef: "NSE:CUPID",
+      },
+    ]);
+    expect(result.unmatched).toHaveLength(0);
+  });
+
+  it("requests the trade book for the EQUITY segment, which the endpoint requires", async () => {
+    const fetchImpl = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [] }), { status: 200 })) as unknown as typeof fetch;
+    const client = createIndstocksClient(config(fetchImpl));
+
+    await client.tradeBook();
+    expect(String(callsOf(fetchImpl)[0][0])).toBe(
+      "https://api.indstocks.test/trade-book?segment=EQUITY",
+    );
+  });
+
   it("normalizes trade-book fills, including numeric timestamps", async () => {
     const client = createIndstocksClient(config(routed({
       "/trade-book": () => new Response(JSON.stringify(tradeBookFixture), { status: 200 }),
@@ -126,6 +155,28 @@ describe("INDstocks adapter", () => {
     expect(result.fills[0].id).toBe("indmoney:T1001");
     expect(result.fills[1].id).toMatch(/^indmoney:hash:[0-9a-f]{64}$/);
     expect(result.skipped).toBe(1);
+  });
+
+  it("reads the documented trade_date field and fill_id", async () => {
+    const rows = [{
+      fill_id: "F1001",
+      exchange: "NSE",
+      symbol: "RELIANCE",
+      transaction_type: "BUY",
+      quantity: 2,
+      price: 100,
+      trade_date: "2025-11-11T17:48:23+05:30",
+    }];
+    const client = createIndstocksClient(config(routed({
+      "/trade-book": json({ status: "success", data: rows }),
+    })));
+
+    const result = await client.tradeBook();
+    expect(result.fills).toHaveLength(1);
+    expect(result.fills[0]).toMatchObject({
+      id: "indmoney:F1001", ticker: "RELIANCE", side: "BUY", quantity: 2, price: 100,
+      executedAt: "2025-11-11T12:18:23.000Z",
+    });
   });
 
   it("skips BSE, unknown, and missing-exchange fills instead of emitting them as NSE", async () => {
@@ -374,7 +425,7 @@ describe("INDstocks adapter", () => {
     await client.holdings();
     expect(callsOf(fetchImpl)[0][0]).toBe("https://x.test/v1/portfolio/holdings");
     await client.tradeBook();
-    expect(callsOf(fetchImpl)[1][0]).toBe("https://x.test/v1/trade-book");
+    expect(callsOf(fetchImpl)[1][0]).toBe("https://x.test/v1/trade-book?segment=EQUITY");
   });
 
   it("authenticates with the raw access token, not a Bearer prefix", async () => {

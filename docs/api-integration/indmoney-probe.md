@@ -19,19 +19,35 @@ phone) before committing this file. Never commit the token itself.
 
 ## 2. `GET /portfolio/holdings`
 
-- Response envelope (top-level keys):
-- Per-row keys:
-- Numeric fields delivered as strings? (which)
-- Exchange field name and values:
-- Empty-portfolio shape:
+Documented shape (api-docs.indstocks.com/portfolio_funds, read 2026-11-02; not
+yet confirmed against a live account):
+
+- Response envelope (top-level keys): `status`, `data` (no known nested list key)
+- Per-row keys: `security_id`, `symbol`, `isin`, `total_qty`, `used_qty`,
+  `avg_price`, `t1_qty`, `t1_avg_price`, `dp_qty`, `dp_avg_price`
+- Numeric fields delivered as strings? documented as numbers; live unknown
+- Exchange field name and values: **none documented** — the adapter requires an
+  exchange and reports a row without one as invalid rather than assuming NSE
+- Empty-portfolio shape: unknown (adapter treats `{data:null}` and `{data:[]}`
+  as empty)
 
 ## 3. `GET /trade-book`
 
-- Response envelope (top-level keys):
-- Per-row keys:
-- Date/time field name and format (with timezone):
-- Stable per-fill id present? (field name, or "none")
-- Buy/sell field name and values:
+Documented shape (api-docs.indstocks.com/normal_orders, read 2026-11-02; not yet
+confirmed against a live account):
+
+- Request: `GET /trade-book?segment={EQUITY|DERIVATIVE|COMMODITY}` — `segment`
+  is required. On 2026-11-02 a production preview sent no `segment`; the broker
+  rejected the call (4xx surfaced as `502 BROKER_CONTRACT`). The adapter now
+  sends `?segment=EQUITY`.
+- Response envelope (top-level keys): `status`, `data`
+- Per-row keys: `fill_id`, `exch_order_id`, `quantity`, `price`, `trade_date`,
+  `trade_serial_no`, `scrip_code`, `remarks` — no symbol, exchange, or side is
+  documented
+- Date/time field name and format (with timezone): `trade_date`,
+  `2025-11-11T17:48:23+05:30`
+- Stable per-fill id present? (field name, or "none"): `fill_id`
+- Buy/sell field name and values: none documented
 
 ## 4. Token acceptance
 
