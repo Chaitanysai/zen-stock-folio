@@ -16,7 +16,9 @@ import type { Env } from "../../_lib/types.ts";
 const secret = z
   .string()
   .min(8, "must be at least 8 characters")
-  .max(512, "must be at most 512 characters")
+  // Groww issues its API key as a JWT that routinely exceeds 512 characters;
+  // 2048 keeps two secrets plus JSON overhead inside the 8192-byte body cap.
+  .max(2048, "must be at most 2048 characters")
   .refine((value) => !/\s/.test(value), "must not contain whitespace");
 
 const hasControlCharacter = (value: string): boolean =>

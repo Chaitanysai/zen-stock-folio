@@ -24,7 +24,7 @@ export const startAuthorization = async (
   const stateHash = await hashAuthorizationState(state);
   const start = await adapter.beginAuthorization(env, credentials, state, now);
 
-  await putAuthorizationState(env, stateHash, {
+  await putAuthorizationState(env, record.provider, stateHash, {
     uid: record.uid,
     provider: record.provider,
     connectionId: record.id,

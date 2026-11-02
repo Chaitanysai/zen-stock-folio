@@ -3,7 +3,7 @@ import { BROKER_PROVIDER_LIST } from "../../../src/lib/brokers/registry.ts";
 import { handleBrokerRoute, requireBrokerIdentity } from "./_lib/access.ts";
 import { handleOptions, jsonResponse } from "../_lib/http.ts";
 import type { PagesHandler } from "../_lib/types.ts";
-import { providerEnabled } from "./_lib/providers/index.ts";
+import { providerEnabled, adapterFor } from "./_lib/providers/index.ts";
 import { brokerSetupState, callbackUrl, publicOrigin } from "./_lib/store.ts";
 
 /**
@@ -19,6 +19,13 @@ export const onRequestGet: PagesHandler = async ({ request, env }) =>
     const setup = await brokerSetupState(env);
     const providers: BrokerProviderPublic[] = BROKER_PROVIDER_LIST.map((capability) => {
       const enabled = setup.ready && providerEnabled(env, capability.id);
+      const adapter = adapterFor(capability.id);
+      // A callback is only meaningful when the adapter can both begin and
+      // complete the browser flow. Groww is keys-only, so it must not
+      // advertise a redirect URL it can never finish.
+      const supportsCallback = Boolean(
+        adapter.beginAuthorization && adapter.completeAuthorization,
+      );
       return {
         ...capability,
         enabled,
@@ -28,7 +35,7 @@ export const onRequestGet: PagesHandler = async ({ request, env }) =>
             ? "This broker is disabled in this environment."
             : null,
         setupIssues: setup.issues,
-        callbackUrl: callbackUrl(env, request, capability.id),
+        callbackUrl: supportsCallback ? callbackUrl(env, request, capability.id) : null,
       };
     });
 

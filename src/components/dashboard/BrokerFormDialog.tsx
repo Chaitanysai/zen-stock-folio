@@ -18,10 +18,13 @@ const HELPER: Record<string, string> = {
     "Use the API key and secret from your own Kite Connect app. The secret is encrypted on the server with AES-256-GCM and is never returned to the browser.",
   groww:
     "Approve this key on Groww's Cloud API Keys page before saving. The server exchanges the key and secret for a daily token and verifies a read-only holdings call.",
+  upstox:
+    "Use the API key and secret from your own Upstox app, with this site's callback URL registered as its redirect URL. You will be sent to Upstox to sign in; the secret stays server-side.",
 };
 
 const secretProblem = (value: string): string | null => {
   if (value.length < 8) return "must be at least 8 characters";
+  if (value.length > 2048) return "must be at most 2048 characters";
   if (/\s/.test(value)) return "must not contain spaces";
   return null;
 };
@@ -80,9 +83,13 @@ export function BrokerFormDialog({ provider, method, connection, onClose, onDone
         await onDone(result.authorizationUrl);
       }
     } catch (caught) {
-      const message = caught instanceof BrokerApiError
-        ? BROKER_ERROR_MESSAGES[caught.code as BrokerErrorCode] ?? caught.message
-        : "The request could not be completed.";
+      // invalid_request details name fields only, never credential values, so show them.
+      const message =
+        caught instanceof BrokerApiError
+          ? caught.code === "invalid_request"
+            ? caught.message
+            : BROKER_ERROR_MESSAGES[caught.code as BrokerErrorCode] ?? caught.message
+          : "The request could not be completed.";
       setError(message);
     } finally {
       submittingRef.current = false;

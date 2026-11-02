@@ -9,6 +9,8 @@ export const makeEnv = (over: Record<string, unknown> = {}): Env =>
   ({
     FIREBASE_API_KEY: "test-api-key",
     ALLOWED_ORIGINS: "",
+    // /api/health is operator-gated; the stubbed identity below is the operator.
+    HEALTH_OPERATOR_UIDS: "user-1",
     ...over,
   }) as Env;
 

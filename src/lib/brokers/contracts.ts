@@ -6,7 +6,7 @@
  * `functions/api/brokers/_lib/`, never here.
  */
 
-export const BROKER_PROVIDER_IDS = ["zerodha", "groww"] as const;
+export const BROKER_PROVIDER_IDS = ["zerodha", "groww", "upstox"] as const;
 export type BrokerProviderId = (typeof BROKER_PROVIDER_IDS)[number];
 
 export const BROKER_METHODS = ["oauth", "api_keys"] as const;
@@ -93,8 +93,10 @@ export interface BrokerProviderPublic extends BrokerProviderCapabilities {
   enabled: boolean;
   unavailableReason: string | null;
   setupIssues: string[];
-  /** URL the user must register with the provider, when the flow needs one. */
-  callbackUrl: string;
+  /** URL the user must register with the provider, when the flow needs one.
+   * `null` means the provider has no browser redirect flow (e.g. Groww uses
+   * stored API keys), so there is no callback to advertise or complete. */
+  callbackUrl: string | null;
 }
 
 // ── Normalized provider records ──────────────────────────────────────────────

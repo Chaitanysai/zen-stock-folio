@@ -23,6 +23,11 @@ compatibility_date = "2026-10-01"
 # Toolkit token verification, so it must be present in every deployment.
 FIREBASE_API_KEY = "AIzaSyDcKFGeZv2ov8M7SYdv-Q4H3JPhpOhncXQ"
 
+# Public HTTPS origin used to build provider callback URLs and the
+# post-callback redirect. Never taken from a request header, so a spoofed Host
+# cannot redirect the callback to another site.
+BROKER_PUBLIC_ORIGIN = "https://zenfolio-7jd.pages.dev"
+
 # --- EOD price cache --------------------------------------------------------
 # Cloudflare KV binding for the EOD price cache. Created 2026-10-27 for the
 # `zenfolio` Pages project. One namespace per Pages project (preview and
@@ -41,24 +46,32 @@ id = "27cfa83891f2434682e05d9684c69e47"
 # It is NOT created automatically: this file creates no resource. See
 # docs/brokers/setup.md.
 #
-#   wrangler kv namespace create BROKER_STORE
+#   wrangler kv namespace create zenfolio-broker-store-production
+#   wrangler kv namespace create BROKER_STORE                        # preview
 #
-# This file is the source of truth for Pages configuration, so the binding and
-# the callback origin are declared per environment below. `vars` and
-# `kv_namespaces` are NOT inherited by `env.*`, so the preview section repeats
-# the production values it must keep. Top level stays production-only:
-# binding the broker store to production is a separate release decision.
+# This file is the source of truth for Pages configuration. `vars` and
+# `kv_namespaces` are NOT inherited by `env.*`, so the top-level entries are
+# production-only and the preview section repeats the ones it needs. Each
+# environment has its own namespace: preview and production must never share
+# the records that hold encrypted credentials.
 #
-# The secret `BROKER_CREDENTIALS_KEYS` cannot live in this file; set it with
+# The secret `BROKER_CREDENTIALS_KEYS` cannot live in this file; set it per
+# environment with
 #   npx wrangler pages secret put BROKER_CREDENTIALS_KEYS --project-name zenfolio --env preview
-# Without it (and without the binding below) every broker endpoint fails closed
-# with `setup_required`.
+#   npx wrangler pages secret put BROKER_CREDENTIALS_KEYS --project-name zenfolio --env production
+# Without the secret (and the binding) every broker endpoint fails closed with
+# `setup_required`.
+[[kv_namespaces]]
+binding = "BROKER_STORE"
+id = "1e6435f0a62f4ff6baee8141ddb5264f"
+
 [env.preview.vars]
 FIREBASE_API_KEY = "AIzaSyDcKFGeZv2ov8M7SYdv-Q4H3JPhpOhncXQ"
-# Origin used for provider callback URLs. The branch alias always serves the
-# newest preview of this branch, so the registered redirect URL stays valid
-# across preview uploads.
-BROKER_PUBLIC_ORIGIN = "https://feat-obsidian-dashboard.zenfolio-7jd.pages.dev"
+# Origin used for provider callback URLs. The suffixed branch alias is the one
+# Cloudflare assigned to this branch after the plain alias stopped resolving to
+# the newest preview (it stayed pinned to the 2026-10-29 deployment), so the
+# callback and post-auth redirect URLs must use it.
+BROKER_PUBLIC_ORIGIN = "https://feat-obsidian-dashboard-k07d.zenfolio-7jd.pages.dev"
 
 [[env.preview.kv_namespaces]]
 binding = "PRICE_CACHE"

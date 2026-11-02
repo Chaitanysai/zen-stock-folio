@@ -1,8 +1,11 @@
 # Broker connection framework — discovery and design
 
-Status: **implemented in the working tree, not deployed.** Broker connections are
-disabled until the server-side KV binding and encryption key exist (see
-`setup.md`). No live broker credentials were used during development.
+Status: **configured and deployed in preview and production; no connection is
+activated.** The `BROKER_STORE` KV binding, `BROKER_PUBLIC_ORIGIN` and the
+`BROKER_CREDENTIALS_KEYS` secret exist in both environments (see `setup.md`), so
+the broker surfaces are enabled there. No provider credentials have been
+entered, no callback is registered, and no real broker API has been called. No
+live broker credentials were used during development.
 
 ## 1. Architecture discovered
 
@@ -125,11 +128,13 @@ terminal and deletes the credential envelope.
 
 ## 6. Risks and blockers
 
-- **Deployment prerequisites (blocking live use):** create `BROKER_STORE` KV
-  namespace, bind it, generate `BROKER_CREDENTIALS_KEYS`, set
-  `BROKER_PUBLIC_ORIGIN`. Without them the feature is intentionally inert.
-  Creating the namespace or setting a secret changes shared infrastructure and
-  was not performed.
+- **Deployment prerequisites:** the `BROKER_STORE` KV namespace and binding,
+  `BROKER_CREDENTIALS_KEYS` and `BROKER_PUBLIC_ORIGIN`. All four are present in
+  preview and production, each environment with its own namespace and its own
+  key set, so nothing is shared between them. An environment that loses any of
+  them goes inert with `setup_required` — that fail-closed behavior is intended.
+- **Activation is per-user and manual:** a connection is stored only after a live
+  provider read, and ZenFolio registers no callback on the user's behalf.
 - **Zerodha app registration:** each user's Kite Connect app must register
   `<origin>/api/brokers/callback/zerodha` as its redirect URL. ZenFolio cannot
   do this on the user's behalf.
@@ -137,9 +142,15 @@ terminal and deletes the credential envelope.
   Zerodha approval and a reviewed production configuration.
 - **Historical trades:** neither provider documents an all-time tradebook.
   Coverage is reported as current-day; statement (CSV) import is the future path.
-- **KV consistency/atomicity:** KV has no compare-and-swap. A short-lived sync
-  lock plus idempotent client merge mitigates duplicate runs; a crash can leave
-  a lock that expires after two minutes.
+- **KV consistency/atomicity:** KV has no compare-and-swap. Authorization states
+  are provider-scoped (`state:{provider}:{hash}`) so one provider cannot consume
+  another's state, and completion only finalizes a connection still in
+  `pending_authorization`. Consumption itself is best effort, not atomic; the
+  provider's one-time `request_token` is the effective single-use gate. A strict
+  exactly-once consumer needs a Durable Object (a separate Worker binding, not
+  introduced here). A short-lived sync lock plus idempotent client merge
+  mitigates duplicate sync runs; a crash can leave a lock that expires after two
+  minutes.
 - **No live verification:** no broker credentials, subscriptions or approvals
   were available. Adapters are tested against documented response shapes with
   mocks only; this is not evidence of a live integration.

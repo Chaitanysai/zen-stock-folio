@@ -3,11 +3,13 @@ import type { Env } from "../../../_lib/types.ts";
 import type { BrokerAdapter } from "../adapter.ts";
 import { BrokerError } from "../errors.ts";
 import { growwAdapter } from "./groww.ts";
+import { upstoxAdapter } from "./upstox.ts";
 import { zerodhaAdapter } from "./zerodha.ts";
 
 const ADAPTERS: Record<BrokerProviderId, BrokerAdapter> = {
   zerodha: zerodhaAdapter,
   groww: growwAdapter,
+  upstox: upstoxAdapter,
 };
 
 export const adapterFor = (provider: BrokerProviderId): BrokerAdapter => {
@@ -23,6 +25,7 @@ export const adapterFor = (provider: BrokerProviderId): BrokerAdapter => {
  */
 export const providerEnabled = (env: Env, provider: BrokerProviderId): boolean => {
   if (provider === "zerodha") return env.BROKER_ZERODHA_ENABLED !== "false";
+  if (provider === "upstox") return env.BROKER_UPSTOX_ENABLED !== "false";
   return env.BROKER_GROWW_ENABLED !== "false";
 };
 

@@ -10,6 +10,12 @@ export interface Env {
   FIREBASE_API_KEY?: string;
   /** Comma-separated origins allowed to call the API cross-origin. Same-origin SPA calls need no CORS headers. */
   ALLOWED_ORIGINS?: string;
+  /**
+   * Comma-separated Firebase uids allowed to see /api/health. Authenticated is
+   * not privileged: the payload names configured integrations. Empty or unset
+   * disables the endpoint entirely (fail closed).
+   */
+  HEALTH_OPERATOR_UIDS?: string;
   /** Market data providers. */
   UPSTOX_ACCESS_TOKEN?: string;
   NEWS_API_KEY?: string;
@@ -47,6 +53,7 @@ export interface Env {
   /** `"false"` disables the provider; absent means enabled when storage is ready. */
   BROKER_ZERODHA_ENABLED?: string;
   BROKER_GROWW_ENABLED?: string;
+  BROKER_UPSTOX_ENABLED?: string;
   /**
    * Shared-app Zerodha mode stays disabled unless written multi-user approval
    * exists AND this is explicitly `"true"`. Even then it remains

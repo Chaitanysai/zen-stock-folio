@@ -7,15 +7,18 @@
 
 const SIX_AM_IST_AS_UTC_HOUR = 0;
 const SIX_AM_IST_AS_UTC_MINUTE = 30;
+/** Upstox daily token window ends at 03:30 IST, which is 22:00 UTC. */
+const THREE_THIRTY_AM_IST_AS_UTC_HOUR = 22;
+const THREE_THIRTY_AM_IST_AS_UTC_MINUTE = 0;
 
-export const nextSixAmIst = (now: Date = new Date()): string => {
+const nextIstBoundary = (utcHour: number, utcMinute: number, now: Date): string => {
   const expiry = new Date(
     Date.UTC(
       now.getUTCFullYear(),
       now.getUTCMonth(),
       now.getUTCDate(),
-      SIX_AM_IST_AS_UTC_HOUR,
-      SIX_AM_IST_AS_UTC_MINUTE,
+      utcHour,
+      utcMinute,
       0,
       0,
     ),
@@ -23,6 +26,12 @@ export const nextSixAmIst = (now: Date = new Date()): string => {
   if (expiry.getTime() <= now.getTime()) expiry.setUTCDate(expiry.getUTCDate() + 1);
   return expiry.toISOString();
 };
+
+export const nextSixAmIst = (now: Date = new Date()): string =>
+  nextIstBoundary(SIX_AM_IST_AS_UTC_HOUR, SIX_AM_IST_AS_UTC_MINUTE, now);
+
+export const nextThreeThirtyAmIst = (now: Date = new Date()): string =>
+  nextIstBoundary(THREE_THIRTY_AM_IST_AS_UTC_HOUR, THREE_THIRTY_AM_IST_AS_UTC_MINUTE, now);
 
 /** Parses provider timestamps; Kite returns IST wall-clock strings without an offset. */
 export const parseProviderTimestamp = (value: unknown): string | null => {

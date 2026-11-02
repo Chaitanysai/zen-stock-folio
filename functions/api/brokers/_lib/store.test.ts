@@ -54,24 +54,40 @@ describe("broker KV store", () => {
 
   it("consumes authorization state exactly once", async () => {
     const { env } = envWithKv();
-    await putAuthorizationState(env, "hash-1", stateRecord);
+    await putAuthorizationState(env, "zerodha", "hash-1", stateRecord);
 
-    expect(await takeAuthorizationState(env, "hash-1", new Date("2026-10-28T00:05:00.000Z"))).toEqual(
-      stateRecord,
-    );
-    await expect(takeAuthorizationState(env, "hash-1")).rejects.toMatchObject({ code: "state_reused" });
-    await expect(takeAuthorizationState(env, "never-seen")).rejects.toMatchObject({
+    expect(
+      await takeAuthorizationState(env, "zerodha", "hash-1", new Date("2026-10-28T00:05:00.000Z")),
+    ).toEqual(stateRecord);
+    await expect(takeAuthorizationState(env, "zerodha", "hash-1")).rejects.toMatchObject({
+      code: "state_reused",
+    });
+    await expect(takeAuthorizationState(env, "zerodha", "never-seen")).rejects.toMatchObject({
       code: "state_invalid",
     });
   });
 
   it("refuses an expired authorization state", async () => {
     const { env } = envWithKv();
-    await putAuthorizationState(env, "hash-2", stateRecord);
+    await putAuthorizationState(env, "zerodha", "hash-2", stateRecord);
 
     await expect(
-      takeAuthorizationState(env, "hash-2", new Date("2026-10-28T00:11:00.000Z")),
+      takeAuthorizationState(env, "zerodha", "hash-2", new Date("2026-10-28T00:11:00.000Z")),
     ).rejects.toMatchObject({ code: "state_expired" });
+  });
+
+  it("does not let another provider consume a valid state", async () => {
+    const { env } = envWithKv();
+    await putAuthorizationState(env, "zerodha", "hash-3", stateRecord);
+
+    // A Groww callback with a Zerodha state computes a different key: it must
+    // fail without deleting or marking the Zerodha state used.
+    await expect(takeAuthorizationState(env, "groww", "hash-3")).rejects.toMatchObject({
+      code: "state_invalid",
+    });
+    expect(
+      await takeAuthorizationState(env, "zerodha", "hash-3", new Date("2026-10-28T00:05:00.000Z")),
+    ).toEqual(stateRecord);
   });
 
   it("caps the dedupe ledger", async () => {

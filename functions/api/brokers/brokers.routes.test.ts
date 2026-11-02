@@ -13,6 +13,7 @@ import { decryptCredentials, encryptCredentials } from "./_lib/crypto.ts";
 import {
   getConnectionRecord,
   getCredentialEnvelope,
+  putAuthorizationState,
   putConnectionRecord,
   putCredentialEnvelope,
 } from "./_lib/store.ts";
@@ -46,6 +47,12 @@ const stubKiteToken = (accessToken = "kite-access-token") =>
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => json({ data: { access_token: accessToken, expires_at: "2026-10-29T00:30:00.000Z" } })),
+  );
+
+const stubUpstoxToken = (accessToken = "upstox-access-token") =>
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => json({ access_token: accessToken, expiry_time: "2026-10-28T22:00:00+05:30" })),
   );
 
 beforeEach(() => stubIdentity("user-1"));
@@ -86,15 +93,19 @@ describe("broker routes — admission", () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      providers: Array<{ id: string; enabled: boolean; setupIssues: string[]; callbackUrl: string }>;
+      providers: Array<{ id: string; enabled: boolean; setupIssues: string[]; callbackUrl: string | null }>;
       storeReady: boolean;
       setupIssues: string[];
     };
     expect(body.storeReady).toBe(false);
     expect(body.setupIssues).toEqual(["BROKER_STORE", "BROKER_CREDENTIALS_KEYS", "BROKER_PUBLIC_ORIGIN"]);
-    expect(body.providers.map((provider) => provider.id)).toEqual(["zerodha", "groww"]);
+    expect(body.providers.map((provider) => provider.id)).toEqual(["zerodha", "groww", "upstox"]);
     expect(body.providers.every((provider) => !provider.enabled)).toBe(true);
     expect(body.providers[0].callbackUrl).toBe(`${ORIGIN}/api/brokers/callback/zerodha`);
+    // Groww is keys-only: advertising a callback it cannot complete misleads
+    // the user into registering an unusable redirect URL.
+    expect(body.providers[1].callbackUrl).toBeNull();
+    expect(body.providers[2].callbackUrl).toBe(`${ORIGIN}/api/brokers/callback/upstox`);
   });
 });
 
@@ -193,7 +204,7 @@ describe("broker routes — connection creation", () => {
     expect(state.length).toBeGreaterThan(20);
 
     const hash = await hashAuthorizationState(state);
-    expect(values.get(`state:${hash}`)).toBeDefined();
+    expect(values.get(`state:zerodha:${hash}`)).toBeDefined();
     // Raw state is never written to KV.
     expect([...values.keys()].some((key) => key.includes(state))).toBe(false);
   });
@@ -252,6 +263,58 @@ describe("broker callback", () => {
     expect(JSON.stringify(record)).not.toContain("kite-access-token");
   });
 
+  it("completes the Upstox OAuth v2 flow through the code parameter", async () => {
+    const { env, values } = brokerEnvWithKv();
+    const res = await createConnection({
+      request: authedRequest(`${ORIGIN}/api/brokers/connections`, {
+        provider: "upstox",
+        method: "oauth",
+        apiKey: "upstox-key-123456",
+        apiSecret: "upstox-secret-123456",
+      }),
+      env,
+      params: {},
+    });
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as {
+      connection: { id: string; status: string };
+      authorizationUrl: string;
+    };
+    expect(body.connection.status).toBe("pending_authorization");
+
+    const dialog = new URL(body.authorizationUrl);
+    expect(`${dialog.origin}${dialog.pathname}`).toBe("https://api.upstox.com/v2/login/authorization/dialog");
+    expect(dialog.searchParams.get("redirect_uri")).toBe(`${ORIGIN}/api/brokers/callback/upstox`);
+    expect(dialog.searchParams.get("response_type")).toBe("code");
+    const state = dialog.searchParams.get("state") ?? "";
+    expect(state.length).toBeGreaterThan(20);
+
+    stubUpstoxToken();
+    const callback = await brokerCallback({
+      request: callbackRequest("upstox", { code: "auth-code-1", state }),
+      env,
+      params: { provider: "upstox" },
+    });
+
+    expect(callback.status).toBe(302);
+    const location = new URL(callback.headers.get("Location")!);
+    expect(location.searchParams.get("broker")).toBe("connected");
+    expect(location.searchParams.get("provider")).toBe("upstox");
+    expect(location.searchParams.get("connection")).toBe(body.connection.id);
+    expect(callback.headers.get("Location")).not.toContain("auth-code-1");
+    expect(callback.headers.get("Location")).not.toContain("upstox-access-token");
+
+    const record = await getConnectionRecord(env, "user-1", body.connection.id);
+    expect(record?.status).toBe("connected");
+    // expiry_time 2026-10-28T22:00:00+05:30 == 16:30 UTC.
+    expect(record?.tokenExpiresAt).toBe("2026-10-28T16:30:00.000Z");
+
+    const envelope = await getCredentialEnvelope(env, "user-1", body.connection.id);
+    expect(envelope).toBeTruthy();
+    // The raw state never reaches KV (only its hash, which is consumed).
+    expect([...values.keys()].some((key) => key.includes(state))).toBe(false);
+  });
+
   it("refuses a replayed state", async () => {
     const { env } = brokerEnvWithKv();
     const { state } = await startOAuth(env);
@@ -275,9 +338,9 @@ describe("broker callback", () => {
   it("rejects an unknown provider and an invalid state", async () => {
     const { env } = brokerEnvWithKv();
     const unknown = await brokerCallback({
-      request: callbackRequest("upstox", { state: "x".repeat(30) }),
+      request: callbackRequest("dhan", { state: "x".repeat(30) }),
       env,
-      params: { provider: "upstox" },
+      params: { provider: "dhan" },
     });
     expect(unknown.status).toBe(404);
     expect(await unknown.text()).not.toContain("state");
@@ -306,6 +369,95 @@ describe("broker callback", () => {
     expect(location.searchParams.get("broker")).toBe("error");
     expect(location.searchParams.get("code")).toBe("provider_error");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not consume a state when the wrong provider is called", async () => {
+    const { env } = brokerEnvWithKv();
+    const { connectionId, state } = await startOAuth(env);
+
+    const wrong = await brokerCallback({
+      request: callbackRequest("groww", { state }),
+      env,
+      params: { provider: "groww" },
+    });
+    expect(new URL(wrong.headers.get("Location")!).searchParams.get("code")).toBe("state_invalid");
+
+    stubKiteToken("kite-access-token");
+    const correct = await brokerCallback({
+      request: callbackRequest("zerodha", { state, request_token: "request-token-1" }),
+      env,
+      params: { provider: "zerodha" },
+    });
+    const location = new URL(correct.headers.get("Location")!);
+    expect(location.searchParams.get("broker")).toBe("connected");
+    expect(location.searchParams.get("connection")).toBe(connectionId);
+  });
+
+  it("records a failed completion on the pending connection", async () => {
+    const { env } = brokerEnvWithKv();
+    const { connectionId, state } = await startOAuth(env);
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "invalid" }, 400)));
+
+    const res = await brokerCallback({
+      request: callbackRequest("zerodha", { state, request_token: "request-token-1" }),
+      env,
+      params: { provider: "zerodha" },
+    });
+
+    const code = new URL(res.headers.get("Location")!).searchParams.get("code");
+    expect(code).toBe("invalid_credentials");
+    const record = await getConnectionRecord(env, "user-1", connectionId);
+    expect(record?.status).toBe("error");
+    expect(record?.lastErrorCode).toBe("invalid_credentials");
+  });
+
+  it("never overwrites a connection that already completed", async () => {
+    const { env } = brokerEnvWithKv();
+    const record = connectionRecord({ id: CONNECTION_ID, status: "connected" });
+    await putConnectionRecord(env, record);
+    await putCredentialEnvelope(
+      env,
+      record.uid,
+      record.id,
+      await encryptCredentials(
+        env,
+        { uid: record.uid, connectionId: record.id, provider: record.provider },
+        { apiKey: "api-key-1", apiSecret: "api-secret-1", accessToken: "original-token" },
+      ),
+    );
+
+    // Simulate a late callback whose state survived a race: the connection is
+    // already connected, so the completion must be refused before any exchange
+    // and must leave the stored token untouched.
+    const state = "late-callback-state-1234567890";
+    await putAuthorizationState(env, "zerodha", await hashAuthorizationState(state), {
+      uid: record.uid,
+      provider: "zerodha",
+      connectionId: record.id,
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await brokerCallback({
+      request: callbackRequest("zerodha", { state, request_token: "request-token-late" }),
+      env,
+      params: { provider: "zerodha" },
+    });
+
+    expect(new URL(res.headers.get("Location")!).searchParams.get("code")).toBe("conflict");
+    expect(fetchMock).not.toHaveBeenCalled();
+    const after = await getConnectionRecord(env, "user-1", CONNECTION_ID);
+    expect(after?.status).toBe("connected");
+    expect(after?.lastErrorCode).toBeNull();
+    const envelope = await getCredentialEnvelope(env, "user-1", CONNECTION_ID);
+    const stored = await decryptCredentials(
+      env,
+      { uid: record.uid, connectionId: record.id, provider: "zerodha" },
+      envelope!,
+    );
+    expect(stored.accessToken).toBe("original-token");
   });
 });
 

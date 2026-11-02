@@ -17,8 +17,8 @@ import { BrokerError } from "./errors.ts";
  * Layout:
  *   conn:{uid}:{id}          connection metadata (never credentials)
  *   cred:{uid}:{id}          AES-GCM envelope (never returned to a client)
- *   state:{hash}             one-time authorization state (10 min TTL)
- *   stateused:{hash}         replay marker (10 min TTL)
+ *   state:{provider}:{hash}  one-time authorization state (10 min TTL)
+ *   stateused:{provider}:{hash}  replay marker (10 min TTL)
  *   sync:{uid}:{id}:latest   last sync summary (30 day TTL, no records)
  *   seen:{uid}:{id}          dedupe fingerprints for the connection
  *
@@ -205,32 +205,49 @@ export const deleteCredentialEnvelope = async (
 
 export const putAuthorizationState = async (
   env: Env,
+  provider: BrokerProviderId,
   hash: string,
   record: AuthorizationStateRecord,
 ): Promise<void> => {
-  await putJson(env, `${STATE_PREFIX}${hash}`, record, STATE_TTL_SECONDS);
+  await putJson(env, `${STATE_PREFIX}${provider}:${hash}`, record, STATE_TTL_SECONDS);
 };
 
 /**
- * Reads and consumes a state record. Deletion happens before the caller does
- * any network work, so a repeated callback finds only the replay marker.
+ * Reads and consumes a state record.
+ *
+ * The key is provider-scoped, so a callback for the wrong provider computes a
+ * different key and can neither read nor burn another provider's state.
+ *
+ * KV has no compare-and-swap: this read/delete/marker sequence is **best
+ * effort, not atomic**. Two callbacks racing in different edge locations can
+ * both observe the record before either delete propagates. The provider-side
+ * one-time `request_token` is the actual single-use gate for a completed
+ * exchange; this function only narrows the window. A hard exactly-once
+ * guarantee needs a Durable Object (a separate Worker binding), which this
+ * release does not introduce.
  */
 export const takeAuthorizationState = async (
   env: Env,
+  provider: BrokerProviderId,
   hash: string,
   now: Date = new Date(),
 ): Promise<AuthorizationStateRecord> => {
-  const key = `${STATE_PREFIX}${hash}`;
+  const key = `${STATE_PREFIX}${provider}:${hash}`;
+  const usedKey = `${STATE_USED_PREFIX}${provider}:${hash}`;
   const record = await getJson<AuthorizationStateRecord>(env, key);
   if (!record) {
-    const used = await getJson<{ usedAt: string }>(env, `${STATE_USED_PREFIX}${hash}`);
+    const used = await getJson<{ usedAt: string }>(env, usedKey);
     throw new BrokerError(used ? "state_reused" : "state_invalid");
   }
-  await kv(env).delete(key);
+  // Defense in depth: a record stored under the wrong provider key must not
+  // be usable (it would also be a corrupted write).
+  if (record.provider !== provider) throw new BrokerError("state_invalid");
   if (Date.parse(record.expiresAt) <= now.getTime()) {
+    await kv(env).delete(key);
     throw new BrokerError("state_expired");
   }
-  await putJson(env, `${STATE_USED_PREFIX}${hash}`, { usedAt: now.toISOString() }, STATE_TTL_SECONDS);
+  await kv(env).delete(key);
+  await putJson(env, usedKey, { usedAt: now.toISOString() }, STATE_TTL_SECONDS);
   return record;
 };
 

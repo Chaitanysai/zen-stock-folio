@@ -1,10 +1,13 @@
 # Broker connections — deployment and provider setup
 
-Status: deployed and verified on the `feat/obsidian-dashboard` **preview**
-(`wrangler.toml` `[env.preview]` + `BROKER_CREDENTIALS_KEYS` as a preview
-secret). Production is a separate release decision and currently has none of
-the three settings below, so every broker endpoint there returns
-`setup_required` (503) and the dashboard shows the missing variable names.
+Status: configured in **both** environments — preview (the
+`feat/obsidian-dashboard` branch alias) and production
+(`https://zenfolio-7jd.pages.dev`). Each has its own `BROKER_STORE` KV
+namespace, its own `BROKER_PUBLIC_ORIGIN` var and its own encrypted
+`BROKER_CREDENTIALS_KEYS` secret; no record is shared between them. No
+connection is activated: no provider credentials exist and no callback is
+registered. An environment missing any of the three settings below returns
+`setup_required` (503) and its dashboard shows the missing variable names.
 
 This feature is read-only. It never places, modifies or cancels orders.
 
@@ -28,14 +31,18 @@ are rejected, and a deploy overwrites values that are not in the file. `vars`
 and `kv_namespaces` are NOT inherited by `env.*`, so each environment repeats
 what it needs:
 
-- `[env.preview]` in `wrangler.toml` already carries `PRICE_CACHE` and
-  `BROKER_STORE` — new preview deployments pick the binding up automatically.
-- Binding it to **Production** is a separate release decision: add a top-level
-  `[[kv_namespaces]]` block (top level stays production-only in this repo) and
-  deploy to `main`.
+- Top level (production-only) carries `PRICE_CACHE` and `BROKER_STORE`, so
+  `main` deployments pick both up.
+- `[env.preview]` repeats `PRICE_CACHE` and binds its **own** `BROKER_STORE`,
+  so preview deployments are configured without touching production.
 
-Use a namespace dedicated to this feature. It holds encrypted user credentials,
-not disposable market data, so do not reuse `PRICE_CACHE`.
+Use one namespace **per environment**, both dedicated to this feature. They hold
+encrypted user credentials, not disposable market data, so never reuse
+`PRICE_CACHE` — and never point preview and production at the same namespace, or
+a connection created on one would appear in the other. `wrangler.toml` already
+declares both: `zenfolio-broker-store-production`
+(`1e6435f0a62f4ff6baee8141ddb5264f`) at top level and `BROKER_STORE`
+(`a91188ff12e24f2096fc8911de49fb6a`) under `[env.preview]`.
 
 ### 1.2 Generate the encryption key set
 
@@ -73,9 +80,10 @@ new writes pinned to an older version while a newer one is being introduced.
 
 ### 1.3 Set the public origin
 
-This is a plain (non-secret) variable. Declare it in `wrangler.toml` —
-`[env.preview.vars]` already sets the branch alias for previews; for Production
-add it to the top-level `[vars]` block with the production origin:
+This is a plain (non-secret) variable, declared in `wrangler.toml`.
+Both environments are already declared: `[env.preview.vars]` carries the
+preview branch alias and the top-level `[vars]` block carries the production
+origin, so the registered redirect URL survives every preview upload:
 
 ```toml
 [vars]
@@ -149,8 +157,8 @@ SHA-256 hash, so a KV dump cannot be replayed against the callback.
 4. Tokens expire daily at 06:00 IST. The stored key and secret are re-minted by
    **Test** or **Sync** when the token has expired, provided approval is current.
 
-There is no redirect URL for Groww. The provider card shows the callback URL for
-completeness only.
+There is no redirect URL for Groww. The server reports `callbackUrl: null` for
+it, so the provider card shows no callback and there is no flow to register.
 
 ## 4. Verify a deployment
 

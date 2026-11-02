@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, CheckCircle2, Copy, ExternalLink, KeyRound, Link2, Loader2, PlayCircle,
+  AlertTriangle, CheckCircle2, KeyRound, Link2, Loader2, PlayCircle,
   RefreshCw, ShieldCheck, Unplug,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import type { PortfolioStock } from "@/data/sampleData";
 import { brokerApi, BrokerApiError, clearBrokerCallback, readBrokerCallback } from "@/lib/brokers/client";
@@ -19,8 +20,11 @@ import {
   BROKER_METHOD_LABELS,
   BROKER_STATUS_LABELS,
 } from "@/lib/brokers/messages";
+import { BROKER_PROVIDER_IDS, type BrokerProviderId } from "@/lib/brokers/contracts";
+import { type BrokerTileState } from "@/lib/brokers/branding";
 import { mergeBrokerHoldings } from "@/lib/brokers/merge";
 import { BrokerFormDialog } from "./BrokerFormDialog";
+import { BrokerTile } from "./BrokerTile";
 
 interface BrokersProps {
   stocks: PortfolioStock[];
@@ -186,114 +190,6 @@ function ConnectionCard({
   );
 }
 
-function ProviderCard({
-  provider,
-  busy,
-  onConnect,
-}: {
-  provider: BrokerProviderPublic;
-  busy: boolean;
-  onConnect: (provider: BrokerProviderPublic, method: "oauth" | "api_keys") => void;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const copyCallback = async () => {
-    try {
-      await navigator.clipboard.writeText(provider.callbackUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  };
-
-  return (
-    <article className="zf-broker-card zf-card" aria-label={`${provider.name} provider`}>
-      <div className="zf-card-head">
-        <div>
-          <h3 className="zf-card-title">{provider.name}</h3>
-          <p className="zf-card-sub">{provider.authProduct}</p>
-        </div>
-        <span className="zf-broker-chip" style={{ color: provider.enabled ? "var(--green)" : "var(--tx-400)" }}>
-          <i aria-hidden="true" style={{ background: provider.enabled ? "var(--green)" : "var(--tx-400)" }} />
-          {provider.enabled ? "Available" : "Not configured"}
-        </span>
-      </div>
-
-      <div className="zf-card-body zf-broker-body">
-        {!provider.enabled && provider.unavailableReason && (
-          <p className="zf-broker-notice" role="status">
-            <AlertTriangle aria-hidden="true" />
-            <span>
-              {provider.unavailableReason}
-              {provider.setupIssues.length > 0 && (
-                <> Missing server configuration: <code>{provider.setupIssues.join(", ")}</code>.</>
-              )}
-            </span>
-          </p>
-        )}
-
-        <div className="zf-broker-methods">
-          {provider.methods.oauth && (
-            <button type="button" className="zf-btn zf-btn-primary zf-btn-sm" disabled={!provider.enabled || busy}
-              onClick={() => onConnect(provider, "oauth")}>
-              <Link2 aria-hidden="true" /> Connect account
-            </button>
-          )}
-          {provider.methods.apiKeys && (
-            <button type="button" className="zf-btn zf-btn-primary zf-btn-sm" disabled={!provider.enabled || busy}
-              onClick={() => onConnect(provider, "api_keys")}>
-              <KeyRound aria-hidden="true" /> Use my API keys
-            </button>
-          )}
-          <a className="zf-btn zf-btn-outline zf-btn-sm" href={provider.setupUrl} target="_blank" rel="noreferrer noopener">
-            <ExternalLink aria-hidden="true" /> Provider setup
-          </a>
-        </div>
-
-        <dl className="zf-broker-meta">
-          <div><dt>Shared multi-user</dt><dd>{provider.sharedMultiUserReason}</dd></div>
-          <div><dt>Token lifetime</dt><dd>{provider.tokenLifetime}</dd></div>
-          <div><dt>Rate limits</dt><dd>{provider.rateLimitNote}</dd></div>
-          <div><dt>Subscription</dt><dd>{provider.subscriptionNote}</dd></div>
-        </dl>
-
-        <div className="zf-broker-history">
-          <p className="zf-broker-sync-head">Data available</p>
-          <ul className="zf-broker-cats">
-            {CATEGORY_ORDER.map((id) => (
-              <li key={id} data-state={provider.data[id] ? "ok" : "unsupported"}>
-                <span>{BROKER_CATEGORY_LABELS[id]}</span>
-                <span className="zf-mono">{provider.history[id].replace("_", " ")}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="zf-broker-hint">{provider.historyNote}</p>
-        </div>
-
-        {provider.methods.oauth && (
-          <div className="zf-broker-callback">
-            <p className="zf-broker-sync-head">Registered redirect URL</p>
-            <div className="zf-broker-callback-row">
-              <code>{provider.callbackUrl}</code>
-              <button type="button" className="zf-btn zf-btn-outline zf-btn-sm" onClick={() => void copyCallback()}>
-                <Copy aria-hidden="true" /> {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-            <p className="zf-broker-hint">
-              Add this exact URL to your {provider.authProduct} app before starting the login flow.
-            </p>
-          </div>
-        )}
-
-        <ul className="zf-broker-limits">
-          {provider.limitations.map((line) => <li key={line}>{line}</li>)}
-        </ul>
-      </div>
-    </article>
-  );
-}
-
 export default function Brokers({ stocks, onImportStocks }: BrokersProps) {
   const { toast } = useToast();
   const [providers, setProviders] = useState<BrokerProviderPublic[]>([]);
@@ -349,6 +245,28 @@ export default function Brokers({ stocks, onImportStocks }: BrokersProps) {
   }, [toast]);
 
   const providerById = (id: string) => providers.find((provider) => provider.id === id);
+
+  const activeConnectionFor = (providerId: BrokerProviderId): BrokerConnectionPublic | null => {
+    const records = connections.filter(
+      (connection) => connection.provider === providerId && connection.status !== "disconnected",
+    );
+    const connected = records.find((connection) => connection.status === "connected");
+    if (connected) return connected;
+    return records.reduce<BrokerConnectionPublic | null>((latest, connection) => {
+      if (!latest) return connection;
+      return Date.parse(connection.updatedAt) > Date.parse(latest.updatedAt) ? connection : latest;
+    }, null);
+  };
+
+  const handleTileAction = (provider: BrokerProviderPublic, state: BrokerTileState) => {
+    if (state === "setup" || state === "connecting") return;
+    if (state === "connect") {
+      setForm({ provider, method: provider.methods.oauth ? "oauth" : "api_keys" });
+      return;
+    }
+    const connection = activeConnectionFor(provider.id);
+    if (connection) setForm({ provider, method: connection.method, connection });
+  };
 
   const startAuthorization = async (connection: BrokerConnectionPublic) => {
     setBusy(connection.id);
@@ -419,8 +337,20 @@ export default function Brokers({ stocks, onImportStocks }: BrokersProps) {
 
   if (loading) {
     return (
-      <div className="zf-broker-loading" role="status">
-        <Loader2 className="zf-spin" aria-hidden="true" /> Loading broker connections…
+      <div className="zf-broker-skel-grid" role="status">
+        <span className="zf-sr-only">Loading broker connections</span>
+        {[0, 1].map((i) => (
+          <div key={i} className="zf-broker-skel-tile" aria-hidden="true">
+            <div className="zf-broker-skel-id">
+              <Skeleton width={40} height={40} radius={12} />
+              <span className="zf-broker-skel-lines">
+                <Skeleton width={128} height={14} radius={4} />
+                <Skeleton width={176} height={11} radius={4} />
+              </span>
+            </div>
+            <Skeleton width={96} height={32} radius={999} />
+          </div>
+        ))}
       </div>
     );
   }
@@ -488,18 +418,20 @@ export default function Brokers({ stocks, onImportStocks }: BrokersProps) {
         <div className="zf-broker-section-head">
           <div>
             <h2 className="zf-card-title" id="zf-broker-providers-title">Supported brokers</h2>
-            <p className="zf-card-sub">Each method follows the provider's documented authentication flow.</p>
+            <p className="zf-card-sub">Each broker connects the way its own API requires.</p>
           </div>
         </div>
-        <div className="zf-broker-grid">
-          {providers.map((provider) => (
-            <ProviderCard
-              key={provider.id}
-              provider={provider}
-              busy={busy !== null}
-              onConnect={(item, method) => setForm({ provider: item, method })}
-            />
-          ))}
+        <div className="zf-broker-tiles">
+          {BROKER_PROVIDER_IDS.map((id) => providers.find((provider) => provider.id === id))
+            .filter((provider): provider is BrokerProviderPublic => Boolean(provider))
+            .map((provider) => (
+              <BrokerTile
+                key={provider.id}
+                provider={provider}
+                connection={activeConnectionFor(provider.id)}
+                onAction={(state) => handleTileAction(provider, state)}
+              />
+            ))}
         </div>
       </section>
 
