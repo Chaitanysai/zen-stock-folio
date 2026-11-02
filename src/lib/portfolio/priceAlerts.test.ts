@@ -57,7 +57,7 @@ describe("evaluateAlerts", () => {
 
     const result = evaluateAlerts(
       alerts,
-      { AAA: freshQuote(101), BBB: freshQuote(49), CCC: freshQuote(150) },
+      { "NSE:AAA": freshQuote(101), "NSE:BBB": freshQuote(49), "NSE:CCC": freshQuote(150) },
       { now: NOW },
     );
 
@@ -70,13 +70,13 @@ describe("evaluateAlerts", () => {
   it("does not re-notify alerts that are already triggered", () => {
     const first = evaluateAlerts(
       [alert({ id: "a", ticker: "AAA" })],
-      { AAA: freshQuote(101) },
+      { "NSE:AAA": freshQuote(101) },
       { now: NOW },
     );
 
     const second = evaluateAlerts(
       first.alerts,
-      { AAA: { price: 102, asOf: at(60_000) } },
+      { "NSE:AAA": { price: 102, asOf: at(60_000) } },
       { now: NOW + 60_000 },
     );
 
@@ -93,6 +93,15 @@ describe("evaluateAlerts", () => {
     expect(result.alerts).toBe(alerts);
   });
 
+  it("does not fire an NSE alert on a U.S. quote for the same ticker", () => {
+    const alerts = [alert({ ticker: "AAA", targetPrice: 100 })];
+
+    const result = evaluateAlerts(alerts, { "US:AAA": freshQuote(150) }, { now: NOW });
+
+    expect(result.newlyTriggered).toEqual([]);
+    expect(result.alerts).toBe(alerts);
+  });
+
   it("skips dismissed alerts so they cannot re-notify", () => {
     const alerts = [
       alert({
@@ -104,7 +113,7 @@ describe("evaluateAlerts", () => {
       }),
     ];
 
-    const result = evaluateAlerts(alerts, { AAA: freshQuote(500) }, { now: NOW });
+    const result = evaluateAlerts(alerts, { "NSE:AAA": freshQuote(500) }, { now: NOW });
 
     expect(result.newlyTriggered).toEqual([]);
     expect(result.alerts).toBe(alerts);
@@ -113,7 +122,7 @@ describe("evaluateAlerts", () => {
   it("returns the same array when nothing triggers", () => {
     const alerts = [alert({ ticker: "AAA", targetPrice: 500 })];
 
-    const result = evaluateAlerts(alerts, { AAA: freshQuote(100) }, { now: NOW });
+    const result = evaluateAlerts(alerts, { "NSE:AAA": freshQuote(100) }, { now: NOW });
 
     expect(result.newlyTriggered).toEqual([]);
     expect(result.alerts).toBe(alerts);
@@ -124,7 +133,7 @@ describe("evaluateAlerts freshness guards", () => {
   const crossing = [alert({ ticker: "AAA", targetPrice: 100 })];
 
   it("triggers on a fresh quote that crosses the threshold", () => {
-    const result = evaluateAlerts(crossing, { AAA: freshQuote(101) }, { now: NOW });
+    const result = evaluateAlerts(crossing, { "NSE:AAA": freshQuote(101) }, { now: NOW });
 
     expect(result.newlyTriggered.map((a) => a.id)).toEqual(["alert-1"]);
   });
@@ -132,7 +141,7 @@ describe("evaluateAlerts freshness guards", () => {
   it("ignores quotes older than the maximum age", () => {
     const stale = { price: 101, asOf: at(-25 * 60 * 60 * 1000) };
 
-    const result = evaluateAlerts(crossing, { AAA: stale }, { now: NOW });
+    const result = evaluateAlerts(crossing, { "NSE:AAA": stale }, { now: NOW });
 
     expect(result.newlyTriggered).toEqual([]);
     expect(result.alerts).toBe(crossing);
@@ -141,20 +150,20 @@ describe("evaluateAlerts freshness guards", () => {
   it("accepts a quote exactly at the maximum age", () => {
     const edge = { price: 101, asOf: at(-24 * 60 * 60 * 1000) };
 
-    const result = evaluateAlerts(crossing, { AAA: edge }, { now: NOW });
+    const result = evaluateAlerts(crossing, { "NSE:AAA": edge }, { now: NOW });
 
     expect(result.newlyTriggered.map((a) => a.id)).toEqual(["alert-1"]);
   });
 
   it("ignores quotes with no timestamp at all instead of assuming they are fresh", () => {
-    const result = evaluateAlerts(crossing, { AAA: { price: 101 } }, { now: NOW });
+    const result = evaluateAlerts(crossing, { "NSE:AAA": { price: 101 } }, { now: NOW });
 
     expect(result.newlyTriggered).toEqual([]);
     expect(result.alerts).toBe(crossing);
   });
 
   it("falls back to the receipt time when the server omits asOf", () => {
-    const result = evaluateAlerts(crossing, { AAA: freshReceipt(101) }, { now: NOW });
+    const result = evaluateAlerts(crossing, { "NSE:AAA": freshReceipt(101) }, { now: NOW });
 
     expect(result.newlyTriggered.map((a) => a.id)).toEqual(["alert-1"]);
   });
@@ -166,7 +175,7 @@ describe("evaluateAlerts freshness guards", () => {
       receivedAt: at(-30_000),
     };
 
-    const result = evaluateAlerts(crossing, { AAA: cached }, { now: NOW });
+    const result = evaluateAlerts(crossing, { "NSE:AAA": cached }, { now: NOW });
 
     expect(result.newlyTriggered).toEqual([]);
     expect(result.alerts).toBe(crossing);
@@ -175,7 +184,7 @@ describe("evaluateAlerts freshness guards", () => {
   it("ignores receipts older than the maximum age", () => {
     const oldReceipt = { price: 101, receivedAt: at(-25 * 60 * 60 * 1000) };
 
-    const result = evaluateAlerts(crossing, { AAA: oldReceipt }, { now: NOW });
+    const result = evaluateAlerts(crossing, { "NSE:AAA": oldReceipt }, { now: NOW });
 
     expect(result.newlyTriggered).toEqual([]);
     expect(result.alerts).toBe(crossing);
@@ -185,7 +194,7 @@ describe("evaluateAlerts freshness guards", () => {
     const created = [alert({ ticker: "AAA", targetPrice: 100, createdAt: at(-10_000) })];
     const beforeCreation = { price: 101, asOf: at(-20_000) };
 
-    const result = evaluateAlerts(created, { AAA: beforeCreation }, { now: NOW });
+    const result = evaluateAlerts(created, { "NSE:AAA": beforeCreation }, { now: NOW });
 
     expect(result.newlyTriggered).toEqual([]);
     expect(result.alerts).toBe(created);
@@ -194,14 +203,14 @@ describe("evaluateAlerts freshness guards", () => {
   it("ignores timestamps implausibly in the future", () => {
     const skewed = { price: 101, asOf: at(10 * 60 * 1000) };
 
-    const result = evaluateAlerts(crossing, { AAA: skewed }, { now: NOW });
+    const result = evaluateAlerts(crossing, { "NSE:AAA": skewed }, { now: NOW });
 
     expect(result.newlyTriggered).toEqual([]);
     expect(result.alerts).toBe(crossing);
   });
 
   it("evaluates nothing after a failed refresh", () => {
-    const result = evaluateAlerts(crossing, { AAA: freshQuote(101) }, {
+    const result = evaluateAlerts(crossing, { "NSE:AAA": freshQuote(101) }, {
       now: NOW,
       refreshFailed: true,
     });
@@ -213,7 +222,7 @@ describe("evaluateAlerts freshness guards", () => {
   it("ignores retained prices for tickers no longer being tracked", () => {
     const retained = [alert({ id: "gone", ticker: "GONE", targetPrice: 100 })];
 
-    const result = evaluateAlerts(retained, { GONE: freshQuote(150) }, {
+    const result = evaluateAlerts(retained, { "NSE:GONE": freshQuote(150) }, {
       now: NOW,
       activeTickers: new Set(["RELIANCE"]),
     });
@@ -228,7 +237,7 @@ describe("evaluateAlerts freshness guards", () => {
       alert({ id: "live", ticker: "AAA", targetPrice: 100 }),
     ];
 
-    const result = evaluateAlerts(alerts, { GONE: freshQuote(150), AAA: freshQuote(101) }, {
+    const result = evaluateAlerts(alerts, { "NSE:GONE": freshQuote(150), "NSE:AAA": freshQuote(101) }, {
       now: NOW,
       activeTickers: new Set(["AAA"]),
     });

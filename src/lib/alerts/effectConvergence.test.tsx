@@ -38,7 +38,7 @@ function envelope(ts: string, price = 2600): Record<string, QuoteEnvelope> {
       stale: false,
       unavailable: [],
       warnings: [],
-      quote: { symbol: "RELIANCE", price, change: null, changePercent: null, previousClose: null, dayHigh: null, dayLow: null, weekHigh52: null, weekLow52: null, volume: null, currency: "INR", exchange: "NSE", name: null },
+      quote: { symbol: "RELIANCE", market: "NSE", price, change: null, changePercent: null, previousClose: null, dayHigh: null, dayLow: null, weekHigh52: null, weekLow52: null, volume: null, currency: "INR", exchange: "NSE", name: null },
     },
   };
 }

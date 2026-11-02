@@ -1,4 +1,5 @@
 import type { PriceAlert } from "@/data/sampleData";
+import { instrumentKey } from "../market-data/symbols.ts";
 
 /** Minimal price shape; StockPrice from useLivePrices is structurally compatible. */
 export type AlertQuote = {
@@ -9,6 +10,7 @@ export type AlertQuote = {
   receivedAt?: string;
 };
 
+/** Quotes keyed by `market:ticker`, exactly as `/api/quotes` returns them. */
 export type AlertPriceMap = Record<string, AlertQuote | undefined>;
 
 /**
@@ -108,7 +110,8 @@ export function evaluateAlerts(
   const nextAlerts = alerts.map((alert) => {
     if (alert.triggered || alert.dismissedAt) return alert;
 
-    const quote = prices[alert.ticker];
+    // Alerts are NSE-only by construction (index/F&O alerts have their own path).
+    const quote = prices[instrumentKey({ market: "NSE", ticker: alert.ticker })];
     if (!isQuoteEligible(alert, quote, now, maxQuoteAgeMs, options.activeTickers)) {
       return alert;
     }

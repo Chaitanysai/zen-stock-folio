@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, formatBytes } from "@/lib/importTrades";
+import { parseRows } from "@/lib/portfolio/csvImport";
+import { formatNative } from "@/lib/portfolio/display";
 import {
   applySearchSymbol,
   createIsinResolver,
@@ -29,7 +31,6 @@ INFY,Infosys,12-Dec-2025,1890,1756.4,2012,20,1756.4,28-Feb-2026,Sold Loss`;
 
 /** Broker statement lookups over the authed symbol-search endpoint. */
 const MAX_SEARCH_LOOKUPS = 60;
-
 const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<PortfolioStock[]>([]);
@@ -115,6 +116,29 @@ const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
       }));
 
       const result: StatementParseResult = parseStatementSheets(sheets);
+
+      // The downloadable template is a plain portfolio CSV, not a broker
+      // statement. Fall back to the template parser instead of rejecting it.
+      if (result.lots.length === 0 && sheets[0]) {
+        const jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(workbook.Sheets[sheets[0].name], {
+          raw: false,
+        });
+        if (jsonData.length > MAX_IMPORT_ROWS) {
+          setPreview([]);
+          setErrors([
+            `File has ${jsonData.length.toLocaleString()} rows; the limit is ${MAX_IMPORT_ROWS.toLocaleString()}. Split the file and import in parts.`,
+          ]);
+          return;
+        }
+        const { parsed, errors: parseErrors } = parseRows(jsonData);
+        setPreview(parsed);
+        setWarnings([]);
+        setErrors(parsed.length === 0 && parseErrors.length === 0
+          ? ["No valid rows found. Check your file format."]
+          : [...result.errors, ...parseErrors]);
+        return;
+      }
+
       setErrors(result.errors);
       setWarnings(result.warnings);
       if (result.lots.length > MAX_IMPORT_ROWS) {
@@ -293,9 +317,11 @@ const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
                     <TableRow className="hover:bg-transparent border-border">
                       <TableHead className="text-xs">Ticker</TableHead>
                       <TableHead className="text-xs">Name</TableHead>
-                      <TableHead className="text-xs text-right">Entry ₹</TableHead>
+                      <TableHead className="text-xs">Market</TableHead>
+                      <TableHead className="text-xs text-right">Entry</TableHead>
+                      <TableHead className="text-xs text-right">CMP</TableHead>
                       <TableHead className="text-xs text-right">Qty</TableHead>
-                      <TableHead className="text-xs text-right">Exit ₹</TableHead>
+                      <TableHead className="text-xs text-right">Exit</TableHead>
                       <TableHead className="text-xs">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -304,10 +330,12 @@ const ImportTradesDialog = ({ onImport, trigger }: ImportTradesDialogProps) => {
                       <TableRow key={i} className="border-border">
                         <TableCell className="font-mono text-xs text-primary">{s.ticker}</TableCell>
                         <TableCell className="text-xs truncate max-w-[120px]">{s.stockName}</TableCell>
-                        <TableCell className="text-right font-mono text-xs">₹{s.entryPrice}</TableCell>
+                        <TableCell className="text-xs font-mono">{s.market ?? "NSE"} · {s.currency ?? "INR"}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{formatNative(s.entryPrice, s.currency, 2)}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{formatNative(s.cmp, s.currency, 2)}</TableCell>
                         <TableCell className="text-right font-mono text-xs">{s.quantity}</TableCell>
                         <TableCell className="text-right font-mono text-xs">
-                          {s.exitPrice !== undefined ? `₹${s.exitPrice}` : "—"}
+                          {s.exitPrice !== undefined ? formatNative(s.exitPrice, s.currency, 2) : "—"}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-[10px]">

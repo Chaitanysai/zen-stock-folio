@@ -245,6 +245,23 @@ describe("first-load hydration gate", () => {
     expect(db.writes).toBe(0);
   });
 
+  it("keeps the execution ledger when a degraded load falls back to the device cache", async () => {
+    const ledger: NonNullable<PortfolioSnapshot["executions"]> = [{
+      id: "indmoney:1", source: "indmoney", market: "NSE", ticker: "RELIANCE",
+      side: "BUY", quantity: 10, price: 100,
+      executedAt: "2026-01-01T04:30:00.000Z", currency: "INR",
+    }];
+    const cached: PortfolioSnapshot = { ...snapshotFor("LOCALONLY"), executions: ledger };
+    window.localStorage.setItem(userStorageKey(USER_A), JSON.stringify(cached));
+    db.currentUser = USER_A;
+    db.loadError = "permission denied";
+
+    const loaded = await syncFor(USER_A).current.load();
+
+    expect(loaded.status).toBe("degraded");
+    expect(loaded.snapshot?.executions).toEqual(ledger);
+  });
+
   it("becomes writable once a successful read has completed", async () => {
     db.currentUser = USER_A;
     await saveToServer(USER_A, snapshotFor("SERVER"));

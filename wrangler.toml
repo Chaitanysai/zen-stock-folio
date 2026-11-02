@@ -28,6 +28,19 @@ FIREBASE_API_KEY = "AIzaSyDcKFGeZv2ov8M7SYdv-Q4H3JPhpOhncXQ"
 # cannot redirect the callback to another site.
 BROKER_PUBLIC_ORIGIN = "https://zenfolio-7jd.pages.dev"
 
+# --- INDmoney broker sync ---------------------------------------------------
+# Enabled for the production deployment at the operator's request on
+# 2026-11-01. The probe in docs/api-integration/indmoney-probe.md has NOT been
+# completed, so the adapter's field mappings are unverified against a live
+# account. Removing INDSTOCKS_BASE_URL disables both broker routes (503
+# BROKER_DISABLED) without a code change.
+FIREBASE_PROJECT_ID = "zen-stock-folio"
+INDSTOCKS_BASE_URL = "https://api.indstocks.com"
+#
+# Secrets (never in this file):
+#   wrangler pages secret put INDSTOCKS_API_KEY
+#   wrangler pages secret put BROKER_TOKEN_KEY
+
 # --- EOD price cache --------------------------------------------------------
 # Cloudflare KV binding for the EOD price cache. Created 2026-10-27 for the
 # `zenfolio` Pages project. One namespace per Pages project (preview and

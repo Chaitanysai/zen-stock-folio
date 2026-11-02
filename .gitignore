@@ -36,6 +36,12 @@ ddlxhhvrlufvevgzguqd.storage.zip
 # Real-data migration artifacts (mapping template contains account emails)
 .migration/
 
+# Saved browser sessions and smoke screenshots contain live credentials
+scripts/e2e/.auth/
+
+# Subagent-driven execution scratch (ledger, briefs, review packages)
+.superpowers/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

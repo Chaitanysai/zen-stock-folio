@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { PortfolioStock, TradeStrategy } from "@/data/sampleData";
+import { isValidPrice } from "@/lib/portfolio/valuation";
 import { fetchApi, getApiUnavailableMessage } from "@/lib/api";
 
 interface ChatMessage {
@@ -33,21 +34,27 @@ function buildCtx(stocks: PortfolioStock[], trades: TradeStrategy[]): string {
   const soldProfit = stocks.filter((s) => s.status === "Sold Profit");
   const soldLoss = stocks.filter((s) => s.status === "Sold Loss");
 
+  const priced = (s: PortfolioStock) => isValidPrice(s.cmp);
   const invested = active.reduce((s, x) => s + x.entryPrice * x.quantity, 0);
-  const current = active.reduce((s, x) => s + (x.cmp ?? x.entryPrice) * x.quantity, 0);
-  const unrealPnl = current - invested;
-  const unrealPct = invested > 0 ? ((unrealPnl / invested) * 100).toFixed(2) : "0";
+  const pricedCost = active.reduce((s, x) => s + (priced(x) ? x.entryPrice * x.quantity : 0), 0);
+  const current = active.reduce((s, x) => s + (priced(x) ? x.cmp * x.quantity : 0), 0);
+  const unrealPnl = current - pricedCost;
+  const unrealPct = pricedCost > 0 ? ((unrealPnl / pricedCost) * 100).toFixed(2) : "0";
+  const unpriced = active.filter((s) => !priced(s)).length;
   const realPnl = stocks
     .filter((s) => s.exitPrice)
     .reduce((s, x) => s + (x.exitPrice! - x.entryPrice) * x.quantity, 0);
 
   const positions = active
     .map((s) => {
-      const pnl = ((s.cmp ?? s.entryPrice) - s.entryPrice) * s.quantity;
+      if (!priced(s)) {
+        return `  • ${s.ticker} (${s.sector ?? "—"}): ${s.quantity} qty @ ₹${s.entryPrice} | CMP N/A | P&L unavailable (no market price)`;
+      }
+      const pnl = (s.cmp - s.entryPrice) * s.quantity;
       const pnlPct = s.entryPrice > 0
         ? ((pnl / (s.entryPrice * s.quantity)) * 100).toFixed(1)
         : "0";
-      return `  ${pnl >= 0 ? "📈" : "📉"} ${s.ticker} (${s.sector ?? "—"}): ${s.quantity} qty @ ₹${s.entryPrice} | CMP ₹${s.cmp ?? "N/A"} | P&L ₹${pnl.toFixed(0)} (${pnlPct}%)`;
+      return `  ${pnl >= 0 ? "📈" : "📉"} ${s.ticker} (${s.sector ?? "—"}): ${s.quantity} qty @ ₹${s.entryPrice} | CMP ₹${s.cmp} | P&L ₹${pnl.toFixed(0)} (${pnlPct}%)`;
     })
     .join("\n");
 
@@ -65,7 +72,7 @@ Active: ${active.length} positions
 Invested:  ₹${invested.toFixed(0)}
 Current:   ₹${current.toFixed(0)}
 Unrealised P&L: ₹${unrealPnl.toFixed(0)} (${unrealPct}%)
-Realised P&L:   ₹${realPnl.toFixed(0)} (${soldProfit.length} wins, ${soldLoss.length} losses)
+${unpriced > 0 ? `Unpriced: ${unpriced} position${unpriced === 1 ? "" : "s"} with no market price (excluded from Current and Unrealised P&L)\n` : ""}Realised P&L:   ₹${realPnl.toFixed(0)} (${soldProfit.length} wins, ${soldLoss.length} losses)
 Sectors: ${sectors.join(", ") || "N/A"}
 
 Active Positions:

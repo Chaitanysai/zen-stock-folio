@@ -162,3 +162,26 @@ describe("candle range presets", () => {
     expect(isCandleRange("6mo")).toBe(true);
   });
 });
+
+describe("market-aware data mode", () => {
+  it("labels a delayed US quote as delayed during the US session", () => {
+    const now = Date.parse("2026-11-02T15:00:00Z");
+    expect(
+      deriveDataMode({ exchangeTimestampMs: now - 60_000, now, realtimeProvider: false, market: "US" }),
+    ).toBe("delayed");
+  });
+
+  it("refuses to guess when the US calendar does not cover the year", () => {
+    const now = Date.parse("2028-03-01T15:00:00Z");
+    expect(
+      deriveDataMode({ exchangeTimestampMs: now - 60_000, now, realtimeProvider: false, market: "US" }),
+    ).toBe("unknown");
+  });
+
+  it("never calls a US observation realtime", () => {
+    const now = Date.parse("2026-11-02T15:00:00Z");
+    expect(
+      deriveDataMode({ exchangeTimestampMs: now - 1_000, now, realtimeProvider: true, market: "US" }),
+    ).toBe("eod");
+  });
+});

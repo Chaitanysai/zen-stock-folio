@@ -720,10 +720,13 @@
   .zf-metric-grid > *:not(:nth-child(4n+1)) { border-left: 1px solid hsl(var(--border) / .7); }
 }
 .zf-tab-panel > .glass-card, .zf-tab-panel > .glass-card:hover,
-.zf-tab-panel [role="tabpanel"] > .glass-card, .zf-tab-panel [role="tabpanel"] > .glass-card:hover {
+.zf-tab-panel [role="tabpanel"] > .glass-card, .zf-tab-panel [role="tabpanel"] > .glass-card:hover,
+.zf-tab-panel > .zf-tab-stack > .glass-card, .zf-tab-panel > .zf-tab-stack > .glass-card:hover {
   border: 0 !important; border-radius: 0; box-shadow: none; background: transparent;
 }
 .zf-tab-panel .overflow-x-auto:has(table) { background: hsl(var(--card)); }
+/* Several root cards inside one framed panel stack at the dashboard gap. */
+.zf-tab-stack { display: flex; flex-direction: column; gap: 14px; }
 
 .zf-subtabs { display: flex; align-items: center; gap: 4px; padding: 12px 16px; border-bottom: 1px solid hsl(var(--border)); flex: 0 0 auto !important; overflow: visible !important; }
 .zf-subtab {

@@ -27,6 +27,14 @@ export interface Env {
   UPSTOX_API_KEY?: string;
   UPSTOX_API_SECRET?: string;
   UPSTOX_OPS_KEY?: string;
+  /** Firebase project id for Firestore REST calls made with the caller's token. */
+  FIREBASE_PROJECT_ID?: string;
+  /** INDstocks API origin. Unset means broker sync is disabled (503). */
+  INDSTOCKS_BASE_URL?: string;
+  /** INDstocks API key. Server-side only; never exposed to the browser. */
+  INDSTOCKS_API_KEY?: string;
+  /** Base64-encoded 32-byte AES-256 key for broker tokens. */
+  BROKER_TOKEN_KEY?: string;
   /**
    * EOD price-cache KV binding (resource creation awaiting approval).
    * When absent the endpoints degrade gracefully to no-cache mode.

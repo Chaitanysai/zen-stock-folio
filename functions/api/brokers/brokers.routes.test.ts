@@ -465,7 +465,7 @@ describe("broker routes — sync", () => {
   const seedConnection = async (env: Env, over: Record<string, unknown> = {}) => {
     const record = connectionRecord({
       id: CONNECTION_ID,
-      tokenExpiresAt: "2026-10-29T00:30:00.000Z",
+      tokenExpiresAt: "2099-01-01T00:30:00.000Z",
       ...over,
     });
     await putConnectionRecord(env, record);

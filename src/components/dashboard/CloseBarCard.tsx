@@ -20,7 +20,7 @@ import { chartTimeAxisOptions } from "@/lib/charts/timeAxis";
 import { buildCloseBars, closeBarBase } from "@/lib/charts/closeBars";
 import { inr, signedPct } from "@/lib/dashboard/format";
 import { describeProvenance } from "@/lib/market-data/freshness";
-import type { CandleRange } from "@/lib/market-data/types";
+import type { CandleRange, Market } from "@/lib/market-data/types";
 import { useCandleHistory } from "@/hooks/useCandleHistory";
 import { chartThemeOptions, useChartColors } from "@/hooks/useChartTheme";
 
@@ -42,11 +42,12 @@ const DATE_FMT = new Intl.DateTimeFormat("en-IN", {
 export interface CloseBarCardProps {
   symbol: string;
   name: string;
+  market?: Market;
 }
 
-export function CloseBarCard({ symbol, name }: CloseBarCardProps) {
+export function CloseBarCard({ symbol, name, market = "NSE" }: CloseBarCardProps) {
   const [range, setRange] = useState<CandleRange>("1mo");
-  const { status, envelope, retry } = useCandleHistory(symbol, range);
+  const { status, envelope, retry } = useCandleHistory(symbol, range, market);
   const colors = useChartColors();
   const hostRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(() => typeof IntersectionObserver === "undefined");

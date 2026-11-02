@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { onRequestGet } from "./search";
 import {
   API_ORIGIN,
+  authedRequest,
   makeEnv,
   restoreIdentity,
   stubIdentity,
@@ -134,5 +135,46 @@ describe("GET /api/search", () => {
     }
     expect(last?.status).toBe(429);
     expect(last?.headers.get("Retry-After")).toBeTruthy();
+  });
+
+  it("returns U.S. listings for market=US and never mixes markets", async () => {
+    stubIdentity();
+    stubUpstreamRoutes([
+      {
+        match: "/v1/finance/search",
+        body: {
+          quotes: [
+            { symbol: "AAPL", shortname: "Apple Inc.", exchange: "NMS", quoteType: "EQUITY" },
+            { symbol: "AAPL.NS", shortname: "Apple India", exchange: "NSI", quoteType: "EQUITY" },
+          ],
+        },
+      },
+    ]);
+
+    const response = await onRequestGet({
+      request: authedRequest(
+        `${API_ORIGIN}/api/search?q=apple&market=US`,
+        undefined,
+        "good-token",
+        "GET",
+      ),
+      env: makeEnv(),
+      params: {},
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { hits: Array<{ symbol: string; market: string }> };
+    expect(body.hits).toEqual([expect.objectContaining({ symbol: "AAPL", market: "US" })]);
+    expect(body.hits.some((hit) => hit.symbol === "AAPL.NS")).toBe(false);
+  });
+
+  it("rejects an unknown market", async () => {
+    stubIdentity();
+    const response = await onRequestGet({
+      request: authedRequest(`${API_ORIGIN}/api/search?q=apple&market=LSE`, undefined, "good-token", "GET"),
+      env: makeEnv(),
+      params: {},
+    });
+    expect(response.status).toBe(400);
   });
 });

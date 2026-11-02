@@ -2,17 +2,22 @@ import { requireVerifiedIdentity } from "./_lib/auth";
 import { checkRateLimit, RATE_LIMITS } from "./_lib/ratelimit";
 import { errorResponse, handleOptions, jsonResponse, retryAfterHeader } from "./_lib/http";
 import { searchSymbols } from "../../src/lib/market-data/search.ts";
+import { isMarket } from "../../src/lib/market-data/symbols.ts";
 import type { PagesHandler } from "./_lib/types";
 
 /**
- * GET /api/search?q=..&limit=.. — NSE symbol lookup for the header search box.
+ * GET /api/search?q=..&market=..&limit=.. — market-scoped symbol lookup for the
+ * header search box.
  *
  * The browser never queries a provider directly (Yahoo search sends no CORS
  * header), so all lookups happen here. On this runtime the two local sources
  * of the reference (the 40 MB Upstox instrument master and the ~1 MB Twelve
  * Data directory) are not loaded — Workers memory/CPU limits rule them out —
- * so search runs on live Yahoo, filtered to NSE (`exchange === "NSI"`) like
- * the reference's live tier.
+ * so search runs on live Yahoo. The adapter filters to the requested market:
+ * NSE (`exchange === "NSI"`) or U.S. listings only.
+ *
+ * `market` defaults to NSE and an unrecognized value is rejected, never
+ * silently treated as NSE: a listing must not be guessed.
  *
  * "q matched nothing" is a 200 with `hits: []` and a note. "The only search
  * source is down" is a provider failure and must fail closed as 502, never a
@@ -37,7 +42,12 @@ export const onRequestGet: PagesHandler = async ({ request, env }) => {
     return errorResponse(env, request, 429, "Rate limit exceeded", retryAfterHeader(rl.resetInMs));
   }
 
-  const raw = (new URL(request.url).searchParams.get("q") ?? "").trim();
+  const url = new URL(request.url);
+  const marketParam = url.searchParams.get("market") ?? "NSE";
+  if (!isMarket(marketParam)) {
+    return errorResponse(env, request, 400, "Unsupported market", {}, "invalid_market");
+  }
+  const raw = (url.searchParams.get("q") ?? "").trim();
   if (raw.length < MIN_QUERY_LENGTH) {
     return errorResponse(env, request, 400, "Query parameter `q` is required", {}, "missing_query");
   }
@@ -46,6 +56,7 @@ export const onRequestGet: PagesHandler = async ({ request, env }) => {
     instruments: null,
     twelveDataHits: null,
     allowYahoo: true,
+    market: marketParam,
   });
 
   const noSourceAnswered =

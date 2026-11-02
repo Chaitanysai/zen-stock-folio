@@ -1,10 +1,11 @@
 import { useState } from "react";
+import type { Market } from "@/lib/market-data/types";
 import { CloseBarCard } from "./CloseBarCard";
 
 const VISIBLE = 8;
 
 export interface HoldingChartsProps {
-  holdings: { symbol: string; name: string }[];
+  holdings: { symbol: string; name: string; market?: Market }[];
 }
 
 export function HoldingCharts({ holdings }: HoldingChartsProps) {
@@ -27,7 +28,12 @@ export function HoldingCharts({ holdings }: HoldingChartsProps) {
       </div>
       <div className="zf-chartgrid">
         {shown.map((holding) => (
-          <CloseBarCard key={holding.symbol} symbol={holding.symbol} name={holding.name} />
+          <CloseBarCard
+            key={`${holding.market ?? "NSE"}:${holding.symbol}`}
+            symbol={holding.symbol}
+            name={holding.name}
+            market={holding.market}
+          />
         ))}
       </div>
       {holdings.length > VISIBLE && (

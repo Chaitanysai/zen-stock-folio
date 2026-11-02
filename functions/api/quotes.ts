@@ -1,21 +1,25 @@
 import { requireVerifiedIdentity } from "./_lib/auth";
 import { checkRateLimit, RATE_LIMITS } from "./_lib/ratelimit";
 import { errorResponse, handleOptions, jsonResponse, readJsonBody, retryAfterHeader } from "./_lib/http";
-import { normalizeSymbolList } from "../../src/lib/market-data/symbols.ts";
+import { normalizeInstrumentList } from "../../src/lib/market-data/symbols.ts";
 import { MAX_QUOTES_PER_REQUEST, resolveQuotes } from "./_lib/quotes";
 import type { PagesHandler } from "./_lib/types";
 
 /**
- * POST /api/quotes — NSE quotes with explicit freshness provenance.
+ * POST /api/quotes — quotes for NSE and U.S. instruments with explicit
+ * freshness provenance.
  *
  * Contract (src/lib/market-data/client.ts + types.ts):
- *   body     { tickers?: string[], symbols?: string[], refresh?: boolean }
- *            — the client sends `tickers`; `symbols` is accepted as an alias.
+ *   body     { instruments?: { market, ticker }[], tickers?: string[],
+ *              symbols?: string[], refresh?: boolean }
+ *            — the client sends `instruments`; a bare ticker list is accepted
+ *              as a legacy NSE-only form (`symbols` is its alias).
  *   response QuotesResponse { quotes, fetchedAt, providerCounts, missing, notes }
- *            — every envelope carries provider, dataMode, exchangeTimestamp,
- *              cached, stale and unavailable.
+ *            — quotes are keyed `market:ticker`, and every envelope carries
+ *              provider, dataMode, exchangeTimestamp, cached, stale and
+ *              unavailable.
  *
- * Admission control (ported from the reference): symbols are normalized,
+ * Admission control (ported from the reference): instruments are normalized,
  * junk entries are ignored with a note, and the list is capped at
  * MAX_QUOTES_PER_REQUEST. Unlike the reference, every caller MUST carry a
  * verified Firebase identity (this is the paid, rate-limited surface), and an
@@ -42,36 +46,48 @@ export const onRequestPost: PagesHandler = async ({ request, env }) => {
     return errorResponse(env, request, 400, "Expected a JSON object body", {}, "invalid_tickers");
   }
 
-  const rawBody = body.data as { tickers?: unknown; symbols?: unknown; refresh?: unknown };
+  const rawBody = body.data as { instruments?: unknown; tickers?: unknown; symbols?: unknown; refresh?: unknown };
   const refresh = rawBody.refresh === true;
-  const rawList = Array.isArray(rawBody.tickers) ? rawBody.tickers : rawBody.symbols;
+  const rawInstruments = Array.isArray(rawBody.instruments) ? rawBody.instruments : null;
+  const rawTickers: unknown[] | undefined = Array.isArray(rawBody.tickers)
+    ? rawBody.tickers
+    : Array.isArray(rawBody.symbols)
+      ? rawBody.symbols
+      : undefined;
 
-  if (!Array.isArray(rawList) || rawList.length === 0 || rawList.length > MAX_QUOTES_PER_REQUEST) {
+  if (
+    rawInstruments === null &&
+    (!Array.isArray(rawTickers) || rawTickers.length === 0 || rawTickers.length > MAX_QUOTES_PER_REQUEST)
+  ) {
     return errorResponse(
       env,
       request,
       400,
-      `tickers must be an array of 1-${MAX_QUOTES_PER_REQUEST} NSE symbols`,
+      `instruments must be an array of 1-${MAX_QUOTES_PER_REQUEST} instruments`,
       {},
       "invalid_tickers",
     );
   }
 
-  const { symbols, rejected, truncated } = normalizeSymbolList(rawList, MAX_QUOTES_PER_REQUEST);
-  if (symbols.length === 0) {
+  const requested = rawInstruments ?? rawTickers!.map((ticker) => ({ market: "NSE", ticker }));
+  const { instruments, rejected, truncated } = normalizeInstrumentList(
+    requested,
+    MAX_QUOTES_PER_REQUEST,
+  );
+  if (instruments.length === 0) {
     return errorResponse(
       env,
       request,
       400,
       rejected.length > 0
-        ? "No valid NSE symbols in request"
-        : `tickers must contain 1-${MAX_QUOTES_PER_REQUEST} valid NSE symbols`,
+        ? "No valid instruments in request"
+        : `instruments must contain 1-${MAX_QUOTES_PER_REQUEST} valid instruments`,
       {},
       "invalid_tickers",
     );
   }
 
-  const outcome = await resolveQuotes(env, symbols, { bypassCache: refresh });
+  const outcome = await resolveQuotes(env, instruments, { bypassCache: refresh });
   if (outcome.status === "outage") {
     return errorResponse(env, request, 502, outcome.message, {}, "provider_unavailable");
   }

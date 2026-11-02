@@ -4,8 +4,9 @@
  * Scope note (documented, not hidden): the Map below is per Worker isolate.
  * A single Pages Function instance usually serves many requests, so this
  * softens abuse effectively, but a hard global cap additionally needs an
- * account-level Cloudflare WAF rate-limiting rule (free-tier: 1 rule) —
- * planned for Phase 5 staging, not a Phase 3 resource.
+ * account-level Cloudflare WAF rate-limiting rule (free-tier: 1 rule). That
+ * rule is an edge configuration, not repository state — see
+ * docs/operations/rate-limiting.md for the rule to create and how to verify it.
  *
  * Keys are `<uid>:<endpoint>` for authenticated calls (every Phase 3
  * endpoint authenticates), so per-user budgets are exact.
@@ -42,7 +43,15 @@ export const checkRateLimit = (key: string, limit: number, windowMs: number): Ra
       for (const [k, b] of buckets) {
         if (now - b.windowStart >= windowMs) buckets.delete(k);
       }
-      if (buckets.size >= MAX_BUCKETS) buckets.clear();
+      // Still full: evict oldest-first instead of clearing the map. A wholesale
+      // clear handed everyone — including an attacker flooding distinct keys —
+      // a fresh budget at the same instant; eviction costs only the coldest
+      // entries.
+      while (buckets.size >= MAX_BUCKETS) {
+        const oldest = buckets.keys().next().value;
+        if (oldest === undefined) break;
+        buckets.delete(oldest);
+      }
     }
     buckets.set(key, { count: 1, windowStart: now });
     return { allowed: true, remaining: limit - 1, resetInMs: windowMs };
@@ -88,4 +97,11 @@ export const RATE_LIMITS = {
   brokerTest: { limit: 10, windowMs: 60_000 },
   /** Sync is expensive on both sides; avoid overlapping runs. */
   brokerSync: { limit: 6, windowMs: 60_000 },
+  /** /api/client-error — browser error reports; a crash loop must not become
+   * a log flood, so this is deliberately the tightest budget in the table. */
+  clientError: { limit: 5, windowMs: 60_000 },
+  /** /api/fx — one rate per dashboard refresh, shared by all rows. */
+  fx: { limit: 30, windowMs: 60_000 },
+  /** /api/broker/** — link + preview/apply; also bounded to 20/day per user. */
+  broker: { limit: 6, windowMs: 60_000, daily: 20 },
 } as const;

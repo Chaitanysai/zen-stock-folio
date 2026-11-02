@@ -21,7 +21,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import type { Candle, CandlesEnvelope, CandleRange } from "@/lib/market-data/types.ts";
+import type { Candle, CandlesEnvelope, CandleRange, Market } from "@/lib/market-data/types.ts";
 import { describeProvenance, RANGE_PRESETS } from "@/lib/market-data/freshness.ts";
 import { chartTimeAxisOptions } from "@/lib/charts/timeAxis";
 import { fetchCandles, MarketDataApiError } from "@/lib/market-data/client.ts";
@@ -29,6 +29,8 @@ import { candleThemeOptions, chartThemeOptions, readChartColors, useChartColors 
 
 export interface MarketCandlestickProps {
   symbol: string;
+  /** Listing whose series to chart. `INFY` on NSE and on NYSE are not the same bar set. */
+  market?: Market;
   range: CandleRange;
   height?: number;
   /** Hide the provenance line when the parent already renders it. */
@@ -71,7 +73,7 @@ function describeFailure(error: unknown): { message: string; retryable: boolean 
   return { message: "Chart data could not be loaded.", retryable: true };
 }
 
-export function MarketCandlestick({ symbol, range, height = 260, showProvenance = true }: MarketCandlestickProps) {
+export function MarketCandlestick({ symbol, market = "NSE", range, height = 260, showProvenance = true }: MarketCandlestickProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -121,14 +123,14 @@ export function MarketCandlestick({ symbol, range, height = 260, showProvenance 
     seriesRef.current?.applyOptions?.(candleThemeOptions(colors));
   }, [colors]);
 
-  // Load candles whenever the symbol, range, or retry counter changes.
+  // Load candles whenever the symbol, market, range, or retry counter changes.
   useEffect(() => {
     const controller = new AbortController();
     setState({ kind: "loading" });
 
     void (async () => {
       try {
-        const envelope = await fetchCandles(symbol, range, { signal: controller.signal });
+        const envelope = await fetchCandles({ market, ticker: symbol }, range, { signal: controller.signal });
         if (controller.signal.aborted) return;
 
         if (envelope.candles.length === 0) {
@@ -152,7 +154,7 @@ export function MarketCandlestick({ symbol, range, height = 260, showProvenance 
     })();
 
     return () => controller.abort();
-  }, [symbol, range, attempt]);
+  }, [symbol, market, range, attempt]);
 
   return (
     <div style={{ position: "relative", minHeight: height }}>

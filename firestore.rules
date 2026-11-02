@@ -7,6 +7,10 @@ rules_version = '2';
 //                       { uid, snapshot, updatedAt }
 //   users/{uid}      -> profile metadata
 //                       { uid, displayName, updatedAt }
+//   users/{uid}/private/brokerConnection
+//                          -> sealed INDstocks token material
+//                             { uid, provider, ciphertext, iv, keyVersion,
+//                               expiresAt, syncedAt, updatedAt }
 //
 // The document ID is the owner's auth uid. Every read and write requires
 // request.auth.uid == uid, and every create/update additionally requires the
@@ -14,6 +18,12 @@ rules_version = '2';
 // the `WITH CHECK (auth.uid() = user_id)` clause the Supabase RLS policy
 // carried, so an owner cannot re-point a document at (or forge ownership
 // for) another account.
+//
+// Every write is also shape-checked (`validPortfolio` / `validProfile`) so a
+// client cannot grow its own document into unbounded storage: no unknown
+// top-level fields, and bounded array lengths. The field allowlist is a
+// deliberate coupling — adding a field to either document means editing this
+// file, and running `npm run test:rules`, in the same change.
 //
 // There are intentionally NO other matches: no public collections, no
 // list-only grants, no wildcard fallback. Price caching lives in Cloudflare
@@ -29,12 +39,65 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    // Upper bounds are generous for a retail portfolio and exist to cap
+    // document growth, not to model the UI's own limits. A document is 1 MiB;
+    // these caps leave room for realistic history while refusing a
+    // deliberately enormous payload.
+    function boundedSnapshot() {
+      let snapshot = request.resource.data.snapshot;
+      return snapshot.stocks.size() <= 1000
+        && snapshot.trades.size() <= 5000
+        && snapshot.watchlist.size() <= 1000
+        && snapshot.alerts.size() <= 1000
+        && snapshot.fnoTrades.size() <= 5000
+        && (!("executions" in snapshot) || snapshot.executions.size() <= 10000);
+    }
+
+    function validPortfolio(uid) {
+      return request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(["uid", "snapshot", "updatedAt"])
+        && boundedSnapshot();
+    }
+
+    function validProfile(uid) {
+      return request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(["uid", "displayName", "updatedAt"])
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() <= 100;
+    }
+
+    // Sealed broker material only. `ciphertext` is AES-256-GCM output; a
+    // plaintext token is not a known field, so it cannot be stored here at
+    // all. The size caps match connectionStore.ts and the sync route; the
+    // rules are the backstop, not the primary validator.
+    function validBrokerConnection(uid) {
+      let data = request.resource.data;
+      return data.uid == uid
+        && data.keys().hasOnly([
+          "uid", "provider", "ciphertext", "iv", "keyVersion",
+          "expiresAt", "syncedAt", "updatedAt"
+        ])
+        && data.provider == "indmoney"
+        && data.ciphertext is string
+        && data.ciphertext.size() > 0
+        && data.ciphertext.size() <= 8192
+        && data.iv is string
+        && data.iv.size() > 0
+        && data.iv.size() <= 64
+        && data.keyVersion == 1
+        && data.expiresAt is string
+        && data.expiresAt.size() <= 40
+        && (data.syncedAt == null
+            || (data.syncedAt is string && data.syncedAt.size() <= 40))
+        && data.updatedAt is timestamp;
+    }
+
     match /portfolios/{uid} {
       allow read: if isOwner(uid);
       allow create: if isOwner(uid)
-        && request.resource.data.uid == uid;
+        && validPortfolio(uid);
       allow update: if isOwner(uid)
-        && request.resource.data.uid == uid
+        && validPortfolio(uid)
         && resource.data.uid == uid;
       allow delete: if isOwner(uid);
     }
@@ -42,11 +105,22 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isOwner(uid);
       allow create: if isOwner(uid)
-        && request.resource.data.uid == uid;
+        && validProfile(uid);
       allow update: if isOwner(uid)
-        && request.resource.data.uid == uid
+        && validProfile(uid)
         && resource.data.uid == uid;
       allow delete: if isOwner(uid);
+
+      // The only private document this app stores. A literal path means no
+      // other `private/*` document is readable or writable, even by its owner.
+      match /private/brokerConnection {
+        allow read, delete: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && validBrokerConnection(uid);
+        allow update: if isOwner(uid)
+          && validBrokerConnection(uid)
+          && resource.data.uid == uid;
+      }
     }
   }
 }

@@ -54,6 +54,18 @@ documents every variable the app and the Functions read, grouped by:
 Never put a server credential behind a `VITE_` prefix: those values are
 compiled into the browser bundle.
 
+### INDmoney sync (optional)
+
+The portfolio card can import NSE holdings and the trade book from an
+INDmoney/INDstocks account. It is read-only at the broker and preview-then-apply:
+nothing is written until the user confirms the diff.
+
+Until `docs/api-integration/indmoney-probe.md` is complete, keep
+`INDSTOCKS_BASE_URL` unset in every environment. Both broker routes then answer
+`503 BROKER_DISABLED` and no unverified mapping is reachable. Full setup,
+disable/rollback, limits, and response codes live in
+`docs/operations/broker-sync.md`.
+
 ### Backend selection
 
 None. `VITE_AUTH_PROVIDER` and `VITE_DATA_PROVIDER` were removed with the
@@ -75,6 +87,31 @@ npm run build
 `npm run test:migration` still exercises the historical Supabase-dump importer.
 That tooling is retained for audit purposes only: the source data was
 single-user and is being abandoned, so nothing is imported.
+
+These commands are not a checklist you are trusted to remember: they run in CI on
+every push and pull request (`.github/workflows/ci.yml`), and on `main` a green
+run also deploys `firestore.rules` and `firestore.indexes.json` — so the deployed
+rules cannot drift from the repository copy.
+
+## Operations
+
+- `docs/operations/observability.md` — what is logged, where to read it, and the
+  alerts that must exist in the Cloudflare dashboard
+- `docs/operations/rate-limiting.md` — the in-code budgets and the one WAF rule
+  that provides the hard cap
+- `docs/operations/rollback.md` — how to return to a previous deployment, and
+  the backup gap that is still open
+- `docs/operations/broker-sync.md` — INDmoney configuration, rollout gate,
+  disable/rollback, and the local smoke test
+- `docs/operations/market-calendar.md` — NSE holiday coverage, the 2026
+  provisional gap, and the dated 2027 gate
+
+## Package manager
+
+`npm` is canonical: every script in `package.json` shells out to `npm`/`npx`, and
+CI installs with `npm ci` from `package-lock.json`. The stray `bun.lockb` is a
+leftover from an earlier experiment and should be deleted — two lockfiles resolve
+two different dependency trees, and only one of them is tested.
 
 ## Migration documentation
 

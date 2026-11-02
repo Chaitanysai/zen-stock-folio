@@ -84,7 +84,7 @@ async function safeProbe(label: string, probe: () => Promise<ProbeOutcome>): Pro
 async function probeYahoo(): Promise<ProbeOutcome> {
   const started = Date.now();
   try {
-    const result = await fetchYahooQuote("RELIANCE", 6000);
+    const result = await fetchYahooQuote("RELIANCE", "NSE", 6000);
     return {
       state: "connected",
       latencyMs: Date.now() - started,

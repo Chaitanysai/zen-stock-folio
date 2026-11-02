@@ -1,12 +1,29 @@
 import { PortfolioStock } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
 import { toCsv } from "@/lib/csv";
+import { isValidPrice } from "@/lib/portfolio/valuation";
 import { Download, FileSpreadsheet, FileText } from "lucide-react";
 interface ExportPortfolioProps {
   stocks: PortfolioStock[];
 }
 
 const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
+  // A synced row can carry the `0` sentinel until a quote arrives; an export
+  // must not turn that into a real ₹0 price, value, or −100% P&L.
+  const pricedCmp = (s: PortfolioStock) => (isValidPrice(s.cmp) ? s.cmp : null);
+  const exitOrCmp = (s: PortfolioStock) =>
+    s.status !== "Active" && s.exitPrice != null && isValidPrice(s.exitPrice)
+      ? s.exitPrice
+      : pricedCmp(s);
+  const valueOf = (s: PortfolioStock) => {
+    const price = exitOrCmp(s);
+    return price === null ? "" : price * s.quantity;
+  };
+  const plOf = (s: PortfolioStock) => {
+    const price = exitOrCmp(s);
+    return price === null ? "" : (price - s.entryPrice) * s.quantity;
+  };
+
   const exportToExcel = async () => {
     // xlsx is ~400 KB minified; load it only when the user actually exports.
     const XLSX = await import("xlsx");
@@ -16,7 +33,7 @@ const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
       Sector: s.sector || "",
       "Entry Date": s.entryDate,
       "Entry Price": s.entryPrice,
-      CMP: s.cmp,
+      CMP: pricedCmp(s) ?? "",
       "52W High": s.weekHigh52,
       "52W Low": s.weekLow52 || "",
       Quantity: s.quantity,
@@ -24,8 +41,8 @@ const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
       "Exit Date": s.exitDate || "",
       Status: s.status,
       "Invested Value": s.entryPrice * s.quantity,
-      "Current/Final Value": s.status === "Active" ? s.cmp * s.quantity : (s.exitPrice || s.cmp) * s.quantity,
-      "P&L": s.status === "Active" ? (s.cmp - s.entryPrice) * s.quantity : ((s.exitPrice || s.cmp) - s.entryPrice) * s.quantity,
+      "Current/Final Value": valueOf(s),
+      "P&L": plOf(s),
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -36,7 +53,7 @@ const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
 
   const exportToCSV = () => {
     const headers = ["Ticker", "Stock Name", "Sector", "Entry Date", "Entry Price", "CMP", "52W High", "Quantity", "Exit Price", "Exit Date", "Status"];
-    const rows = stocks.map(s => [s.ticker, s.stockName, s.sector || "", s.entryDate, s.entryPrice, s.cmp, s.weekHigh52, s.quantity, s.exitPrice || "", s.exitDate || "", s.status]);
+    const rows = stocks.map(s => [s.ticker, s.stockName, s.sector || "", s.entryDate, s.entryPrice, pricedCmp(s) ?? "", s.weekHigh52, s.quantity, s.exitPrice || "", s.exitDate || "", s.status]);
     const csv = toCsv(headers, rows);
     // BOM so Excel reads the UTF-8 (₹, Indian names) correctly.
     const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });

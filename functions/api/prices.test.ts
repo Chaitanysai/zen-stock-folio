@@ -1,7 +1,16 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { onRequestPost } from "./prices";
-import { authedRequest, kvBinding, makeEnv, restoreIdentity, stubIdentity, upstreamJson } from "./_lib/testHelpers";
+import {
+  API_ORIGIN,
+  authedRequest,
+  kvBinding,
+  makeEnv,
+  restoreIdentity,
+  stubIdentity,
+  stubUpstreamRoutes,
+  upstreamJson,
+} from "./_lib/testHelpers";
 
 const URL = "https://zenfolio.pages.dev/api/prices";
 
@@ -60,8 +69,8 @@ describe("POST /api/prices", () => {
     expect(res.status).toBe(200);
     expect(body.source).toBe("upstox-live");
     expect(body.stale).toBe(false);
-    expect(body.prices.RELIANCE.price).toBe(2500);
-    expect(body.prices.RELIANCE.asOf).toBeTruthy();
+    expect(body.prices["NSE:RELIANCE"].price).toBe(2500);
+    expect(body.prices["NSE:RELIANCE"].asOf).toBeTruthy();
     // Secret leakage check: neither the Upstox token nor the Firebase key appears.
     const text = JSON.stringify(body);
     expect(text).not.toContain("upstox-secret-token");
@@ -85,7 +94,7 @@ describe("POST /api/prices", () => {
     });
     const body = (await res.json()) as { source: string; prices: Record<string, { price: number }> };
     expect(body.source).toBe("yahoo-chart");
-    expect(body.prices.RELIANCE.price).toBe(2505);
+    expect(body.prices["NSE:RELIANCE"].price).toBe(2505);
   });
 
   it("canonicalizes lowercase and .NS-suffixed tickers to the exact provider symbol", async () => {
@@ -114,7 +123,7 @@ describe("POST /api/prices", () => {
     ]);
     const cachedAt = "2026-10-25T10:00:00Z";
     const binding = kvBinding({
-      "eod:RELIANCE": { price: 2490, weekHigh52: 2600, weekLow52: 2000, changePercent: 1.6, change: 40, asOf: cachedAt, source: "upstox-live" },
+      "eod:NSE:RELIANCE": { price: 2490, weekHigh52: 2600, weekLow52: 2000, changePercent: 1.6, change: 40, asOf: cachedAt, source: "upstox-live" },
     });
 
     const res = await onRequestPost({
@@ -130,9 +139,9 @@ describe("POST /api/prices", () => {
 
     expect(body.source).toBe("kv-cache");
     expect(body.stale).toBe(true);
-    expect(body.prices.RELIANCE.price).toBe(2490);
-    expect(body.prices.RELIANCE.asOf).toBe(cachedAt); // original fetch time preserved
-    expect(body.prices.UNKNOWN).toBeUndefined();
+    expect(body.prices["NSE:RELIANCE"].price).toBe(2490);
+    expect(body.prices["NSE:RELIANCE"].asOf).toBe(cachedAt); // original fetch time preserved
+    expect(body.prices["NSE:UNKNOWN"]).toBeUndefined();
   });
 
   it("returns 503 with no fabricated data when every source fails", async () => {
@@ -190,5 +199,89 @@ describe("POST /api/prices", () => {
     }
     expect(last?.status).toBe(429);
     expect(last?.headers.get("Retry-After")).toBeTruthy();
+  });
+
+  it("resolves the U.S. row via Yahoo when Upstox serves the NSE row", async () => {
+    const fetchMock = stubUpstreamRoutes([
+      {
+        match: "api.upstox.com",
+        body: { data: { "NSE_EQ:INFY": { last_price: 1500, prev_close: 1490 } } },
+      },
+      { match: "/chart/INFY?", body: yahooBody(20, 19) },
+    ]);
+
+    const res = await onRequestPost({
+      request: authedRequest(URL, {
+        instruments: [
+          { market: "NSE", ticker: "INFY" },
+          { market: "US", ticker: "INFY" },
+        ],
+      }),
+      env: makeEnv({ UPSTOX_ACCESS_TOKEN: "upstox-secret-token" }),
+      params: {},
+    });
+    const body = (await res.json()) as { prices: Record<string, { price: number }> };
+
+    expect(res.status).toBe(200);
+    expect(body.prices["NSE:INFY"].price).toBe(1500);
+    expect(body.prices["US:INFY"].price).toBe(20);
+    // The Upstox-served NSE row must not be re-fetched from Yahoo.
+    const yahooUrls = fetchMock.mock.calls
+      .map(([input]) => String(input))
+      .filter((url) => url.includes("query1.finance.yahoo.com"));
+    expect(yahooUrls).toHaveLength(1);
+    expect(yahooUrls[0]).toContain("/chart/INFY?");
+  });
+
+  it("keeps an NSE and a U.S. row with the same ticker apart", async () => {
+    stubIdentity();
+    stubUpstreamRoutes([
+      {
+        match: "/chart/INFY.NS?",
+        body: { chart: { result: [{ meta: { regularMarketPrice: 1500, previousClose: 1490 } }], error: null } },
+      },
+      {
+        match: "/chart/INFY?",
+        body: { chart: { result: [{ meta: { regularMarketPrice: 20, previousClose: 19 } }], error: null } },
+      },
+    ]);
+
+    const response = await onRequestPost({
+      request: authedRequest(`${API_ORIGIN}/api/prices`, {
+        instruments: [
+          { market: "NSE", ticker: "INFY" },
+          { market: "US", ticker: "INFY" },
+        ],
+      }),
+      env: makeEnv(),
+      params: {},
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { prices: Record<string, { price: number }> };
+    expect(body.prices["NSE:INFY"].price).toBe(1500);
+    expect(body.prices["US:INFY"].price).toBe(20);
+  });
+
+  it("leaves a missing 52-week range unknown instead of zero", async () => {
+    stubUpstreams([
+      {
+        match: "query1.finance.yahoo.com",
+        body: { chart: { result: [{ meta: { regularMarketPrice: 2505, previousClose: 2450 } }] } },
+      },
+    ]);
+
+    const res = await onRequestPost({
+      request: authedRequest(URL, { tickers: ["RELIANCE"] }),
+      env: makeEnv(),
+      params: {},
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      prices: Record<string, { weekHigh52: number | null; weekLow52: number | null }>;
+    };
+    expect(body.prices["NSE:RELIANCE"].weekHigh52).toBeNull();
+    expect(body.prices["NSE:RELIANCE"].weekLow52).toBeNull();
   });
 });

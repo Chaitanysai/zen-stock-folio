@@ -5,7 +5,12 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchYahooCandles, fetchYahooQuote, ProviderHttpError } from "@/lib/market-data/yahoo.ts";
+import {
+  fetchYahooCandles,
+  fetchYahooQuote,
+  fetchYahooSearch,
+  ProviderHttpError,
+} from "@/lib/market-data/yahoo.ts";
 
 const originalFetch = globalThis.fetch;
 
@@ -76,7 +81,7 @@ describe("fetchYahooQuote", () => {
   it("maps the provider meta into the canonical quote", async () => {
     globalThis.fetch = vi.fn(async () => jsonResponse(chartPayload())) as unknown as typeof fetch;
 
-    const result = await fetchYahooQuote("RELIANCE");
+    const result = await fetchYahooQuote("RELIANCE", "NSE");
 
     expect(result.quote.symbol).toBe("RELIANCE");
     expect(result.quote.price).toBe(1201.8);
@@ -94,7 +99,7 @@ describe("fetchYahooQuote", () => {
       meta: { fiftyTwoWeekHigh: undefined, fiftyTwoWeekLow: undefined, longName: undefined },
     }))) as unknown as typeof fetch;
 
-    const result = await fetchYahooQuote("RELIANCE");
+    const result = await fetchYahooQuote("RELIANCE", "NSE");
 
     expect(result.quote.weekHigh52).toBeNull();
     expect(result.quote.weekLow52).toBeNull();
@@ -107,7 +112,7 @@ describe("fetchYahooQuote", () => {
       meta: { regularMarketPrice: 0, fiftyTwoWeekHigh: Number.NaN, regularMarketVolume: -5 },
     }))) as unknown as typeof fetch;
 
-    const result = await fetchYahooQuote("RELIANCE");
+    const result = await fetchYahooQuote("RELIANCE", "NSE");
 
     expect(result.quote.price).toBeNull();
     expect(result.quote.weekHigh52).toBeNull();
@@ -120,8 +125,8 @@ describe("fetchYahooQuote", () => {
   it("surfaces a 429 as a typed provider error rather than an empty quote", async () => {
     globalThis.fetch = vi.fn(async () => new Response("too many requests", { status: 429 })) as unknown as typeof fetch;
 
-    await expect(fetchYahooQuote("RELIANCE")).rejects.toBeInstanceOf(ProviderHttpError);
-    await expect(fetchYahooQuote("RELIANCE")).rejects.toMatchObject({ status: 429 });
+    await expect(fetchYahooQuote("RELIANCE", "NSE")).rejects.toBeInstanceOf(ProviderHttpError);
+    await expect(fetchYahooQuote("RELIANCE", "NSE")).rejects.toMatchObject({ status: 429 });
   });
 
   it("surfaces a provider-side error object even on HTTP 200", async () => {
@@ -129,13 +134,13 @@ describe("fetchYahooQuote", () => {
       chart: { result: null, error: { code: "Not Found", description: "No data found" } },
     })) as unknown as typeof fetch;
 
-    await expect(fetchYahooQuote("NOSUCHTICKERZZ")).rejects.toThrow(/Not Found/);
+    await expect(fetchYahooQuote("NOSUCHTICKERZZ", "NSE")).rejects.toThrow(/Not Found/);
   });
 
   it("surfaces a malformed body instead of reporting a null price", async () => {
     globalThis.fetch = vi.fn(async () => jsonResponse({ chart: { result: null } })) as unknown as typeof fetch;
 
-    await expect(fetchYahooQuote("RELIANCE")).rejects.toBeInstanceOf(ProviderHttpError);
+    await expect(fetchYahooQuote("RELIANCE", "NSE")).rejects.toBeInstanceOf(ProviderHttpError);
   });
 
   it("propagates an aborted request as an abort, not as a quote", async () => {
@@ -143,7 +148,49 @@ describe("fetchYahooQuote", () => {
       throw new DOMException("The operation was aborted.", "AbortError");
     }) as unknown as typeof fetch;
 
-    await expect(fetchYahooQuote("RELIANCE")).rejects.toMatchObject({ name: "AbortError" });
+    await expect(fetchYahooQuote("RELIANCE", "NSE")).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("requests bare symbols for U.S. tickers and reports the market", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) => {
+      calls.push(String(input));
+      return new Response(
+        JSON.stringify({
+          chart: {
+            result: [
+              { meta: { symbol: "AAPL", currency: "USD", regularMarketPrice: 190, previousClose: 188, regularMarketTime: 1793008688 } },
+            ],
+            error: null,
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    });
+
+    const result = await fetchYahooQuote("AAPL", "US");
+    expect(calls[0]).toContain("/chart/AAPL?");
+    expect(calls[0]).not.toContain("AAPL.NS");
+    expect(result.quote).toMatchObject({ symbol: "AAPL", market: "US", currency: "USD" });
+  });
+
+  it("keeps the requested ticker when a U.S. payload omits the symbol", async () => {
+    // Yahoo's U.S. chart responses have been seen without `meta.symbol`.
+    // `fromYahooSymbol("", "US")` returns "" (not null), so a `??` fallback
+    // would let an empty symbol through into the envelope.
+    globalThis.fetch = vi.fn(async () => jsonResponse({
+      chart: {
+        result: [
+          { meta: { currency: "USD", regularMarketPrice: 190, previousClose: 188, regularMarketTime: 1793008688 } },
+        ],
+        error: null,
+      },
+    })) as unknown as typeof fetch;
+
+    const result = await fetchYahooQuote("AAPL", "US");
+
+    expect(result.quote.symbol).toBe("AAPL");
+    expect(result.quote.market).toBe("US");
   });
 });
 
@@ -158,7 +205,7 @@ describe("fetchYahooCandles", () => {
       volume: [8_500_000, 1_200],
     }))) as unknown as typeof fetch;
 
-    const result = await fetchYahooCandles("RELIANCE", "1d");
+    const result = await fetchYahooCandles("RELIANCE", "1d", "NSE");
 
     expect(result.candles).toHaveLength(2);
     expect(result.candles[0]).toEqual({
@@ -183,7 +230,7 @@ describe("fetchYahooCandles", () => {
       volume: [8_500_000, 1_200, 900],
     }))) as unknown as typeof fetch;
 
-    const result = await fetchYahooCandles("RELIANCE", "1d");
+    const result = await fetchYahooCandles("RELIANCE", "1d", "NSE");
 
     expect(result.candles).toHaveLength(1);
     expect(result.candles[0].time).toBe(1_793_008_500);
@@ -200,7 +247,7 @@ describe("fetchYahooCandles", () => {
       volume: [8_500_000],
     }))) as unknown as typeof fetch;
 
-    const result = await fetchYahooCandles("RELIANCE", "5d");
+    const result = await fetchYahooCandles("RELIANCE", "5d", "NSE");
 
     expect(result.unavailable).toContain("volume");
     expect(result.candles).toHaveLength(2);
@@ -211,7 +258,7 @@ describe("fetchYahooCandles", () => {
   it("returns an empty series with a warning when the provider sends no timestamps", async () => {
     globalThis.fetch = vi.fn(async () => jsonResponse(chartPayload({ timestamp: [] }))) as unknown as typeof fetch;
 
-    const result = await fetchYahooCandles("RELIANCE", "1mo");
+    const result = await fetchYahooCandles("RELIANCE", "1mo", "NSE");
 
     expect(result.candles).toEqual([]);
     expect(result.exchangeTimestampMs).toBeNull();
@@ -222,10 +269,25 @@ describe("fetchYahooCandles", () => {
     const spy = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(async () => jsonResponse(chartPayload()));
     globalThis.fetch = spy as unknown as typeof fetch;
 
-    await fetchYahooCandles("RELIANCE", "1y");
+    await fetchYahooCandles("RELIANCE", "1y", "NSE");
 
     const url = String(spy.mock.calls[0][0]);
     expect(url).toContain("interval=1d");
     expect(url).toContain("range=1y");
+  });
+});
+
+describe("fetchYahooSearch", () => {
+  it("maps Yahoo's U.S. class-share symbol to the canonical dot form", async () => {
+    vi.stubGlobal("fetch", async () =>
+      new Response(
+        JSON.stringify({
+          quotes: [{ symbol: "BRK-B", shortname: "Berkshire Hathaway", exchange: "NYQ", quoteType: "EQUITY" }],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const rows = await fetchYahooSearch("berkshire", "US");
+    expect(rows).toEqual([expect.objectContaining({ symbol: "BRK.B", exchange: "US" })]);
   });
 });

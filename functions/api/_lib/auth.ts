@@ -25,12 +25,25 @@ export interface RequestIdentity {
    * signed out.
    */
   emailVerified: boolean;
+  /**
+   * The caller's raw Firebase ID token. Used ONLY to call Google APIs on the
+   * caller's behalf (Firestore REST), so security rules evaluate as that user.
+   * Never log it, never return it, never persist it.
+   */
+  token: string;
 }
 
-/** Small per-isolate cache: tokens live 1 h; caching the lookup for 5 min
- * cuts one Google round-trip per call without extending token trust. */
+/** Small per-isolate cache: tokens live 1 h; caching the lookup for 60 s cuts
+ * the Google round-trip on bursty polling without widening the revocation
+ * window beyond a minute.
+ *
+ * Why 60 s and not 5 min: a cached entry is trusted without asking Google, so
+ * signing out, changing a password, disabling an account, or an admin
+ * revocation is NOT observable until the entry expires. The cache therefore
+ * extends how long a stolen token keeps working, and that extension is the
+ * security cost of the optimisation — keep it small. */
 const lookupCache = new Map<string, { uid: string; emailVerified: boolean; expiresAt: number }>();
-const LOOKUP_CACHE_TTL_MS = 5 * 60 * 1000;
+const LOOKUP_CACHE_TTL_MS = 60 * 1000;
 const LOOKUP_CACHE_MAX = 1000;
 
 const cacheGet = (token: string): { uid: string; emailVerified: boolean } | null => {
@@ -89,7 +102,7 @@ export const requireIdentity = async (env: Env, request: Request): Promise<Ident
   }
 
   const cached = cacheGet(token);
-  if (cached) return { ok: true, identity: cached };
+  if (cached) return { ok: true, identity: { ...cached, token } };
 
   try {
     const res = await verifyFetch(`${LOOKUP_URL}?key=${encodeURIComponent(env.FIREBASE_API_KEY)}`, {
@@ -118,7 +131,7 @@ export const requireIdentity = async (env: Env, request: Request): Promise<Ident
       };
     }
 
-    const identity: RequestIdentity = { uid, emailVerified: user?.emailVerified === true };
+    const identity: RequestIdentity = { uid, emailVerified: user?.emailVerified === true, token };
     cacheSet(token, identity.uid, identity.emailVerified);
     return { ok: true, identity };
   } catch {

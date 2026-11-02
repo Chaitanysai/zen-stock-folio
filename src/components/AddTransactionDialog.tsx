@@ -1,4 +1,4 @@
-import { useState, useRef, type ReactNode } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import { PortfolioStock } from "@/data/sampleData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2, CheckCircle2, AlertCircle, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { fetchQuotes } from "@/lib/market-data/client";
+import { instrumentKey } from "@/lib/market-data/symbols";
+import { buildManualPosition } from "@/lib/portfolio/manual";
+import { useFxRate } from "@/hooks/useFxRate";
+import { currencySymbol, formatNative } from "@/lib/portfolio/display";
 
 interface AddTransactionDialogProps {
   onAdd: (stock: PortfolioStock) => void;
@@ -14,7 +19,8 @@ interface AddTransactionDialogProps {
   trigger?: ReactNode;
 }
 
-const EMPTY_FORM = {
+export const EMPTY_FORM = {
+  market: "NSE" as "NSE" | "US",
   ticker: "",
   stockName: "",
   entryDate: "",
@@ -25,6 +31,78 @@ const EMPTY_FORM = {
   status: "Active" as PortfolioStock["status"],
 };
 
+export type TransactionForm = typeof EMPTY_FORM;
+
+export interface QuoteSnapshot {
+  cmp: number | null;
+  high: number | null;
+  low: number | null;
+  change: number | null;
+}
+
+/** Identity of the instrument a quote was requested for. */
+export const quoteRequestKey = (market: "NSE" | "US", ticker: string): string =>
+  `${market}:${ticker.trim().toUpperCase()}`;
+
+/**
+ * True only when a quote response still belongs to the current form. A response
+ * for the previous market or ticker must be dropped, not saved as the CMP.
+ */
+export const isCurrentQuote = (
+  requestedKey: string,
+  form: Pick<TransactionForm, "market" | "ticker">,
+): boolean => requestedKey === quoteRequestKey(form.market, form.ticker);
+
+const localDateKey = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+/** A blank entry date means "today" to `buildManualPosition`. */
+export const isEntryTodayOrBlank = (entryDate: string, now: Date = new Date()): boolean => {
+  const value = entryDate.trim();
+  return value === "" || value === localDateKey(now);
+};
+
+/**
+ * The FX rate at cost is only knowable for a lot opened today. A back-dated
+ * entry gets no rate rather than today's rate mislabelled as the historical
+ * one; the UI then says FX P&L is unavailable.
+ */
+export const fxAtCostAt = (
+  market: "NSE" | "US",
+  entryDate: string,
+  rate: number | null,
+  now: Date = new Date(),
+): number | undefined =>
+  market === "US" && rate !== null && Number.isFinite(rate) && rate > 0 && isEntryTodayOrBlank(entryDate, now)
+    ? rate
+    : undefined;
+
+export function buildDialogPosition(
+  form: TransactionForm,
+  quote: QuoteSnapshot,
+  fxRate: number | null,
+  now: Date = new Date(),
+): PortfolioStock | null {
+  return buildManualPosition({
+    market: form.market,
+    ticker: form.ticker,
+    stockName: form.stockName,
+    entryDate: form.entryDate || undefined,
+    entryPrice: parseFloat(form.entryPrice),
+    // Number, not parseInt: "1.5" must reach buildManualPosition's integer guard
+    // instead of being silently truncated to 1.
+    quantity: Number(form.quantity),
+    cmp: quote.cmp ?? undefined,
+    weekHigh52: quote.high ?? undefined,
+    weekLow52: quote.low ?? undefined,
+    dailyChange: quote.change ?? undefined,
+    status: form.status,
+    fxAtCost: fxAtCostAt(form.market, form.entryDate, fxRate, now),
+    ...(form.exitPrice ? { exitPrice: parseFloat(form.exitPrice) } : {}),
+    ...(form.exitDate ? { exitDate: form.exitDate } : {}),
+  });
+}
+
 const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => {
   const [open, setOpen]     = useState(false);
   const [form, setForm]     = useState(EMPTY_FORM);
@@ -34,40 +112,80 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
   const [fetchedChange, setFetchedChange]   = useState<number | null>(null);
   const [priceStatus, setPriceStatus]       = useState<"idle" | "loading" | "success" | "error">("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quoteAbortRef = useRef<AbortController | null>(null);
+  const quoteKeyRef = useRef<string | null>(null);
+  const formRef = useRef(form);
   const { toast } = useToast();
 
+  const { rate: usdInr, loading: fxLoading, error: fxError } = useFxRate({ enabled: form.market === "US" });
+  const symbol = currencySymbol(form.market === "US" ? "USD" : "INR");
+
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+
   const f = (field: string, value: string) => setForm(p => ({ ...p, [field]: value }));
+
+  /** Drop the pending timer and any in-flight quote for the old instrument. */
+  const cancelQuoteRequest = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    quoteAbortRef.current?.abort();
+    quoteAbortRef.current = null;
+    quoteKeyRef.current = null;
+  };
+
+  // Cancel on unmount too: a late response must not write into a gone form.
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    quoteAbortRef.current?.abort();
+  }, []);
 
   // Auto-fetch CMP when ticker is typed (debounced 800ms)
   const handleTickerChange = (raw: string) => {
     const val = raw.toUpperCase().trim();
     f("ticker", val);
+    cancelQuoteRequest();
     setFetchedCmp(null);
+    setFetchedHigh(null);
+    setFetchedLow(null);
+    setFetchedChange(null);
     setPriceStatus("idle");
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
     if (val.length < 2) return;
 
+    // Capture the instrument at schedule time; the response is applied only if
+    // this key still matches the form (market and ticker can both change first).
+    const key = quoteRequestKey(form.market, val);
+    const market = form.market;
+    const controller = new AbortController();
+    quoteKeyRef.current = key;
+
     debounceRef.current = setTimeout(async () => {
+      debounceRef.current = null;
+      quoteAbortRef.current = controller;
       setPriceStatus("loading");
+      const instrument = { market, ticker: val } as const;
       try {
-        const res  = await fetch("/api/prices", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tickers: [val] }),
-        });
-        const data = await res.json();
-        const p    = data?.prices?.[val];
-        if (p && p.price > 0) {
-          setFetchedCmp(p.price);
-          setFetchedHigh(p.weekHigh52 || null);
-          setFetchedLow(p.weekLow52   || null);
-          setFetchedChange(p.changePercent || null);
+        // fetchQuotes goes through apiFetch, so the Firebase bearer token is
+        // attached; the old raw fetch("/api/prices") always answered 401.
+        const response = await fetchQuotes([instrument], { signal: controller.signal });
+        if (!isCurrentQuote(key, formRef.current)) return;
+        const quote = response.quotes[instrumentKey(instrument)]?.quote;
+        if (quote?.price && quote.price > 0) {
+          setFetchedCmp(quote.price);
+          setFetchedHigh(quote.weekHigh52 ?? null);
+          setFetchedLow(quote.weekLow52 ?? null);
+          setFetchedChange(quote.changePercent ?? null);
           setPriceStatus("success");
         } else {
           setPriceStatus("error");
         }
       } catch {
+        // An abort is a supersede, not a provider failure.
+        if (controller.signal.aborted || !isCurrentQuote(key, formRef.current)) return;
         setPriceStatus("error");
       }
     }, 800);
@@ -80,25 +198,24 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
       return;
     }
 
-    const cmpToUse = fetchedCmp ?? parseFloat(form.entryPrice);
+    const stock = buildDialogPosition(
+      form,
+      { cmp: fetchedCmp, high: fetchedHigh, low: fetchedLow, change: fetchedChange },
+      usdInr,
+    );
 
-    const stock: PortfolioStock = {
-      ticker:     form.ticker.toUpperCase(),
-      stockName:  form.stockName,
-      entryDate:  form.entryDate || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-      entryPrice: parseFloat(form.entryPrice),
-      cmp:        cmpToUse,
-      weekHigh52: fetchedHigh ?? cmpToUse,
-      weekLow52:  fetchedLow  ?? cmpToUse,
-      dailyChange: fetchedChange ?? 0,
-      quantity:   parseInt(form.quantity),
-      status:     form.status,
-      ...(form.exitPrice ? { exitPrice: parseFloat(form.exitPrice) } : {}),
-      ...(form.exitDate  ? { exitDate:  form.exitDate }              : {}),
-    };
+    if (!stock) {
+      toast({
+        title: "Invalid trade",
+        description: "Check the ticker symbol, entry price, and whole-number quantity.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     onAdd(stock);
-    toast({ title: "Trade added ✅", description: `${stock.ticker} added to your portfolio.` });
+    toast({ title: "Trade added", description: `${stock.ticker} added to your portfolio.` });
+    cancelQuoteRequest();
     setForm(EMPTY_FORM);
     setFetchedCmp(null);
     setFetchedHigh(null);
@@ -109,6 +226,10 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
   };
 
   const isPositive = (fetchedChange ?? 0) >= 0;
+  // FX P&L needs a rate at cost. A back-dated lot gets no rate (today's would
+  // be wrong), and an unavailable rate is disclosed only after it has settled.
+  const entryBackDated = form.market === "US" && !isEntryTodayOrBlank(form.entryDate);
+  const fxUnavailable = form.market === "US" && !fxLoading && usdInr === null && fxError !== null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -129,6 +250,42 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-1">
+
+          {/* Market */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Market
+            </Label>
+            <Select
+              value={form.market}
+              onValueChange={(value) => {
+                // The old market's quote must not survive the switch: cancel
+                // both the pending debounce and an in-flight fetch.
+                cancelQuoteRequest();
+                f("market", value);
+                setFetchedCmp(null);
+                setFetchedHigh(null);
+                setFetchedLow(null);
+                setFetchedChange(null);
+                setPriceStatus("idle");
+              }}
+            >
+              <SelectTrigger className="bg-secondary border-border text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border">
+                <SelectItem value="NSE">NSE · India (₹)</SelectItem>
+                <SelectItem value="US">US · United States ($)</SelectItem>
+              </SelectContent>
+            </Select>
+            {(entryBackDated || fxUnavailable) && (
+              <p className="text-xs text-muted-foreground" role="status">
+                {entryBackDated
+                  ? "Entry is back-dated — today's USD→INR rate is not the rate at cost, so FX P&L will be unavailable for this trade."
+                  : "USD→INR rate unavailable — FX P&L will be unavailable for this trade."}
+              </p>
+            )}
+          </div>
 
           {/* Ticker + live price fetch */}
           <div className="grid grid-cols-2 gap-3">
@@ -179,7 +336,7 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
                 <CheckCircle2 className="h-4 w-4 text-profit shrink-0" />
                 <span className="text-muted-foreground">Live CMP fetched:</span>
                 <span className="font-bold ticker text-sm" style={{ color: "hsl(var(--profit))" }}>
-                  ₹{fetchedCmp.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {formatNative(fetchedCmp, form.market === "US" ? "USD" : "INR", 2)}
                 </span>
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
@@ -188,8 +345,8 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
                     {isPositive ? "▲" : "▼"} {Math.abs(fetchedChange).toFixed(2)}%
                   </span>
                 )}
-                {fetchedHigh && <span>52W H: <span className="ticker">₹{fetchedHigh.toFixed(0)}</span></span>}
-                {fetchedLow  && <span>52W L: <span className="ticker">₹{fetchedLow.toFixed(0)}</span></span>}
+                {fetchedHigh && <span>52W H: <span className="ticker">{formatNative(fetchedHigh, form.market === "US" ? "USD" : "INR", 0)}</span></span>}
+                {fetchedLow  && <span>52W L: <span className="ticker">{formatNative(fetchedLow, form.market === "US" ? "USD" : "INR", 0)}</span></span>}
               </div>
             </div>
           )}
@@ -206,10 +363,10 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Entry Price (₹) *
+                Entry Price ({symbol}) *
               </Label>
               <Input
-                type="number" step="0.01" placeholder="₹0.00"
+                type="number" step="0.01" placeholder={`${symbol}0.00`}
                 value={form.entryPrice}
                 onChange={e => f("entryPrice", e.target.value)}
                 className="bg-secondary border-border text-sm font-mono"
@@ -261,10 +418,10 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Exit Price (₹)
+                  Exit Price ({symbol})
                 </Label>
                 <Input
-                  type="number" step="0.01" placeholder="₹0.00"
+                  type="number" step="0.01" placeholder={`${symbol}0.00`}
                   value={form.exitPrice}
                   onChange={e => f("exitPrice", e.target.value)}
                   className="bg-secondary border-border text-sm font-mono"

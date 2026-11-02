@@ -124,9 +124,35 @@ describe("market phase (cache policy only)", () => {
   });
 
   it("writes EOD cache only while closed, with a 30 h TTL", () => {
-    expect(shouldWriteEodCache(utc("2026-10-26T07:00:00Z"))).toBe(false); // Monday 12:30 IST (open)
-    expect(shouldWriteEodCache(utc("2026-10-26T10:15:00Z"))).toBe(true); // Monday 15:45 IST (closed)
+    expect(shouldWriteEodCache(utc("2026-10-26T07:00:00Z"), "NSE")).toBe(false); // Monday 12:30 IST (open)
+    expect(shouldWriteEodCache(utc("2026-10-26T10:15:00Z"), "NSE")).toBe(true); // Monday 15:45 IST (closed)
+    // Same instant, U.S. side: 06:15 ET, before the 09:30 ET open.
+    expect(shouldWriteEodCache(utc("2026-10-26T10:15:00Z"), "US")).toBe(true);
     expect(EOD_CACHE_TTL_SECONDS).toBe(30 * 60 * 60);
+  });
+
+  it("decides the write per market, not per NSE phase", () => {
+    // Monday 2026-10-26 21:00 IST / 11:30 ET: NSE closed, U.S. still trading.
+    expect(shouldWriteEodCache(utc("2026-10-26T15:30:00Z"), "NSE")).toBe(true);
+    expect(shouldWriteEodCache(utc("2026-10-26T15:30:00Z"), "US")).toBe(false);
+    // Monday 2026-10-26 10:30 IST / 01:00 ET: NSE open, U.S. closed.
+    expect(shouldWriteEodCache(utc("2026-10-26T05:00:00Z"), "NSE")).toBe(false);
+    expect(shouldWriteEodCache(utc("2026-10-26T05:00:00Z"), "US")).toBe(true);
+  });
+
+  it("writes EOD cache on a configured NSE holiday", () => {
+    // 2026-01-26 is Republic Day (Monday), 11:30 IST — closed, so a write is allowed.
+    expect(shouldWriteEodCache(utc("2026-01-26T06:00:00Z"), "NSE")).toBe(true);
+  });
+
+  it("refuses to write EOD cache when the NSE calendar has no entry for the year", () => {
+    // nseHolidays.ts currently ends at 2026. These are weekday live-session
+    // instants in an uncovered year; an unknown calendar must never behave as
+    // "open", so the cache stays write-free.
+    expect(shouldWriteEodCache(utc("2027-01-04T07:00:00Z"), "NSE")).toBe(false); // Monday 12:30 IST
+    expect(shouldWriteEodCache(utc("2027-01-08T04:00:00Z"), "NSE")).toBe(false); // Friday 09:30 IST
+    // The U.S. list ends at 2027: an uncovered year is unknown, never closed.
+    expect(shouldWriteEodCache(utc("2028-03-06T15:30:00Z"), "US")).toBe(false);
   });
 });
 

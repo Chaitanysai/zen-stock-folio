@@ -18,6 +18,9 @@
     "migration:make-fixture": "vite-node scripts/migration/make-fixture.ts",
     "migration:import": "vite-node scripts/migration/import.ts",
     "migration:migrate": "vite-node scripts/migration/migrate.ts",
+    "e2e:save-auth": "node scripts/e2e/save-auth.mjs",
+    "test:e2e:broker": "node scripts/e2e/broker-sync.mjs",
+    "test:e2e:us": "node scripts/e2e/us-holding.mjs",
     "test:watch": "vitest"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { onRequestGet, onRequestOptions } from "./candles";
 import {
   API_ORIGIN,
+  authedRequest,
   makeEnv,
   restoreIdentity,
   stubIdentity,
@@ -227,5 +228,92 @@ describe("GET /api/candles", () => {
     }
     expect(last?.status).toBe(429);
     expect(last?.headers.get("Retry-After")).toBeTruthy();
+  });
+
+  it("rejects an unsupported market instead of borrowing the NSE series", async () => {
+    stubUpstreamRoutes([]);
+    const res = await onRequestGet({
+      request: get("symbol=AAPL&range=1d&market=LSE"),
+      env: makeEnv(),
+      params: {},
+    });
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as { code: string }).code).toBe("invalid_market");
+  });
+
+  it("serves a U.S. candle series from the bare Yahoo symbol", async () => {
+    stubIdentity();
+    const fetchMock = stubUpstreamRoutes([
+      {
+        match: "/chart/AAPL?",
+        body: {
+          chart: {
+            result: [
+              {
+                meta: { symbol: "AAPL", currency: "USD", regularMarketTime: 1793008688 },
+                timestamp: [1793008500, 1793008800],
+                indicators: {
+                  quote: [
+                    {
+                      open: [190, 191],
+                      high: [192, 193],
+                      low: [189, 190],
+                      close: [191, 192],
+                      volume: [1000, 1200],
+                    },
+                  ],
+                },
+              },
+            ],
+            error: null,
+          },
+        },
+      },
+    ]);
+
+    const response = await onRequestGet({
+      request: authedRequest(
+        `${API_ORIGIN}/api/candles?symbol=AAPL&range=1d&market=US`,
+        undefined,
+        "good-token",
+        "GET",
+      ),
+      env: makeEnv(),
+      params: {},
+    });
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { candles: unknown[]; symbol: string };
+    expect(body.symbol).toBe("AAPL");
+    expect(body.candles).toHaveLength(2);
+    expect(String(fetchMock.mock.calls[0][0])).not.toContain("AAPL.NS");
+  });
+
+  it("caches the same ticker on two markets as two entries", async () => {
+    const fetchMock = stubUpstreamRoutes([
+      { match: "chart/X.NS?", body: candleBody },
+      { match: "chart/X?", body: candleBody },
+    ]);
+    const env = makeEnv();
+
+    const nse = await onRequestGet({
+      request: get("symbol=X&range=1d&market=NSE"),
+      env,
+      params: {},
+    });
+    const us = await onRequestGet({
+      request: get("symbol=X&range=1d&market=US"),
+      env,
+      params: {},
+    });
+
+    expect(nse.status).toBe(200);
+    expect(us.status).toBe(200);
+    // `X` on NSE and `X` on NYSE are different series: the market belongs in
+    // the cache key, so the second listing cannot be answered by the first.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const urls = fetchMock.mock.calls.map(([input]) => String(input));
+    expect(urls.some((url) => url.includes("/chart/X.NS?"))).toBe(true);
+    expect(urls.some((url) => url.includes("/chart/X?"))).toBe(true);
   });
 });

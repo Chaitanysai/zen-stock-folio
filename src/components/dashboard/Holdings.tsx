@@ -17,11 +17,16 @@ const VISIBLE = 8;
 interface Props {
   rows: HoldingRow[];
   loading: boolean;
+  /** Selected position key (`market:ticker`), not a bare ticker. */
   selected: string | null;
-  onSelect: (ticker: string) => void;
+  onSelect: (key: string) => void;
   openPortfolio: () => void;
   onAdd: (stock: PortfolioStock) => void;
   onImport: (stocks: PortfolioStock[]) => void;
+  /** True when U.S. rows were converted so the columns read in one currency. */
+  convertedToInr?: boolean;
+  /** Shown when some positions could not be included in this INR view. */
+  note?: string | null;
 }
 
 const COLUMNS: { key: HoldingSortKey; label: string; sortLabel: string }[] = [
@@ -34,7 +39,10 @@ const COLUMNS: { key: HoldingSortKey; label: string; sortLabel: string }[] = [
   { key: "pnlPct", label: "P&L %", sortLabel: "profit and loss percent" },
 ];
 
-export function HoldingsCard({ rows, loading, selected, onSelect, openPortfolio, onAdd, onImport }: Props) {
+export function HoldingsCard({
+  rows, loading, selected, onSelect, openPortfolio, onAdd, onImport,
+  convertedToInr = false, note = null,
+}: Props) {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<HoldingFilter>("all");
   const [sortKey, setSortKey] = useState<HoldingSortKey>("value");
@@ -58,7 +66,9 @@ export function HoldingsCard({ rows, loading, selected, onSelect, openPortfolio,
       <div className="zf-card-head">
         <div>
           <h2 className="zf-card-title" id="zf-holdings-title">Holdings</h2>
-          <p className="zf-card-sub">Open equity positions at live prices</p>
+          <p className="zf-card-sub">
+            Open equity positions at live prices{convertedToInr ? ", converted to INR" : ""}
+          </p>
         </div>
         <div className="zf-tools">
           <label className="zf-searchpill">
@@ -88,6 +98,10 @@ export function HoldingsCard({ rows, loading, selected, onSelect, openPortfolio,
           </DropdownMenu>
         </div>
       </div>
+
+      {note && !loading && (
+        <p className="zf-pnl-foot" role="status" style={{ color: "var(--amber)" }}>{note}</p>
+      )}
 
       {loading ? (
         <div className="zf-card-body" aria-busy="true">
@@ -142,17 +156,17 @@ export function HoldingsCard({ rows, loading, selected, onSelect, openPortfolio,
               </thead>
               <tbody>
                 {shown.map((r) => {
-                  const tone = Math.round(r.pnl) === 0 ? "flat" : r.pnl > 0 ? "up" : "down";
+                  const tone = r.pnl === null ? "flat" : Math.round(r.pnl) === 0 ? "flat" : r.pnl > 0 ? "up" : "down";
                   const cls = tone === "up" ? "zf-up" : tone === "down" ? "zf-down" : "";
                   return (
-                    <tr key={r.ticker} data-selected={selected === r.ticker}>
+                    <tr key={r.key} data-selected={selected === r.key}>
                       <td>
                         <button
                           type="button"
                           className="zf-symbtn"
-                          aria-pressed={selected === r.ticker}
+                          aria-pressed={selected === r.key}
                           aria-label={`${r.name}, show price chart`}
-                          onClick={() => onSelect(r.ticker)}
+                          onClick={() => onSelect(r.key)}
                         >
                           <span className="zf-chip-ico" aria-hidden="true">{r.ticker.slice(0, 3)}</span>
                           <span style={{ minWidth: 0 }}>
@@ -163,15 +177,15 @@ export function HoldingsCard({ rows, loading, selected, onSelect, openPortfolio,
                       </td>
                       <td>{r.qty.toLocaleString("en-IN")}</td>
                       <td>₹{num2(r.avg)}</td>
-                      <td>₹{num2(r.ltp)}</td>
-                      <td>{inr(r.value)}</td>
-                      <td className={cls}>{signedInr(r.pnl)}</td>
-                      <td className={cls}>{signedPct(r.pnlPct)}</td>
+                      <td>{r.ltp === null ? "—" : `₹${num2(r.ltp)}`}</td>
+                      <td>{r.value === null ? "—" : inr(r.value)}</td>
+                      <td className={cls}>{r.pnl === null ? "—" : signedInr(r.pnl)}</td>
+                      <td className={cls}>{r.pnlPct === null ? "—" : signedPct(r.pnlPct)}</td>
                       <td>
                         <span className="zf-state" data-tone={tone}>
                           <i aria-hidden="true" />
-                          {tone === "up" ? "Gain" : tone === "down" ? "Loss" : "Flat"}
-                          <span className="zf-sr-only"> {sign(r.pnl)}</span>
+                          {r.pnl === null ? "No price" : tone === "up" ? "Gain" : tone === "down" ? "Loss" : "Flat"}
+                          <span className="zf-sr-only"> {r.pnl === null ? "price unavailable" : sign(r.pnl)}</span>
                         </span>
                       </td>
                     </tr>

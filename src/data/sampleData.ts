@@ -7,7 +7,8 @@ export interface PortfolioStock {
   entryDate: string;
   entryPrice: number;
   cmp: number;
-  weekHigh52: number;
+  /** Absent until a quote refresh supplies it; `cmp` is the documented sentinel. */
+  weekHigh52?: number;
   weekLow52?: number;
   dailyChange?: number;
   quantity: number;
@@ -15,6 +16,16 @@ export interface PortfolioStock {
   exitDate?: string;
   status: "Active" | "Sold Profit" | "Sold Loss";
   notes?: TradeJournalEntry;
+  /** Listing market. Absent on legacy rows; `parseSnapshot` defaults it to NSE. */
+  market?: "NSE" | "US";
+  /** Native trading currency. Absent on legacy rows; defaults to INR. */
+  currency?: "INR" | "USD";
+  /** USD→INR rate when the lot was opened. Absent means FX P&L is unavailable. */
+  fxAtCost?: number;
+  /** Who owns the row for sync. Manual rows are never modified by a sync. */
+  source?: "manual" | "indmoney";
+  /** Broker symbol/exchange as returned, e.g. "NSE:RELIANCE". */
+  brokerRef?: string;
   /** Present only on rows imported from a broker connection. */
   broker?: BrokerStockProvenance;
 }

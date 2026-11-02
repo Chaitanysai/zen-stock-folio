@@ -94,6 +94,7 @@ export function twelveDataRowsToHits(rows: TwelveDataRow[]): SearchHit[] {
     if (!NSE_MAINBOARD_RE.test(symbol)) continue;
     hits.push({
       symbol,
+      market: "NSE",
       name: row.name ?? symbol,
       exchange: "NSE",
       instrumentType: row.type ?? null,

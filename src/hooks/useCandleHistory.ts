@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCandles } from "@/lib/market-data/client";
-import type { CandleRange, CandlesEnvelope } from "@/lib/market-data/types";
+import type { CandleRange, CandlesEnvelope, Market } from "@/lib/market-data/types";
 
 const cache = new Map<string, CandlesEnvelope>();
 const MAX_CONCURRENT = 3;
@@ -24,14 +24,14 @@ type CandleHistoryState = {
   error: string | null;
 };
 
-export function useCandleHistory(symbol: string | null, range: CandleRange) {
+export function useCandleHistory(symbol: string | null, range: CandleRange, market: Market = "NSE") {
   const [state, setState] = useState<CandleHistoryState>({
     status: symbol ? "loading" : "idle",
     envelope: null,
     error: null,
   });
   const [nonce, setNonce] = useState(0);
-  const key = symbol ? `${symbol}:${range}` : "";
+  const key = symbol ? `${market}:${symbol}:${range}` : "";
 
   useEffect(() => {
     if (!symbol) return;
@@ -45,7 +45,7 @@ export function useCandleHistory(symbol: string | null, range: CandleRange) {
     const controller = new AbortController();
     setState({ status: "loading", envelope: null, error: null });
 
-    withSlot(() => fetchCandles(symbol, range, { signal: controller.signal }))
+    withSlot(() => fetchCandles({ market, ticker: symbol }, range, { signal: controller.signal }))
       .then((envelope) => {
         if (cancelled) return;
         cache.set(key, envelope);
@@ -64,7 +64,7 @@ export function useCandleHistory(symbol: string | null, range: CandleRange) {
       cancelled = true;
       controller.abort();
     };
-  }, [symbol, range, key, nonce]);
+  }, [symbol, market, range, key, nonce]);
 
   const retry = useCallback(() => {
     if (key) cache.delete(key);
