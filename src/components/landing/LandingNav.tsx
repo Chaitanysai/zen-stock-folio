@@ -5,9 +5,9 @@ import LogoMark from "@/components/LogoMark";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export const SECTIONS = [
-  { id: "features", label: "Features" },
+  { id: "product", label: "Product" },
   { id: "workflow", label: "How it works" },
-  { id: "trust", label: "Your data" },
+  { id: "trust", label: "Security" },
 ] as const;
 
 export default function LandingNav() {

@@ -1,16 +1,16 @@
 import { useRef, type CSSProperties } from "react";
 import { RouteLink } from "@/components/RouteTransition";
 import {
+  ArrowDown,
   ArrowRight,
+  ArrowUpRight,
   BellRing,
   BookOpen,
   Clock,
   Crosshair,
   FileSpreadsheet,
   Layers,
-  LineChart,
   Lock,
-  Newspaper,
   PieChart,
   ShieldCheck,
   Sparkles,
@@ -20,44 +20,46 @@ import {
 import LogoMark from "@/components/LogoMark";
 import LandingNav, { SECTIONS } from "@/components/landing/LandingNav";
 import DashboardPreview from "@/components/landing/DashboardPreview";
+import HeroScene from "@/components/landing/HeroScene";
+import Preloader from "@/components/landing/Preloader";
+import ScrollStory from "@/components/landing/ScrollStory";
 import { useReveal } from "@/components/landing/useReveal";
+import { useMarketStatus } from "@/hooks/useMarketStatus";
 import "@/styles/landing.css";
 
 const delay = (ms: number) => ({ "--zl-d": `${ms}ms` }) as CSSProperties;
 
-const FEATURES = [
+const CAPABILITIES = [
+  {
+    icon: PieChart,
+    title: "Holdings & P&L",
+    body: "Invested, current value and profit or loss per position, totalled in ₹. Price and FX P&L stay separate, so a currency move never reads as a stock call.",
+  },
   {
     icon: Crosshair,
-    title: "Watchlist with trade setups",
-    body: "Write the plan down before you buy: entry zone, stop-loss, three targets, plus RSI and moving averages for context.",
-    tags: ["Entry zone", "Stop-loss", "T1 · T2 · T3"],
+    title: "Watchlist with a plan",
+    body: "Write it down before you buy: entry zone, stop-loss and three targets, with RSI and moving averages for context.",
   },
   {
     icon: BellRing,
     title: "Price alerts",
-    body: "Set a level above or below the current price and see at a glance which alerts have triggered.",
-    tags: ["Price ≥", "Price ≤"],
+    body: "Set a level above or below the current price and see at a glance which alerts have already triggered.",
   },
   {
     icon: BookOpen,
     title: "Trade journal",
-    body: "Log closed trades, review your history and track how each strategy is working over time.",
-    tags: ["History", "Strategies"],
+    body: "Log closed trades, review the history and track how each strategy is working over time.",
   },
   {
     icon: Layers,
     title: "F&O positions",
-    body: "Track futures and options next to your equity holdings, with premiums fetched for open contracts.",
-    tags: ["Futures", "CE / PE"],
+    body: "Futures and options next to your equity holdings, with premiums fetched for open contracts.",
   },
-] as const;
-
-const ALSO = [
-  { icon: Sparkles, label: "AI portfolio insights" },
-  { icon: Newspaper, label: "News for your holdings" },
-  { icon: ShieldCheck, label: "Risk analysis" },
-  { icon: LineChart, label: "Portfolio charts" },
-  { icon: FileSpreadsheet, label: "CSV / XLSX import & export" },
+  {
+    icon: FileSpreadsheet,
+    title: "Import & export",
+    body: "Bring past trades in from CSV or Excel, and take your portfolio out whenever you want it.",
+  },
 ] as const;
 
 const STEPS = [
@@ -98,19 +100,21 @@ const FACTS = [
   },
 ] as const;
 
-const SECTORS = [
-  { name: "Financials", pct: 34, color: "hsl(var(--chart-1))" },
-  { name: "IT", pct: 22, color: "hsl(var(--chart-2))" },
-  { name: "Energy", pct: 18, color: "hsl(var(--chart-3))" },
-  { name: "Auto", pct: 14, color: "hsl(var(--chart-4))" },
+const ALSO = [
+  { icon: Sparkles, label: "AI portfolio insights" },
+  { icon: ShieldCheck, label: "Risk analysis" },
+  { icon: FileSpreadsheet, label: "CSV / XLSX import" },
 ] as const;
 
 const Landing = () => {
   const rootRef = useRef<HTMLDivElement>(null);
   useReveal(rootRef);
+  const market = useMarketStatus();
+  const marketLabel = market.isOpen ? "Market live" : market.phase === "pre-open" ? "Pre-open" : "Market closed";
 
   return (
     <div ref={rootRef} className="zl">
+      <Preloader />
       <a href="#zl-main" className="zl-skip">Skip to content</a>
       <div className="zl-atmos" aria-hidden="true" />
 
@@ -119,25 +123,32 @@ const Landing = () => {
       <main id="zl-main" tabIndex={-1} style={{ outline: "none" }}>
         {/* ── Hero ── */}
         <section className="zl-hero" aria-labelledby="zl-hero-title">
+          <HeroScene className="zl-hero-scene" />
+          <div className="zl-hero-scrim" aria-hidden="true" />
           <div className="zl-wrap zl-hero-grid">
             <div className="zl-hero-copy">
               <span className="zl-eyebrow zl-in">
-                <span className="zl-eyebrow-dot" aria-hidden="true"><LineChart size={11} /></span>
-                Portfolio tracker for NSE &amp; BSE investors
+                <span className="zl-eyebrow-dot" aria-hidden="true"><Sparkles size={11} /></span>
+                Portfolio intelligence for Indian markets
               </span>
               <h1 id="zl-hero-title" className="zl-h1 zl-in zl-in-1">
-                Your whole portfolio, <em>calmly</em> in one place.
+                Your wealth. <em>One clear</em> perspective.
               </h1>
               <p className="zl-lede zl-in zl-in-2">
-                ZenFolio brings your holdings, watchlist, trade journal and F&amp;O positions into one
-                clear dashboard, so you can see where you stand and plan the next move with a level head.
+                Track your investments, understand your portfolio and make informed decisions
+                from one intelligent workspace.
               </p>
               <div className="zl-cta-row zl-in zl-in-3">
                 <RouteLink to="/signup" className="zl-btn zl-btn-primary">
-                  Create free account <ArrowRight aria-hidden="true" />
+                  Get started <ArrowRight aria-hidden="true" />
                 </RouteLink>
-                <RouteLink to="/login" className="zl-btn zl-btn-ghost">Sign in</RouteLink>
+                <a href="#story" className="zl-btn zl-btn-ghost">
+                  Explore ZenFolio <ArrowDown aria-hidden="true" />
+                </a>
               </div>
+              <p className="zl-hero-signin zl-in zl-in-3">
+                Already have an account? <RouteLink to="/login">Sign in</RouteLink>
+              </p>
               <ul className="zl-hero-meta zl-in zl-in-4">
                 <li><Lock aria-hidden="true" />Private to your account</li>
                 <li><Clock aria-hidden="true" />IST market hours</li>
@@ -145,67 +156,85 @@ const Landing = () => {
               </ul>
             </div>
 
-            <DashboardPreview />
+            <div className="zl-hero-visual zl-in-preview">
+              <div className="zl-hud">
+                <div className="zl-hud-head">
+                  <span className="zl-hud-label">Portfolio value</span>
+                  <span className="zl-hud-tag">Sample data</span>
+                </div>
+                <div className="zl-hud-value">₹12,48,560</div>
+                <div className="zl-hud-delta">
+                  <ArrowUpRight aria-hidden="true" /> +₹1,62,340 <span>+14.9%</span>
+                </div>
+                <div className="zl-hud-split" aria-hidden="true">
+                  <span style={{ width: "34%" }} />
+                  <span style={{ width: "22%" }} />
+                  <span style={{ width: "18%" }} />
+                  <span style={{ width: "14%" }} />
+                  <span style={{ width: "12%" }} />
+                </div>
+                <div className="zl-hud-foot">
+                  <span><i aria-hidden="true" />9 holdings</span>
+                  <span><i aria-hidden="true" />4 sectors</span>
+                  <span><i aria-hidden="true" />NSE · US</span>
+                </div>
+              </div>
+              <div className="zl-hud-chip" data-live={market.isOpen ? "1" : "0"} title={market.description}>
+                <span className="zl-pulse" aria-hidden="true" />
+                {marketLabel} · {market.istTime} IST
+              </div>
+              <p className="zl-stage-note">Illustrative scene with sample data.</p>
+            </div>
           </div>
+
+          <a className="zl-scroll-cue" href="#story" aria-label="Scroll to the product story">
+            <span>Scroll</span>
+            <ArrowDown aria-hidden="true" />
+          </a>
         </section>
 
-        {/* ── Features ── */}
-        <section id="features" className="zl-section" aria-labelledby="zl-features-title">
+        {/* ── Pinned narrative ── */}
+        <ScrollStory />
+
+        {/* ── Product ── */}
+        <section id="product" className="zl-section" aria-labelledby="zl-product-title">
           <div className="zl-wrap">
             <div className="zl-head zl-head-split zl-reveal">
               <div>
-                <p className="zl-kicker">Features</p>
-                <h2 id="zl-features-title" className="zl-h2">Everything you track, <em>without</em> the spreadsheet.</h2>
+                <p className="zl-kicker">The product</p>
+                <h2 id="zl-product-title" className="zl-h2">
+                  Everything you track, <em>without</em> the spreadsheet.
+                </h2>
               </div>
               <p className="zl-sub zl-head-aside">
-                The tools an active Indian investor reaches for every day, in one workspace that keeps the numbers readable.
+                The tools an active Indian investor reaches for every day, in one workspace that
+                keeps the numbers readable.
               </p>
             </div>
 
-            <div className="zl-bento">
-              <article className="zl-card zl-card-wide zl-reveal">
-                <div className="zl-card-wide-grid">
-                  <div>
-                    <span className="zl-card-icon" aria-hidden="true"><PieChart /></span>
-                    <h3>Holdings, P&amp;L and sector mix</h3>
-                    <p>
-                      See invested value, current value and profit or loss per position, then check how your
-                      money is spread across sectors before concentration becomes a problem.
-                    </p>
-                    <ul className="zl-card-tags">
-                      <li>Holdings table</li><li>Sector diversification</li><li>All values in ₹</li>
-                    </ul>
-                  </div>
-                  <div className="zl-mini" aria-label="Sample sector allocation" role="img">
-                    {SECTORS.map((s) => (
-                      <div key={s.name} className="zl-mini-row" aria-hidden="true">
-                        <span>{s.name}</span>
-                        <span className="zl-mini-track"><i style={{ width: `${s.pct * 2.4}%`, background: s.color }} /></span>
-                        <span>{s.pct}%</span>
-                      </div>
-                    ))}
-                    <p className="zl-mini-cap">Sample data</p>
-                  </div>
-                </div>
-              </article>
+            <div className="zl-product-grid">
+              <div className="zl-product-frame zl-reveal">
+                <DashboardPreview />
+              </div>
 
-              {FEATURES.map((f, i) => (
-                <article key={f.title} className="zl-card zl-reveal" style={delay(60 * (i + 1))}>
-                  <span className="zl-card-icon" aria-hidden="true"><f.icon /></span>
-                  <h3>{f.title}</h3>
-                  <p>{f.body}</p>
-                  <ul className="zl-card-tags">
-                    {f.tags.map((t) => <li key={t}>{t}</li>)}
-                  </ul>
-                </article>
-              ))}
+              <ul className="zl-capabilities zl-reveal" style={delay(80)}>
+                {CAPABILITIES.map((item) => (
+                  <li key={item.title} className="zl-capability">
+                    <span className="zl-capability-icon" aria-hidden="true"><item.icon /></span>
+                    <div>
+                      <h3>{item.title}</h3>
+                      <p>{item.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
 
             <div className="zl-also zl-reveal">
               <span className="zl-also-lbl">Also included</span>
               <ul>
-                {ALSO.map((a) => (
-                  <li key={a.label}><a.icon aria-hidden="true" />{a.label}</li>
+                {ALSO.map((item) => (
+                  <li key={item.label}><item.icon aria-hidden="true" />{item.label}</li>
                 ))}
               </ul>
             </div>
@@ -225,11 +254,11 @@ const Landing = () => {
               </p>
             </div>
             <ol className="zl-steps">
-              {STEPS.map((s, i) => (
-                <li key={s.title} className="zl-step zl-reveal" style={delay(90 * i)}>
-                  <span className="zl-step-num" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
-                  <h3><span className="zl-sr">Step {i + 1}: </span>{s.title}</h3>
-                  <p>{s.body}</p>
+              {STEPS.map((step, index) => (
+                <li key={step.title} className="zl-step zl-reveal" style={delay(90 * index)}>
+                  <span className="zl-step-num" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                  <h3><span className="zl-sr">Step {index + 1}: </span>{step.title}</h3>
+                  <p>{step.body}</p>
                 </li>
               ))}
             </ol>
@@ -243,19 +272,20 @@ const Landing = () => {
               <p className="zl-kicker">Your data</p>
               <h2 id="zl-trust-title" className="zl-h2">Built to keep your portfolio <em>yours</em>.</h2>
               <p className="zl-sub">
-                A portfolio says a lot about you. ZenFolio is designed so it's only ever visible to the account that owns it.
+                A portfolio says a lot about you. ZenFolio is designed so it's only ever visible to
+                the account that owns it.
               </p>
               <p className="zl-note">
-                ZenFolio is a tracking and planning tool. It isn't investment advice, and AI insights are a
-                starting point for your own research.
+                ZenFolio is a tracking and planning tool. It isn't investment advice, and AI insights
+                are a starting point for your own research.
               </p>
             </div>
             <ul className="zl-facts zl-reveal" style={delay(80)}>
-              {FACTS.map((f) => (
-                <li key={f.title} className="zl-fact">
-                  <f.icon aria-hidden="true" />
-                  <h3>{f.title}</h3>
-                  <p>{f.body}</p>
+              {FACTS.map((fact) => (
+                <li key={fact.title} className="zl-fact">
+                  <fact.icon aria-hidden="true" />
+                  <h3>{fact.title}</h3>
+                  <p>{fact.body}</p>
                 </li>
               ))}
             </ul>
@@ -263,10 +293,12 @@ const Landing = () => {
         </section>
 
         {/* ── Final CTA ── */}
-        <section className="zl-section" aria-labelledby="zl-final-title" style={{ borderTop: "none", paddingBottom: 0 }}>
+        <section className="zl-section zl-section-cta" aria-labelledby="zl-final-title">
           <div className="zl-wrap">
             <div className="zl-final zl-reveal">
-              <div>
+              <div className="zl-final-glow" aria-hidden="true" />
+              <div className="zl-final-copy">
+                <p className="zl-kicker">Begin</p>
                 <h2 id="zl-final-title">See your portfolio <em>clearly</em>, starting today.</h2>
                 <p>Create a free account, add your first holding, and get the full picture in one place.</p>
               </div>
@@ -293,8 +325,8 @@ const Landing = () => {
             </div>
             <nav aria-label="Footer">
               <ul>
-                {SECTIONS.map((s) => (
-                  <li key={s.id}><a href={`#${s.id}`}>{s.label}</a></li>
+                {SECTIONS.map((section) => (
+                  <li key={section.id}><a href={`#${section.id}`}>{section.label}</a></li>
                 ))}
                 <li><RouteLink to="/login">Sign in</RouteLink></li>
                 <li><RouteLink to="/signup">Create account</RouteLink></li>

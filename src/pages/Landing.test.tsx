@@ -14,13 +14,15 @@ const renderLanding = () =>
   );
 
 describe("Landing page", () => {
-  it("renders the hero heading with sign-up and sign-in CTAs", () => {
+  it("renders the hero heading with sign-up, explore and sign-in CTAs", () => {
     renderLanding();
     const hero = screen.getByRole("heading", { level: 1 });
-    expect(hero).toHaveTextContent(/your whole portfolio/i);
+    expect(hero).toHaveTextContent(/your wealth/i);
+    expect(hero).toHaveTextContent(/one clear perspective/i);
 
     const heroSection = hero.closest("section") as HTMLElement;
-    expect(within(heroSection).getByRole("link", { name: /create free account/i })).toHaveAttribute("href", "/signup");
+    expect(within(heroSection).getByRole("link", { name: /get started/i })).toHaveAttribute("href", "/signup");
+    expect(within(heroSection).getByRole("link", { name: /explore zenfolio/i })).toHaveAttribute("href", "#story");
     expect(within(heroSection).getByRole("link", { name: /^sign in$/i })).toHaveAttribute("href", "/login");
   });
 

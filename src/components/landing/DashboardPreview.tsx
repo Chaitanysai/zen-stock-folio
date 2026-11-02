@@ -38,9 +38,13 @@ function Pnl({ up, children }: { up: boolean; children: string }) {
   );
 }
 
-export default function DashboardPreview() {
+export default function DashboardPreview({ className }: { className?: string }) {
   return (
-    <figure className="zl-stage zl-in-preview" aria-labelledby="zl-preview-cap" style={{ margin: 0 }}>
+    <figure
+      className={["zl-stage", className].filter(Boolean).join(" ")}
+      aria-labelledby="zl-preview-cap"
+      style={{ margin: 0 }}
+    >
       <div className="zl-preview">
         <div className="zl-pv-bar">
           <span className="zl-pv-dots" aria-hidden="true"><i /><i /><i /></span>
