@@ -10,6 +10,7 @@ import {
 } from "./_lib/http";
 import { fetchJson, fetchJsonAll } from "./_lib/upstream";
 import { readEodCache, writeEodCache, type CachedQuote } from "./_lib/kvPriceCache";
+import { normalizeSymbol } from "../../src/lib/market-data/symbols.ts";
 import type { PagesHandler } from "./_lib/types";
 
 /**
@@ -30,7 +31,12 @@ import type { PagesHandler } from "./_lib/types";
  * source="kv-cache".
  */
 
-const TICKER_REGEX = /^[A-Za-z0-9&.-]{1,15}$/;
+// One validator for the outbound-symbol contract: the canonical NSE helper.
+// A local regex here previously drifted wider (lowercase, leading "."/"-");
+// see the security review, LOW-4.
+const tickerSchema = z.string().refine((value) => normalizeSymbol(value) !== null, {
+  message: "must be a valid NSE symbol",
+});
 const PROVIDER_TIMEOUT_MS = 5000;
 
 type StockPrice = CachedQuote;
@@ -38,7 +44,7 @@ type StockPrice = CachedQuote;
 const isValidPrice = (p: StockPrice): boolean => Number.isFinite(p.price) && p.price > 0;
 
 const bodySchema = z.object({
-  tickers: z.array(z.string().regex(TICKER_REGEX)).min(1).max(40),
+  tickers: z.array(tickerSchema).min(1).max(40),
 });
 
 const fetchUpstox = async (
@@ -147,7 +153,8 @@ export const onRequestPost: PagesHandler = async ({ request, env }) => {
   if (!parsed.success) {
     return errorResponse(env, request, 400, "tickers must be an array of 1-40 valid ticker symbols");
   }
-  const unique = [...new Set(parsed.data.tickers.map((t) => t.trim().toUpperCase()))];
+  // Canonicalize before any provider call: the validator guarantees non-null.
+  const unique = [...new Set(parsed.data.tickers.map((t) => normalizeSymbol(t)!))];
 
   // 1. Upstox (real-time) — 2. Yahoo chart. Same order and semantics as the
   // production endpoint: the first source that returns anything wins.

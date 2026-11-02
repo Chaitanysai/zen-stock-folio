@@ -308,6 +308,19 @@ export const onRequestGet: PagesHandler = async ({ request, env }) => {
   const auth = await requireVerifiedIdentity(env, request);
   if (!auth.ok) return auth.response;
 
+  // Operator-only. Authenticated is not privileged: the payload names which
+  // integrations are configured and reports upstream status, which is
+  // reconnaissance for any ordinary account. Without a configured allowlist
+  // the endpoint is disabled entirely so it can never fail open.
+  const operators = (env.HEALTH_OPERATOR_UIDS ?? "")
+    .split(",")
+    .map((uid) => uid.trim())
+    .filter(Boolean);
+  if (operators.length === 0 || !operators.includes(auth.identity.uid)) {
+    // 404, not 403: an unauthorised caller should not learn the route exists.
+    return errorResponse(env, request, 404, "Not found");
+  }
+
   const rl = checkRateLimit(
     `${auth.identity.uid}:health`,
     RATE_LIMITS.health.limit,

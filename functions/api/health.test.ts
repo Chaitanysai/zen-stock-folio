@@ -67,6 +67,39 @@ describe("GET /api/health", () => {
     expect(body.error).toBe("Email verification required");
   });
 
+  it("hides the endpoint from a verified non-operator (404, not 403)", async () => {
+    // Authenticated is not privileged: the payload names configured
+    // integrations, so a normal account must not see it at all.
+    stubIdentity("user-2");
+    stubUpstreamRoutes([]);
+    const res = await onRequestGet({ request: get(), env: makeEnv(), params: {} });
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("Not found");
+  });
+
+  it("fails closed when no operator allowlist is configured", async () => {
+    stubUpstreamRoutes([]);
+    for (const value of ["", "   ", ", ,"]) {
+      const res = await onRequestGet({
+        request: get(),
+        env: makeEnv({ HEALTH_OPERATOR_UIDS: value }),
+        params: {},
+      });
+      expect(res.status).toBe(404);
+    }
+  });
+
+  it("admits a listed operator even when the allowlist is spaced or shared", async () => {
+    stubUpstreamRoutes([]);
+    const res = await onRequestGet({
+      request: get(),
+      env: makeEnv({ HEALTH_OPERATOR_UIDS: " someone-else , user-1 " }),
+      params: {},
+    });
+    expect(res.status).toBe(200);
+  });
+
   it("shallow mode performs no upstream calls and never echoes env values", async () => {
     const fetchMock = stubUpstreamRoutes([]);
     const res = await onRequestGet({

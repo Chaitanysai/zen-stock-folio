@@ -3,6 +3,7 @@ import { requireVerifiedIdentity } from "./_lib/auth";
 import { checkRateLimit, RATE_LIMITS } from "./_lib/ratelimit";
 import { errorResponse, handleOptions, jsonResponse, readJsonBody, retryAfterHeader } from "./_lib/http";
 import { fetchJson } from "./_lib/upstream";
+import { normalizeSymbol } from "../../src/lib/market-data/symbols.ts";
 import type { PagesHandler } from "./_lib/types";
 
 /**
@@ -17,15 +18,20 @@ import type { PagesHandler } from "./_lib/types";
  * (503 with a non-secretive hint); nothing is fabricated.
  */
 
-const TICKER_REGEX = /^[A-Za-z0-9&.-]{1,15}$/;
+// Same canonical validator as /api/prices (see the security review, LOW-4).
+const symbolSchema = z.string().refine((value) => normalizeSymbol(value) !== null, {
+  message: "must be a valid NSE symbol",
+});
 const UPSTOX_TIMEOUT_MS = 9000;
 
 const tradeSchema = z.object({
   id: z.string().min(1).max(64),
-  symbol: z.string().regex(TICKER_REGEX),
+  symbol: symbolSchema,
   instrumentType: z.enum(["CE", "PE", "FUT"]),
   strike: z.number().nonnegative().optional(),
-  expiry: z.string().min(6).max(12),
+  // Strict date shape: a loose length check let commas through into the
+  // comma-joined Upstox instrument_key query.
+  expiry: z.string().regex(/^\d{1,2}-(\d{1,2}|[A-Za-z]{3})-\d{4}$/, "expiry must be DD-MM-YYYY or DD-Mon-YYYY"),
   lotSize: z.number().int().positive().max(100_000),
   lots: z.number().int().min(0).max(10_000),
 });
@@ -173,10 +179,17 @@ export const onRequestPost: PagesHandler = async ({ request, env }) => {
     return errorResponse(env, request, 400, "trades must be a valid array of 1-50 F&O trades");
   }
 
-  let ltpMap = await fetchUpstoxFnO(env.UPSTOX_ACCESS_TOKEN, parsed.data.trades);
+  // Canonicalize symbols before keys are built: the validator guarantees
+  // non-null, and Upstox instrument keys are case-sensitive.
+  const trades = parsed.data.trades.map((trade) => ({
+    ...trade,
+    symbol: normalizeSymbol(trade.symbol)!,
+  }));
+
+  let ltpMap = await fetchUpstoxFnO(env.UPSTOX_ACCESS_TOKEN, trades);
   let source = ltpMap ? "upstox-nfo" : "";
 
-  const missingTrades = parsed.data.trades.filter((t) => !ltpMap?.[t.id]);
+  const missingTrades = trades.filter((t) => !ltpMap?.[t.id]);
   if (missingTrades.length > 0) {
     const fallback = await fetchYahooFutFallback(missingTrades);
     if (fallback) {

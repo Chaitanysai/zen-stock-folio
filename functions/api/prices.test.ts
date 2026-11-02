@@ -88,6 +88,25 @@ describe("POST /api/prices", () => {
     expect(body.prices.RELIANCE.price).toBe(2505);
   });
 
+  it("canonicalizes lowercase and .NS-suffixed tickers to the exact provider symbol", async () => {
+    const fetchMock = stubUpstreams([
+      { match: "api.upstox.com", status: 401, body: {} },
+      { match: "query1.finance.yahoo.com", body: yahooBody(2500, 2450) },
+    ]);
+
+    const res = await onRequestPost({
+      request: authedRequest(URL, { tickers: ["reliance", "tcs.ns"] }),
+      env: makeEnv({ UPSTOX_ACCESS_TOKEN: "t" }),
+      params: {},
+    });
+    expect(res.status).toBe(200);
+
+    const urls = fetchMock.mock.calls.map(([input]) => String(input));
+    expect(urls.some((url) => url.includes("/chart/RELIANCE.NS"))).toBe(true);
+    expect(urls.some((url) => url.includes("/chart/TCS.NS"))).toBe(true);
+    expect(urls.some((url) => url.includes(".NS.NS"))).toBe(false);
+  });
+
   it("back-fills from the EOD cache as stale when live sources fail", async () => {
     stubUpstreams([
       { match: "api.upstox.com", status: 401, body: {} },

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { onRequestGet } from "./upstox-callback";
+import { escapeHtml, onRequestGet } from "./upstox-callback";
 import { makeEnv, restoreIdentity, stubIdentity, upstreamJson } from "../_lib/testHelpers";
 
 const OPS_KEY = "ops-key-0123456789abcdef0123456789abcdef";
@@ -47,6 +47,28 @@ describe("GET /api/ops/upstox-callback (secure redesign)", () => {
     const html = await res.text();
     expect(html).toContain("fresh-upstox-token");
     expect(res.headers.get("Cache-Control")).toContain("no-store");
+  });
+
+  it("HTML-escapes the token before rendering it", async () => {
+    const payload = `<script>alert("token & cookies")</script>'`;
+    vi.stubGlobal("fetch", vi.fn(async () => upstreamJson({ access_token: payload, expires_in: 90000 })));
+
+    const res = await call(
+      { UPSTOX_OPS_KEY: OPS_KEY, UPSTOX_API_KEY: "client", UPSTOX_API_SECRET: "secret" },
+      `?code=the-code&key=${OPS_KEY}`,
+    );
+    const html = await res.text();
+
+    expect(html).not.toContain("<script>alert(");
+    expect(html).toContain(
+      "&lt;script&gt;alert(&quot;token &amp; cookies&quot;)&lt;/script&gt;&#39;",
+    );
+  });
+
+  it("escapes every HTML-significant character in a title or attribute value", () => {
+    expect(escapeHtml(`<b title="x">'&'</b>`)).toBe(
+      "&lt;b title=&quot;x&quot;&gt;&#39;&amp;&#39;&lt;/b&gt;",
+    );
   });
 
   it("never leaks upstream failure details as a token and never renders for missing code", async () => {

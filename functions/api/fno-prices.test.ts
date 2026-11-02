@@ -78,6 +78,47 @@ describe("POST /api/fno-prices", () => {
     expect(body.ltpMap["trade-1"]).toBeUndefined(); // options never get a spot price
   });
 
+  it("rejects malformed or comma-injected expiry strings", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    for (const expiry of [
+      "27-11-2026,evil",
+      "2026-11-27",
+      "27/11/2026",
+      "27-11-26",
+      "27-November-2026",
+    ]) {
+      const res = await onRequestPost({
+        request: authedRequest(URL, { trades: [{ ...ceTrade, expiry }] }),
+        env: makeEnv(),
+        params: {},
+      });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it("canonicalizes lowercase symbols before building provider keys", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      expect(String(input)).toContain("NFO_FUT%7CNIFTY%7C2026-11-27");
+      return upstreamJson({
+        status: "success",
+        data: { "NFO_FUT:NIFTY:2026-11-27": { last_price: 25010, ohlc: { close: 24900 } } },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const futTrade = { id: "fut-1", symbol: "nifty", instrumentType: "FUT", expiry: "27-11-2026", lotSize: 75, lots: 1 };
+    const res = await onRequestPost({
+      request: authedRequest(URL, { trades: [futTrade] }),
+      env: makeEnv({ UPSTOX_ACCESS_TOKEN: "t" }),
+      params: {},
+    });
+    const body = (await res.json()) as { ltpMap: Record<string, { ltp: number }> };
+
+    expect(res.status).toBe(200);
+    expect(body.ltpMap["fut-1"].ltp).toBe(25010);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("validates the trades schema", async () => {
     vi.stubGlobal("fetch", vi.fn());
     const bad = await onRequestPost({

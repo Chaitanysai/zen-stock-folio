@@ -16,6 +16,11 @@
     "target": "ES2022",
     "types": ["@cloudflare/workers-types", "vitest/globals"]
   },
-  "include": ["functions/api/brokers/**/*.ts", "src/lib/brokers/**/*.ts"],
+  "include": [
+    "functions/_middleware.ts",
+    "functions/api/_lib/securityHeaders.ts",
+    "functions/api/brokers/**/*.ts",
+    "src/lib/brokers/**/*.ts"
+  ],
   "exclude": ["src/lib/brokers/client.ts", "src/lib/brokers/merge.ts", "src/lib/brokers/*.test.ts"]
 }

@@ -27,9 +27,18 @@ const constantTimeEqual = (a: string, b: string): boolean => {
   return mismatch === 0;
 };
 
+/** Escape a value for safe interpolation into HTML text or an attribute. */
+export const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 const page = (title: string, bodyHtml: string): Response =>
   new Response(
-    `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title></head>
+    `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>
 <body style="font-family:sans-serif;max-width:700px;margin:60px auto;padding:20px">${bodyHtml}</body></html>`,
     { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } },
   );
@@ -81,7 +90,7 @@ export const onRequestGet: PagesHandler = async ({ request, env }) => {
       "Upstox token",
       `<h2>Access token generated</h2>
 <p>Update <strong>UPSTOX_ACCESS_TOKEN</strong> in the Cloudflare Pages project with:</p>
-<div id="token" style="background:#f0f0f0;padding:16px;border-radius:8px;word-break:break-all;font-family:monospace">${data.access_token}</div>
+<div id="token" style="background:#f0f0f0;padding:16px;border-radius:8px;word-break:break-all;font-family:monospace">${escapeHtml(data.access_token)}</div>
 <button onclick="navigator.clipboard.writeText(document.getElementById('token').innerText)">Copy token</button>
 <p style="color:#888">Tokens expire at market close (3:30 AM IST next day). This page is shown once — do not share the URL.</p>`,
     );
