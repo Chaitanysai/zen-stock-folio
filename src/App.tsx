@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { lazy, Suspense, useEffect } from "react";
 import { SessionLoading } from "@/components/ProtectedRoute";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { RouteEnter } from "@/components/RouteEnter";
 import { installHistoryRouteTransition, setLastRoutePath } from "@/lib/navigation/routeTransition";
 import Landing from "./pages/Landing";
@@ -38,7 +39,7 @@ const Home = () => {
   if (isLoading) return <SessionLoading />;
   if (!isAuthenticated) return <RouteEnter key="landing"><Landing /></RouteEnter>;
   return (
-    <Suspense fallback={<SessionLoading />}>
+    <Suspense fallback={<DashboardSkeleton />}>
       <RouteEnter key="dashboard"><Index /></RouteEnter>
     </Suspense>
   );

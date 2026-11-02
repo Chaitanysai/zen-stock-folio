@@ -37,6 +37,7 @@ import {
 } from "@/hooks/usePortfolioSync";
 import { useAuth }           from "@/contexts/AuthContext";
 import { journalNotesPatch } from "@/lib/portfolio/snapshotUpdates";
+import { statementKey } from "@/lib/statementImport";
 import { evaluateAlerts } from "@/lib/portfolio/priceAlerts";
 import { bestPerformer, describeAiTeaser } from "@/lib/dashboard/presentation";
 import { dataModeLabel } from "@/lib/market-data/freshness.ts";
@@ -48,6 +49,7 @@ import { readBrokerCallback } from "@/lib/brokers/client";
 import { useThemeReveal } from "@/hooks/useThemeReveal";
 import { BalanceCard, PnlCard, StatGrid } from "@/components/dashboard/Summary";
 import { HoldingsCard } from "@/components/dashboard/Holdings";
+import { HoldingCharts } from "@/components/dashboard/HoldingCharts";
 import { FnoCard, InsightCard, PriceChartCard, SectorCard, WatchlistCard } from "@/components/dashboard/Sections";
 import { NAV_ITEMS, PAGE_TITLES, navItem, type ActiveTab } from "@/components/dashboard/nav";
 
@@ -217,7 +219,7 @@ export default function Index() {
     ])),
     [stocks, alerts],
   );
-  const { prices, dataMode, refresh, error: priceError, loading: pricesLoading, lastUpdated } = useLivePrices(tickers);
+  const { prices, dataMode, sourceLabel, refresh, error: priceError, loading: pricesLoading, lastUpdated } = useLivePrices(tickers);
   // Exchange status: clock + NSE calendar only (Asia/Kolkata). Data/API
   // availability is a separate signal: a successful price response must never
   // make the exchange look live after 15:30 IST.
@@ -305,7 +307,14 @@ export default function Index() {
   }), [prices, stocks]);
 
   const handlePortfolioAdd    = useCallback((stock: PortfolioStock) => { void applySnapshot({ stocks: [...snapshotRef.current.stocks, stock] }, "Portfolio update"); }, [applySnapshot]);
-  const handlePortfolioImport = useCallback((importedStocks: PortfolioStock[]) => { void applySnapshot({ stocks: [...snapshotRef.current.stocks, ...importedStocks] }, "Portfolio import"); }, [applySnapshot]);
+  const handlePortfolioImport = useCallback((importedStocks: PortfolioStock[]) => {
+    // Statement re-imports must never duplicate history: skip rows whose
+    // statement key is already present, regardless of import path.
+    const seen = new Set(snapshotRef.current.stocks.map(statementKey));
+    const fresh = importedStocks.filter((stock) => !seen.has(statementKey(stock)));
+    if (fresh.length === 0) return;
+    void applySnapshot({ stocks: [...snapshotRef.current.stocks, ...fresh] }, "Portfolio import");
+  }, [applySnapshot]);
   const handlePortfolioEdit   = useCallback((originalTicker: string, updatedStock: PortfolioStock) => {
     const nextStocks = snapshotRef.current.stocks.map((s) => s.ticker === originalTicker ? updatedStock : s);
     const nextTrades = snapshotRef.current.trades.map((t) => t.ticker === originalTicker ? { ...t, ticker: updatedStock.ticker, livePrice: updatedStock.cmp } : t);
@@ -411,6 +420,20 @@ export default function Index() {
   }, [chartScrollSignal, phase, renderedTab]);
 
   const refreshStatus = priceError ? "Price refresh failed" : pricesLoading ? "Refreshing prices" : lastUpdated ? "Prices updated" : "";
+  const istClock = useMemo(
+    () => new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+    }),
+    [],
+  );
+  const priceBadge = priceError
+    ? "Prices unavailable"
+    : pricesLoading
+      ? "Refreshing prices"
+      : sourceLabel
+        ? `${sourceLabel} prices`
+        : "Prices";
 
   if (authLoading) return (
     <div className="zf" style={{ alignItems: "center", justifyContent: "center" }} role="status" aria-live="polite">
@@ -489,6 +512,18 @@ export default function Index() {
                 )}
                 <p className="zf-sub">{renderedTab === "overview" ? pnlSentence : navItem(renderedTab).hint}</p>
               </div>
+              {renderedTab === "overview" && (
+                <div
+                  className="zf-price-clock"
+                  title={priceError ?? (market.isOpen
+                    ? "Prices refresh automatically while the NSE session is running."
+                    : "Prices refresh at a slower cadence while the market is closed.")}
+                >
+                  <i aria-hidden="true" data-live={market.isOpen ? "1" : "0"} />
+                  <span>{priceBadge}</span>
+                  {lastUpdated && <b>{istClock.format(new Date(lastUpdated))} IST</b>}
+                </div>
+              )}
             </div>
 
             {syncNotice && (
@@ -531,31 +566,31 @@ export default function Index() {
                   />
                 </div>
 
+                <HoldingCharts holdings={holdingRows.map((row) => ({ symbol: row.ticker, name: row.name }))} />
+
                 <div className="zf-row3">
-                  <div className="zf-stack">
-                    <PriceChartCard
-                      tickers={activeTickers}
-                      selected={chartSymbol}
-                      onSelect={(t) => { setSearchedSymbol(null); setSelectedChartTicker(t); }}
-                      range={chartRange}
-                      onRange={setChartRange}
-                      quote={chartQuote}
-                    />
-                    <WatchlistCard watchlist={watchlist} loading={loading} onRemove={handleWatchlistDelete} goTo={goTo} />
-                  </div>
+                  <PriceChartCard
+                    tickers={activeTickers}
+                    selected={chartSymbol}
+                    onSelect={(t) => { setSearchedSymbol(null); setSelectedChartTicker(t); }}
+                    range={chartRange}
+                    onRange={setChartRange}
+                    quote={chartQuote}
+                  />
+                  <WatchlistCard watchlist={watchlist} loading={loading} onRemove={handleWatchlistDelete} goTo={goTo} />
                   <div className="zf-stack">
                     <InsightCard text={describeAiTeaser(m.active.length, bestPerformer(live))} goTo={goTo} />
                     <FnoCard m={m} loading={loading} openFno={openFno} />
-                    <section className="zf-card zf-strip zf-pulse zf-in" style={stagger(10)} aria-labelledby="zf-pulse-title">
-                      <div className="zf-card-head">
-                        <h2 className="zf-card-title" id="zf-pulse-title">Market pulse</h2>
-                        <span className="zf-chip-ico" aria-hidden="true"><Activity /></span>
-                      </div>
-                      <div className="zf-card-body">
-                        <MarketIndexStrip />
-                      </div>
-                    </section>
                   </div>
+                  <section className="zf-card zf-strip zf-pulse zf-in" style={stagger(10)} aria-labelledby="zf-pulse-title">
+                    <div className="zf-card-head">
+                      <h2 className="zf-card-title" id="zf-pulse-title">Market pulse</h2>
+                      <span className="zf-chip-ico" aria-hidden="true"><Activity /></span>
+                    </div>
+                    <div className="zf-card-body">
+                      <MarketIndexStrip />
+                    </div>
+                  </section>
                 </div>
               </div>
             )}

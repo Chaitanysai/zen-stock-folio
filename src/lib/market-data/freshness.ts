@@ -181,6 +181,7 @@ export const RANGE_PRESETS: Record<
   "5d": { resolution: "15m", yahooRange: "5d", yahooInterval: "15m", maxAgeDays: 10 },
   "1mo": { resolution: "1d", yahooRange: "1mo", yahooInterval: "1d", maxAgeDays: 45 },
   "3mo": { resolution: "1d", yahooRange: "3mo", yahooInterval: "1d", maxAgeDays: 120 },
+  "6mo": { resolution: "1d", yahooRange: "6mo", yahooInterval: "1d", maxAgeDays: 200 },
   "1y": { resolution: "1d", yahooRange: "1y", yahooInterval: "1d", maxAgeDays: 400 },
 };
 

@@ -66,7 +66,7 @@ export function useChartColors(): ChartColors {
       });
     update();
     const observer = new MutationObserver(update);
-    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+    observer.observe(root, { attributes: true, attributeFilter: ["class", "data-accent"] });
     return () => observer.disconnect();
   }, []);
 

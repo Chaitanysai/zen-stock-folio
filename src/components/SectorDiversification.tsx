@@ -1,28 +1,6 @@
 import { getSectorAllocation, PortfolioStock } from "@/data/sampleData";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { PieChart as PieChartIcon } from "lucide-react";
-
-// Categorical sector colours come from the shared chart tokens (indigo-led,
-// theme-aware) so green/red stay reserved for gains and losses.
-const PALETTE = [
-  "hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))", "hsl(var(--chart-5))", "hsl(var(--muted-foreground))",
-];
-
-const CustomTooltip = ({ active, payload }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
-      <p className="text-xs font-semibold text-foreground">{payload[0]?.name}</p>
-      <p className="text-sm font-mono text-primary">
-        ₹{Number(payload[0]?.value).toLocaleString("en-IN")}
-      </p>
-      <p className="text-[11px] text-muted-foreground font-mono">
-        {payload[0]?.payload?.percentage?.toFixed(1)}% of portfolio
-      </p>
-    </div>
-  );
-};
+import { buildSectorSegments, isConcentrated } from "@/lib/portfolio/sectorMeter";
 
 interface SectorDiversificationProps {
   stocks: PortfolioStock[];
@@ -45,17 +23,12 @@ const SectorDiversification = ({ stocks }: SectorDiversificationProps) => {
     );
   }
 
-  const chartData = sectorData.map((s) => ({
-    name: s.sector,
-    value: s.value,
-    percentage: s.percentage,
-  }));
-
+  const segments = buildSectorSegments(sectorData);
   const topSector = sectorData[0];
+  const totalInvested = sectorData.reduce((sum, s) => sum + s.value, 0);
 
   return (
     <div className="glass-card overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
         <div>
           <h2 className="text-base font-semibold text-foreground tracking-tight">
@@ -67,68 +40,49 @@ const SectorDiversification = ({ stocks }: SectorDiversificationProps) => {
         </div>
         <div className="text-right">
           <div className="text-[11px] font-mono font-semibold text-primary">
-            {topSector?.sector}
+            {topSector.sector}
           </div>
           <div className="text-[10px] text-muted-foreground font-mono">
-            top sector · {topSector?.percentage?.toFixed(1)}%
+            top sector · {topSector.percentage.toFixed(1)}%
           </div>
         </div>
       </div>
 
-      <div className="p-5 flex flex-col lg:flex-row items-center gap-6">
-        {/* Donut */}
-        <div className="flex-shrink-0">
-          <ResponsiveContainer width={160} height={160}>
-            <PieChart>
-              <Pie
-                data={chartData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={72}
-                innerRadius={42}
-                strokeWidth={2}
-                stroke="hsl(var(--card))"
-              >
-                {chartData.map((_, i) => (
-                  <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Legend */}
-        <div className="w-full flex flex-col gap-2.5">
-          {sectorData.map((s, i) => (
-            <div key={s.sector} className="flex items-center gap-3">
-              <div
-                className="h-2.5 w-2.5 rounded-sm flex-shrink-0"
-                style={{ backgroundColor: PALETTE[i % PALETTE.length] }}
-              />
-              <div className="flex-1 flex items-center gap-2 min-w-0">
-                <span className="text-[12px] text-foreground font-medium flex-1 truncate">
-                  {s.sector}
-                </span>
-                {/* Bar */}
-                <div className="w-16 h-1.5 bg-border rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-[width] duration-700 motion-reduce:transition-none"
-                    style={{
-                      width: `${s.percentage}%`,
-                      backgroundColor: PALETTE[i % PALETTE.length],
-                    }}
-                  />
-                </div>
-                <span className="text-[11px] font-mono font-semibold text-foreground w-10 text-right flex-shrink-0">
-                  {s.percentage.toFixed(1)}%
-                </span>
-              </div>
-            </div>
+      <div className="p-5">
+        <div
+          className="zf-meter zf-meter-lg"
+          role="img"
+          aria-label={`Sector allocation: ${segments.map((s) => `${s.label} ${s.pct.toFixed(1)}%`).join(", ")}`}
+        >
+          {segments.map((s) => (
+            <span
+              key={s.id}
+              className="zf-meter-seg"
+              data-other={s.isOther || undefined}
+              style={{ width: `max(2px, ${s.widthPct}%)`, background: s.color }}
+              title={`${s.label} · ${s.pct.toFixed(1)}%`}
+            />
           ))}
         </div>
+        <div className="zf-prog-meta">
+          <span>₹{Math.round(totalInvested).toLocaleString("en-IN")} invested</span>
+          <span>100% of active holdings</span>
+        </div>
+
+        <ul className="zf-sector-legend zf-sector-legend-lg" aria-label="Sector allocation">
+          {segments.map((s, i) => (
+            <li key={s.id}>
+              <span className="zf-legend-dot" style={{ background: s.color }} aria-hidden="true" />
+              <span className="zf-sector-name">{s.label}</span>
+              <span className="zf-sector-val">₹{Math.round(sectorData[i]?.value ?? 0).toLocaleString("en-IN")}</span>
+              <span className="zf-sector-pct">{s.pct.toFixed(1)}%</span>
+            </li>
+          ))}
+        </ul>
+
+        {isConcentrated(sectorData) && (
+          <p className="zf-conc-badge">Concentrated · {topSector.sector} {topSector.percentage.toFixed(0)}%</p>
+        )}
       </div>
     </div>
   );

@@ -280,13 +280,15 @@
 }
 @layer base {
   * { @apply border-border; }
-  html { scroll-behavior: smooth; overflow-x: hidden; color-scheme: light; }
+  html { scroll-behavior: smooth; overflow-x: clip; color-scheme: light; }
   html.dark { color-scheme: dark; }
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Geist', system-ui, sans-serif;
     font-feature-settings: "cv01","cv02","ss01";
-    overflow-x: hidden;
+    /* clip, not hidden: hidden turns body into a scroll container, which
+       silently disables every position: sticky descendant. */
+    overflow-x: clip;
     -webkit-overflow-scrolling: touch;
   }
   .font-mono { font-family: 'Geist Mono', monospace; }

@@ -8,7 +8,8 @@ import {
   filterHoldings, sortHoldings, type HoldingFilter, type HoldingRow, type HoldingSortKey,
 } from "@/lib/dashboard/overview";
 import { inr, num2, sign, signedInr, signedPct, stagger } from "@/lib/dashboard/format";
-import { AddTradeButton, EmptyState, ImportButton, Skel } from "./ui";
+import { AddTradeButton, EmptyState, ImportButton } from "./ui";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const FILTER_LABEL: Record<HoldingFilter, string> = { all: "All holdings", gain: "In gain", loss: "In loss" };
 const VISIBLE = 8;
@@ -91,9 +92,12 @@ export function HoldingsCard({ rows, loading, selected, onSelect, openPortfolio,
       {loading ? (
         <div className="zf-card-body" aria-busy="true">
           <span className="zf-sr-only" role="status">Loading holdings</span>
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} style={{ display: "flex", gap: 12, padding: "10px 0" }}>
-              <Skel w={32} h={32} /><Skel w="30%" h={32} /><Skel w="40%" h={32} />
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: "1px solid hsl(var(--border))" }}>
+              <Skeleton width={36} height={36} radius={999} />
+              <Skeleton width="40%" height={12} radius={4} />
+              <Skeleton width="20%" height={12} radius={4} />
+              <Skeleton width={72} height={14} radius={4} style={{ marginLeft: "auto" }} />
             </div>
           ))}
         </div>

@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import LoginHeroVisuals from "@/components/LoginHeroVisuals";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 
 type Mode = "signin" | "signup" | "reset";
+type AuthPhase = "idle" | "submitting" | "google";
 
 function friendlyError(message: string) {
   const text = message.toLowerCase();
@@ -51,6 +53,7 @@ const Login = () => {
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [authPhase, setAuthPhase] = useState<AuthPhase>("idle");
   const [transitioning, setTransitioning] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
@@ -135,6 +138,16 @@ const Login = () => {
     );
   }
 
+  // The dashboard shell appears the moment credentials are submitted, so the
+  // wait reads as the app opening rather than a form sitting idle.
+  if (authPhase !== "idle" && !error) {
+    return (
+      <div className="atmosphere-bg min-h-screen">
+        <DashboardSkeleton label="Signing you in" />
+      </div>
+    );
+  }
+
   function validate(): string | null {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Enter a valid email address.";
     if (mode === "reset") return null;
@@ -146,6 +159,7 @@ const Login = () => {
   async function handleGoogleSignIn() {
     if (googleLoading || submitting || transitioning) return;
 
+    setAuthPhase("google");
     setGoogleLoading(true);
     setError(null);
     setNotice(null);
@@ -158,6 +172,7 @@ const Login = () => {
       setError(friendlyError(authError instanceof Error ? authError.message : "Unable to continue"));
     } finally {
       setGoogleLoading(false);
+      setAuthPhase("idle");
     }
   }
 
@@ -172,6 +187,7 @@ const Login = () => {
     }
 
     setSubmitting(true);
+    setAuthPhase("submitting");
     setError(null);
     setNotice(null);
     setResendError(null);
@@ -181,6 +197,7 @@ const Login = () => {
       if (mode === "reset") {
         await resetPassword(email.trim());
         setNotice("If an account exists for that email, a reset link is on its way.");
+        setAuthPhase("idle");
       } else if (mode === "signup") {
         const result = await signUpWithEmail(email.trim(), password);
         if (result === "CONFIRM_EMAIL") {
@@ -189,8 +206,10 @@ const Login = () => {
           setMode("signin");
           setPassword("");
           setConfirm("");
+          setAuthPhase("idle");
         } else if (result) {
           setError(friendlyError(result));
+          setAuthPhase("idle");
         } else {
           navigate(from, { replace: true });
         }
@@ -199,6 +218,7 @@ const Login = () => {
         navigate(from, { replace: true });
       }
     } catch (authError) {
+      setAuthPhase("idle");
       setError(friendlyError(authError instanceof Error ? authError.message : "Unable to continue"));
     } finally {
       setSubmitting(false);

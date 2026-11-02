@@ -90,10 +90,24 @@
 }
 .zf-rail-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .zf-rail-mid {
+  position: relative;
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
   scrollbar-width: none; padding: 2px 0;
 }
 .zf-rail-mid::-webkit-scrollbar { display: none; }
+.zf-rail-pill {
+  position: absolute; top: 0; left: 50%; z-index: 0;
+  width: 40px; height: 40px; margin-left: -20px;
+  border-radius: 999px; background: hsl(var(--primary));
+  box-shadow: var(--shadow-1);
+  opacity: 0; pointer-events: none;
+  transition: opacity 160ms ease;
+  will-change: transform, height;
+}
+.zf-rail-pill[data-ready] { opacity: 1; }
+.zf-rail-mid .zf-rbtn { z-index: 1; }
+.zf-rail .zf-rbtn[aria-current="page"] { background: transparent; box-shadow: none; color: hsl(var(--primary-foreground)); }
+.zf-rail .zf-rbtn[aria-current="page"]:hover { background: transparent; }
 .zf-rail-sep { width: 22px; height: 1px; background: hsl(var(--border)); margin: 4px 0; flex-shrink: 0; }
 
 /* Theme switch: two stacked buttons, the active one is a raised disc */
@@ -192,6 +206,29 @@
 .zf-market i { width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--profit)); flex-shrink: 0; }
 .zf-market[data-open="false"] i { background: hsl(var(--warning)); }
 .zf-market .zf-mono { font-weight: 500; color: hsl(var(--muted-foreground)); }
+
+/* Price data as-of badge: proves auto-refresh without opening a menu. */
+.zf-price-clock {
+  display: inline-flex; align-items: center; gap: 7px; align-self: flex-end;
+  padding: 6px 11px; border-radius: 999px; white-space: nowrap;
+  border: 1px solid hsl(var(--glass-border)); background: hsl(var(--glass-surface));
+  font: 500 10.5px/1 var(--ff-mono); color: hsl(var(--muted-foreground));
+}
+.zf-price-clock i { width: 6px; height: 6px; border-radius: 50%; background: hsl(var(--muted-foreground)); flex-shrink: 0; }
+.zf-price-clock i[data-live="1"] { background: hsl(var(--profit)); animation: zf-breathe 2.4s ease-in-out infinite; }
+.zf-price-clock b { font-weight: 700; color: hsl(var(--foreground)); font-variant-numeric: tabular-nums; }
+@keyframes zf-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* Market pulse values flash once when a poll changes them. */
+.zf-index-tick { display: inline-flex; align-items: baseline; padding: 1px 4px; margin: -1px -4px; border-radius: 5px; }
+.zf-index-tick[data-tick="up"] { animation: zf-tick-up 1150ms ease-out both; }
+.zf-index-tick[data-tick="down"] { animation: zf-tick-down 1150ms ease-out both; }
+@keyframes zf-tick-up { from { background-color: hsl(var(--profit) / .24); } to { background-color: transparent; } }
+@keyframes zf-tick-down { from { background-color: hsl(var(--loss) / .24); } to { background-color: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .zf-price-clock i[data-live="1"] { animation: none; }
+  .zf-index-tick[data-tick] { animation: none; }
+}
 
 .zf-user {
   display: inline-flex; align-items: center; gap: 10px; padding: 4px 12px 4px 4px; max-width: 280px;
@@ -303,6 +340,27 @@
 .zf-row1 { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.1fr) minmax(0, 1.25fr); gap: var(--gap); align-items: stretch; }
 .zf-row2 { display: grid; grid-template-columns: minmax(250px, .72fr) minmax(0, 2fr); gap: var(--gap); align-items: stretch; }
 .zf-row3 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--gap); align-items: stretch; }
+/* Chart over Watchlist; insight + F&O sit above Market pulse, which shares the Watchlist row. */
+.zf-row3 > .zf-pricechart { grid-column: 1; grid-row: 1; }
+.zf-row3 > .zf-watch { grid-column: 1; grid-row: 2; }
+.zf-row3 > .zf-stack { grid-column: 2; grid-row: 1; }
+.zf-row3 > .zf-pulse { grid-column: 2; grid-row: 2; }
+
+/* Right column rhythm. One 36px head box centres every title on its icon, one
+   --gap stack spaces copy / data / actions, and the body is a flex column so a
+   CTA can sit on the card's bottom padding instead of floating after the copy. */
+.zf-row3 :is(.zf-stack > .zf-card, .zf-pulse) > .zf-card-head {
+  align-items: center; min-height: 36px; padding-top: var(--card-pad);
+}
+.zf-row3 .zf-stack > .zf-card > .zf-card-body {
+  display: flex; flex-direction: column; gap: var(--gap); flex: 1;
+}
+.zf-row3 .zf-ai-text,
+.zf-row3 .zf-mini { margin: 0; }
+.zf-row3 .zf-stack > .zf-card > .zf-card-body > .zf-btn { margin-top: auto; align-self: flex-start; }
+.zf-row3 > .zf-pulse > .zf-card-body {
+  flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: var(--gap);
+}
 
 /* Balance */
 .zf-balance { padding: var(--card-pad); gap: 0; }
@@ -487,8 +545,11 @@
 .zf-wl-add .zf-searchpill { flex: 1; width: auto; }
 .zf-wl-err { margin: 8px 4px 0; font-size: 12.5px; color: hsl(var(--loss)); }
 
-/* AI + F&O compact cards */
-.zf-stack { display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+/* AI + F&O compact cards. Auto rows share any leftover height with the chart
+   card; when the two cards have equal content (the usual state) they stay the
+   same height and their CTAs share a baseline, and a tall F&O card does not
+   inflate its neighbour. */
+.zf-stack { display: grid; gap: var(--gap); min-width: 0; }
 .zf-ai { background: hsl(var(--card)); }
 .zf-ai-ico { color: hsl(var(--brand-ink)); background: hsl(var(--brand) / .12); }
 .zf-ai-text { margin: 10px 0 14px; font-size: 13.5px; line-height: 1.55; color: hsl(var(--muted-foreground)); }
@@ -514,10 +575,58 @@
 .zf-quote b { display: block; font: 600 22px var(--ff-num); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .zf-quote span { font: 600 12px var(--ff-num); }
 .zf-strip { padding: 14px var(--card-pad); }
-/* Last card of the right-hand stack: grows to keep row 3 level with the chart
-   column, so the balance comes from real content rather than filler. */
-.zf-pulse { flex: 1; padding: 0; }
+.zf-pulse { padding: 0; }
 
+/* Market pulse reads as a small data table: label left, level + change right on
+   one baseline, hairline between rows, provenance pinned to the bottom edge. */
+.zf-pulse-list { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.zf-pulse-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 7px 0; border-top: 1px solid hsl(var(--border) / .7);
+}
+.zf-pulse-row:first-child { padding-top: 0; border-top: 0; }
+.zf-pulse-row:last-child { padding-bottom: 0; }
+.zf-pulse-label {
+  font: 700 10.5px/1.4 var(--ff-body); letter-spacing: .06em; text-transform: uppercase;
+  color: hsl(var(--muted-foreground)); white-space: nowrap;
+}
+.zf-pulse-fig {
+  display: inline-flex; align-items: baseline; gap: 8px; margin-left: auto;
+  font-family: var(--ff-mono); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* Cancel the shared tick chip's negative inset so the figure ends exactly on
+   the card's padding line. */
+.zf-pulse-fig .zf-index-tick { margin: 0; padding: 0; }
+.zf-pulse-value { font-size: 13px; font-weight: 700; color: hsl(var(--foreground)); }
+.zf-pulse-delta { margin-left: 6px; font-size: 11px; font-weight: 700; }
+.zf-pulse-delta[data-tone="up"] { color: hsl(var(--profit)); }
+.zf-pulse-delta[data-tone="down"] { color: hsl(var(--loss)); }
+.zf-pulse-na { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+.zf-pulse-meta {
+  margin: 0; padding-top: 9px; border-top: 1px solid hsl(var(--border) / .7);
+  font: 500 9.5px/1.5 var(--ff-mono); color: hsl(var(--muted-foreground)); text-align: right;
+}
+.zf-pulse-error { margin: 0; font: 500 11px/1.5 var(--ff-mono); color: hsl(var(--muted-foreground)); }
+
+.zf-watch .zf-empty-state { padding: 22px 16px; }
+@media (min-width: 1201px) {
+  .zf-watch .zf-empty-state {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    grid-template-areas: "icon title actions" "icon body actions";
+    align-content: center;
+    align-items: center;
+    justify-items: start;
+    column-gap: 16px;
+    row-gap: 3px;
+    text-align: left;
+    padding: 18px 16px;
+  }
+  .zf-watch .zf-empty-icon { grid-area: icon; margin: 0; }
+  .zf-watch .zf-empty-title { grid-area: title; }
+  .zf-watch .zf-empty-body { grid-area: body; max-width: none; }
+  .zf-watch .zf-empty-actions { grid-area: actions; justify-self: end; margin: 0; }
+}
 /* Empty / loading */
 .zf-skel { display: inline-block; vertical-align: middle; border-radius: 8px; background: hsl(var(--surface-3)); }
 @media (prefers-reduced-motion: no-preference) { .zf-skel { animation: zf-pulse 1.5s ease-in-out infinite; } }
@@ -677,6 +786,10 @@
   .zf-row1 .zf-pnl { grid-column: 1 / -1; }
   .zf-row2 { grid-template-columns: minmax(0, 1fr); }
   .zf-row3 { grid-template-columns: minmax(0, 1fr); }
+  .zf-row3 > .zf-pricechart,
+  .zf-row3 > .zf-watch,
+  .zf-row3 > .zf-stack,
+  .zf-row3 > .zf-pulse { grid-column: 1; grid-row: auto; }
 }
 @media (max-height: 820px) and (min-width: 769px) {
   .zf-rbtn { width: 36px; height: 36px; }
@@ -829,7 +942,6 @@
 .zf-broker-limits { margin: 0; padding-left: 17px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; line-height: 1.5; color: var(--tx-500); }
 .zf-broker-footnote { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 11.5px; color: var(--tx-500); }
 .zf-broker-footnote svg { width: 15px; height: 15px; flex-shrink: 0; }
-.zf-broker-loading { display: flex; align-items: center; gap: 10px; padding: 48px 8px; font-size: 13px; color: var(--tx-500); }
 .zf-broker-form { display: flex; flex-direction: column; gap: 6px; }
 .zf-broker-form .zf-label { margin-top: 10px; }
 .zf-broker-field-error { min-height: 15px; font-size: 10.5px; line-height: 1.4; color: var(--red); }
@@ -839,4 +951,183 @@
   .zf-broker-meta > div { grid-template-columns: 1fr; gap: 2px; }
   .zf-broker-cats { grid-template-columns: 1fr; }
   .zf-broker-cats li:nth-last-child(2) { border-bottom: 1px dashed var(--bd-100); }
+}
+
+/* ── Accent picker ─────────────────────────────────────────────────────────── */
+.zf-accent-pop { width: 280px; }
+.zf-accent-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.zf-accent-title { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: -.01em; }
+.zf-accent-head .zf-link { font-size: 11px; }
+.zf-accent-presets { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.zf-accent-swatch {
+  width: 28px; height: 28px; border-radius: 999px; border: 2px solid transparent; cursor: pointer;
+  box-shadow: inset 0 0 0 1px hsl(var(--border));
+}
+.zf-accent-swatch[aria-pressed="true"] { border-color: hsl(var(--foreground)); box-shadow: 0 0 0 2px hsl(var(--card)); }
+.zf-accent-swatch:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.zf-accent-custom { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+.zf-accent-custom input[type="color"] {
+  width: 34px; height: 34px; padding: 0; border: 1px solid hsl(var(--border)); border-radius: 9px;
+  background: none; cursor: pointer; flex-shrink: 0;
+}
+.zf-accent-hex {
+  flex: 1; min-width: 0; height: 34px; padding: 0 10px; border-radius: 9px;
+  border: 1px solid hsl(var(--border)); background: hsl(var(--surface-2)); color: hsl(var(--foreground));
+  font: 500 12px var(--ff-mono); text-transform: uppercase;
+}
+.zf-accent-hex[aria-invalid="true"] { border-color: hsl(var(--loss)); }
+.zf-accent-hint { margin: 6px 0 0; font-size: 10.5px; color: var(--tx-400); }
+.zf-accent-hint[data-invalid] { color: hsl(var(--loss)); }
+.zf-accent-preview {
+  display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 34px;
+  border-radius: 9px; background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); font: 700 12px var(--ff-body);
+  flex-shrink: 0;
+}
+.zf-accent-readout { margin: 12px 0 0; display: flex; flex-direction: column; gap: 3px; }
+.zf-accent-readout > div { display: flex; justify-content: space-between; gap: 10px; }
+.zf-accent-readout dt { font: 600 9.5px var(--ff-mono); letter-spacing: .06em; color: var(--tx-300); }
+.zf-accent-readout dd { margin: 0; font: 500 10.5px var(--ff-mono); color: var(--tx-500); }
+.zf-accent-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 12px 8px 0; }
+.zf-accent-row-label { font-size: 12.5px; font-weight: 600; color: hsl(var(--foreground)); }
+
+/* ── Sector concentration meter ─────────────────────────────────────────────── */
+.zf-meter { display: flex; width: 100%; height: 12px; border-radius: 999px; overflow: hidden; background: hsl(var(--surface-3)); margin-top: 10px; }
+.zf-meter-lg { height: 18px; margin-top: 0; }
+.zf-meter-seg { height: 100%; min-width: 2px; transition: width .5s var(--ease-out); }
+.zf-meter-seg[data-other] { opacity: .55; }
+.zf-sector-legend { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+.zf-sector-legend li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.zf-sector-legend .zf-sector-name { flex: 1; min-width: 0; }
+.zf-legend-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.zf-conc-badge {
+  display: inline-flex; margin: 10px 0 0; padding: 3px 10px; border-radius: 999px;
+  font: 600 11px var(--ff-body); color: hsl(var(--warning)); background: hsl(var(--warning) / .10);
+  border: 1px solid hsl(var(--warning) / .28);
+}
+.zf-sector-val { margin-left: auto; font: 500 11.5px var(--ff-num); color: var(--tx-500); font-variant-numeric: tabular-nums; }
+.zf-sector-legend-lg { margin-top: 14px; gap: 8px; }
+.zf-sector-legend-lg .zf-sector-name { font-size: 12.5px; }
+.zf-sector-legend-lg .zf-sector-pct { min-width: 48px; text-align: right; }
+@media (prefers-reduced-motion: reduce) { .zf-meter-seg { transition: none; } }
+
+/* ── Skeleton loading system ────────────────────────────────────────────────── */
+.zf-skeleton-block { position: relative; overflow: hidden; border-radius: 8px; background: hsl(var(--surface-3)); flex-shrink: 0; }
+.zf-skeleton-block::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, hsl(var(--card) / .55), transparent);
+  animation: zf-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+.zf-skeleton-text { display: flex; flex-direction: column; gap: 8px; }
+@keyframes zf-skeleton-shimmer { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .zf-skeleton-block::after { animation: none; opacity: 0; } }
+
+.zf-shell-skel {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px; padding: 16px;
+  min-height: 100dvh; align-items: start;
+}
+.zf-skel-rail {
+  display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 14px 0;
+  border-radius: 16px; background: hsl(var(--surface-2)); border: 1px solid hsl(var(--border));
+}
+.zf-main-skel { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.zf-skel-top { display: flex; align-items: center; gap: 12px; padding: 4px 0; }
+.zf-skel-pills { display: flex; gap: 8px; margin-left: auto; }
+.zf-skel-head { display: flex; flex-direction: column; gap: 10px; padding: 8px 4px; }
+.zf-skel-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.zf-skel-card {
+  display: flex; flex-direction: column; gap: 12px; padding: 18px; min-width: 0;
+  border-radius: var(--radius-card); background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+}
+.zf-skel-columns { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(240px, .7fr); gap: 16px; align-items: start; }
+.zf-skel-holdings { gap: 14px; }
+.zf-skel-row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding-top: 10px; border-top: 1px solid hsl(var(--border)); }
+.zf-skel-stack { display: flex; flex-direction: column; gap: 16px; }
+@media (max-width: 1100px) {
+  .zf-skel-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .zf-skel-columns { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .zf-shell-skel { grid-template-columns: 1fr; padding: 12px; }
+  .zf-skel-rail, .zf-skel-pills { display: none; }
+}
+
+.zf-broker-skel-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--gap); }
+.zf-broker-skel-tile {
+  display: flex; flex-direction: column; gap: 14px; padding: 18px;
+  border-radius: var(--radius-card); background: hsl(var(--card)); border: 1px solid hsl(var(--border));
+}
+.zf-broker-skel-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.zf-broker-skel-lines { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+@media (max-width: 640px) { .zf-broker-skel-grid { grid-template-columns: 1fr; } }
+
+/* ── Broker connection tiles ────────────────────────────────────────────────── */
+.zf-broker-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--gap); }
+.zf-broker-tile {
+  display: flex; flex-direction: column; gap: 12px; padding: 18px; min-width: 0;
+  border-radius: var(--radius-card); border: 1px solid hsl(var(--border)); background: hsl(var(--card));
+}
+.zf-broker-id { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.zf-broker-logo {
+  width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
+  font: 700 11px var(--ff-body); overflow: hidden; flex-shrink: 0;
+}
+.zf-broker-logo img { width: 28px; height: 28px; object-fit: contain; }
+.zf-broker-name { margin: 0; font: 700 14px var(--ff-body); }
+.zf-broker-sub { margin: 2px 0 0; font-size: 11px; color: hsl(var(--muted-foreground)); }
+.zf-broker-status { margin: 0; font: 600 11px var(--ff-body); color: hsl(var(--muted-foreground)); }
+.zf-broker-status[data-state="connected"] { color: hsl(var(--profit)); }
+.zf-broker-status[data-state="attention"], .zf-broker-status[data-state="setup"] { color: hsl(var(--warning)); }
+.zf-broker-tile .zf-btn { align-self: flex-start; }
+@media (max-width: 640px) { .zf-broker-tile { padding: 14px; } }
+
+/* ── Per-holding daily close charts ────────────────────────────────────────── */
+.zf-chartgrid-wrap { display: flex; flex-direction: column; gap: 12px; }
+.zf-chartgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.zf-closecard {
+  display: flex; flex-direction: column; gap: 10px; padding: 14px; min-width: 0;
+  border-radius: var(--radius-card); border: 1px solid hsl(var(--border)); background: hsl(var(--card));
+}
+.zf-chartgrid-attrib { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.zf-chartgrid-attrib:hover { color: hsl(var(--foreground)); }
+.zf-closecard-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.zf-closecard-symbol { margin: 0; font: 700 13px var(--ff-body); }
+.zf-closecard-name {
+  margin: 2px 0 0; font-size: 11px; color: hsl(var(--muted-foreground));
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 18ch;
+}
+.zf-closecard-price { text-align: right; font: 600 14px var(--ff-mono); }
+.zf-closecard-move { display: block; font-size: 11px; }
+.zf-closecard-move.up { color: hsl(var(--profit)); }
+.zf-closecard-move.down { color: hsl(var(--loss)); }
+.zf-closecard-ranges { display: inline-flex; gap: 4px; }
+.zf-closecard-ranges button {
+  border: 0; background: transparent; border-radius: 999px; padding: 4px 9px;
+  font: 600 11px var(--ff-body); color: hsl(var(--muted-foreground)); cursor: pointer;
+}
+.zf-closecard-ranges button[aria-pressed="true"] { background: hsl(var(--surface-3)); color: hsl(var(--foreground)); }
+.zf-closecard-canvas { position: relative; height: 132px; }
+.zf-closecard-plot, .zf-closecard-skel, .zf-closecard-error, .zf-closecard-empty {
+  position: absolute; inset: 0;
+}
+.zf-closecard-plot { overflow: hidden; }
+.zf-closecard-skel { padding: 0; }
+.zf-closecard-empty {
+  display: flex; align-items: center; justify-content: center; margin: 0;
+  font-size: 12px; color: hsl(var(--muted-foreground)); text-align: center;
+}
+.zf-closecard-error { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.zf-closecard-error p { margin: 0; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.zf-closecard-tip {
+  position: absolute; z-index: 2; padding: 6px 9px; border-radius: 8px; pointer-events: none;
+  background: hsl(var(--glass-elevated)); border: 1px solid hsl(var(--glass-border)); box-shadow: var(--shadow-1);
+  font: 500 11px var(--ff-mono); color: hsl(var(--foreground)); white-space: nowrap;
+}
+.zf-closecard-meta {
+  margin: 0; font-size: 10.5px; color: hsl(var(--muted-foreground));
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.zf-chartgrid-wrap > .zf-btn { align-self: flex-start; }
+@media (max-width: 640px) {
+  .zf-chartgrid { grid-template-columns: 1fr; }
+  .zf-closecard { padding: 14px; }
 }

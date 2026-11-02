@@ -3,7 +3,8 @@ import { Award, BarChart3, Eye, Layers, Wallet, TrendingUp, Zap } from "lucide-r
 import type { PortfolioStock } from "@/data/sampleData";
 import type { MonthBucket, OverviewMetrics } from "@/lib/dashboard/overview";
 import { compact, inr, signedInr, signedPct, stagger, toneOf } from "@/lib/dashboard/format";
-import { AddTradeButton, DeltaPill, EmptyState, ImportButton, Skel } from "./ui";
+import { AddTradeButton, DeltaPill, EmptyState, ImportButton } from "./ui";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ActiveTab } from "./nav";
 
 // recharts is only needed once there is something to plot.
@@ -29,11 +30,11 @@ export function BalanceCard({ loading, m, watchCount, onAdd, onImport, goTo, ope
         <span className="zf-chip" title="All values are in Indian rupees">INR · ₹</span>
       </div>
 
-      <p className="zf-balance-val">{loading ? <Skel w="68%" h={44} /> : inr(m.current)}</p>
+      <div className="zf-balance-val">{loading ? <Skeleton width="68%" height={44} radius={10} /> : inr(m.current)}</div>
 
       <div className="zf-balance-delta">
         {loading ? (
-          <Skel w={150} h={24} />
+          <Skeleton width={150} height={24} radius={999} />
         ) : m.dayMovePct !== null ? (
           <>
             <DeltaPill tone={toneOf(m.dayMove)}>{signedPct(m.dayMovePct)}</DeltaPill>
@@ -43,11 +44,11 @@ export function BalanceCard({ loading, m, watchCount, onAdd, onImport, goTo, ope
           <span className="zf-delta-cap">Day change appears once live quotes load</span>
         )}
       </div>
-      <p className="zf-balance-note">
-        {loading ? <Skel w="80%" h={14} /> : m.invested > 0
+      <div className="zf-balance-note">
+        {loading ? <Skeleton width="80%" height={14} radius={4} /> : m.invested > 0
           ? <>Unrealised {signedInr(m.pnl)} ({signedPct(m.pnlPct)}) on {inr(m.invested)} invested</>
           : "Nothing invested yet"}
-      </p>
+      </div>
 
       <div className="zf-balance-actions">
         <AddTradeButton onAdd={onAdd} variant="primary" />
@@ -62,19 +63,19 @@ export function BalanceCard({ loading, m, watchCount, onAdd, onImport, goTo, ope
         <div className="zf-tiles">
           <button type="button" className="zf-tile" onClick={() => goTo("holdings")} aria-label={`Equity: ${hasEquity ? `${compact(m.equityValue)} across ${m.active.length} holdings` : "no holdings"}. Open portfolio`}>
             <span className="zf-tile-ico"><Wallet aria-hidden="true" /></span>
-            <span className="zf-tile-val">{loading ? "…" : hasEquity ? compact(m.equityValue) : "—"}</span>
+            <span className="zf-tile-val">{loading ? <Skeleton width={52} height={16} radius={4} /> : hasEquity ? compact(m.equityValue) : "—"}</span>
             <span className="zf-tile-cap">{m.active.length} equity holding{m.active.length === 1 ? "" : "s"}</span>
             <span className="zf-status" data-state={hasEquity ? "on" : "off"}><i aria-hidden="true" />{hasEquity ? "Active" : "Inactive"}</span>
           </button>
           <button type="button" className="zf-tile" onClick={openFno} aria-label={`F and O: ${m.fnoOpen.length} open positions. Open trades`}>
             <span className="zf-tile-ico"><Layers aria-hidden="true" /></span>
-            <span className="zf-tile-val">{loading ? "…" : hasFno ? compact(m.fnoValue) : "—"}</span>
+            <span className="zf-tile-val">{loading ? <Skeleton width={52} height={16} radius={4} /> : hasFno ? compact(m.fnoValue) : "—"}</span>
             <span className="zf-tile-cap">{m.fnoOpen.length} open F&amp;O</span>
             <span className="zf-status" data-state={hasFno ? "on" : "off"}><i aria-hidden="true" />{hasFno ? "Active" : "Inactive"}</span>
           </button>
           <button type="button" className="zf-tile" onClick={() => goTo("watchlist")} aria-label={`Watchlist: ${watchCount} symbols. Open watchlist`}>
             <span className="zf-tile-ico"><Eye aria-hidden="true" /></span>
-            <span className="zf-tile-val">{loading ? "…" : watchCount}</span>
+            <span className="zf-tile-val">{loading ? <Skeleton width={28} height={16} radius={4} /> : watchCount}</span>
             <span className="zf-tile-cap">watchlist symbol{watchCount === 1 ? "" : "s"}</span>
             <span className="zf-status" data-state={watchCount > 0 ? "on" : "off"}><i aria-hidden="true" />{watchCount > 0 ? "Active" : "Inactive"}</span>
           </button>
@@ -104,7 +105,7 @@ function Stat({ label, icon: Icon, value, loading, pill, cap, highlight, index }
         <span className="zf-chip-ico" aria-hidden="true"><Icon /></span>
       </div>
       <div>
-        <p className="zf-stat-val">{loading ? <Skel w="64%" h={28} /> : value}</p>
+        <div className="zf-stat-val">{loading ? <Skeleton width="64%" height={28} radius={6} /> : value}</div>
         <div className="zf-stat-foot">
           {!loading && pill && <DeltaPill tone={pill.tone}>{pill.text}</DeltaPill>}
           <span className="zf-stat-cap">{cap}</span>

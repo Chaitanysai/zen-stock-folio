@@ -23,6 +23,24 @@
       })();
     </script>
 
+    <!-- Accent before first paint. `useAccent` stores both theme maps so the
+         custom brand colour is painted with the correct light/dark derivation. -->
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("zf-accent");
+          if (!raw) return;
+          var stored = JSON.parse(raw);
+          var map = document.documentElement.classList.contains("dark") ? stored.dark : stored.light;
+          if (!map) return;
+          for (var name in map) document.documentElement.style.setProperty(name, map[name]);
+          document.documentElement.setAttribute("data-accent", "custom");
+        } catch (e) {
+          /* A blocked or malformed accent falls back to the built-in tokens. */
+        }
+      })();
+    </script>
+
     <!-- Mobile viewport -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 

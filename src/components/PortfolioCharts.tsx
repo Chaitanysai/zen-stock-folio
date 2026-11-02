@@ -9,6 +9,8 @@ import {
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { fetchCandles } from "@/lib/market-data/client";
+import { RANGE_PRESETS } from "@/lib/market-data/freshness";
+import { chartTimeAxisOptions } from "@/lib/charts/timeAxis";
 import { useEffect, useRef, useState } from "react";
 import { candleThemeOptions, chartThemeOptions, readChartColors, useChartColors } from "@/hooks/useChartTheme";
 
@@ -47,6 +49,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const colors = useChartColors();
+  const initialAxis = useRef(chartTimeAxisOptions(RANGE_PRESETS[range].resolution));
 
   // Re-theme in place when the theme class changes; data and zoom are kept.
   useEffect(() => {
@@ -59,6 +62,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
     if (!containerRef.current) return;
 
     let chart: any;
+    let observer: ResizeObserver | null = null;
     let isMounted = true;
 
     (async () => {
@@ -79,9 +83,9 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
           crosshair: { mode: 1 },
           timeScale: {
             ...themed.timeScale,
-            timeVisible: range === "1d",
-            secondsVisible: false,
+            ...initialAxis.current.timeScale,
           },
+          localization: initialAxis.current.localization,
           handleScroll: true,
           handleScale: true,
         });
@@ -94,16 +98,16 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
           seriesRef.current = series;
 
           // Resize observer
-          const ro = new ResizeObserver(() => {
+          observer = new ResizeObserver(() => {
             if (containerRef.current && chartRef.current) {
               chartRef.current.applyOptions({
                 width: containerRef.current.clientWidth,
               });
             }
           });
-          ro.observe(containerRef.current!);
-
-          return () => ro.disconnect();
+          observer.observe(containerRef.current!);
+        } else {
+          chart.remove();
         }
       } catch (err: any) {
         console.error("Chart initialization error:", err);
@@ -116,6 +120,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
 
     return () => {
       isMounted = false;
+      observer?.disconnect();
       if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
@@ -150,6 +155,7 @@ function CandlestickPanel({ ticker, range }: CandlestickPanelProps) {
         }
 
         seriesRef.current?.setData(candles);
+        chartRef.current?.applyOptions(chartTimeAxisOptions(envelope.resolution));
         chartRef.current?.timeScale().fitContent();
         setLoading(false);
       })

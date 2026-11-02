@@ -3,6 +3,7 @@ import {
   Bell, ChevronDown, HelpCircle, Info, LogOut, Menu, Moon, Pencil, RefreshCw, Search, Sun,
 } from "lucide-react";
 import LogoMark from "@/components/LogoMark";
+import AccentPicker from "@/components/AccentPicker";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -36,6 +37,77 @@ interface RailProps {
 }
 
 export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailProps) {
+  const navRef = useRef<HTMLElement | null>(null);
+  const pillRef = useRef<HTMLSpanElement | null>(null);
+  const previousRef = useRef<{ y: number; h: number } | null>(null);
+  const animationRef = useRef<Animation | null>(null);
+
+  // The pill is measured from the active button so it can travel between rail
+  // items. Mid-flight the height grows a little, which reads as the pill
+  // stretching toward its destination before it settles.
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    const pill = pillRef.current;
+    if (!nav || !pill) return;
+
+    const targetFor = () => {
+      const active = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      return active ? { y: active.offsetTop, h: active.offsetHeight } : null;
+    };
+
+    const sync = () => {
+      const next = targetFor();
+      if (!next) {
+        pill.style.opacity = "0";
+        return;
+      }
+      animationRef.current?.cancel();
+      previousRef.current = next;
+      pill.style.transform = `translateY(${next.y}px)`;
+      pill.style.height = `${next.h}px`;
+      pill.dataset.ready = "";
+    };
+
+    const next = targetFor();
+    if (!next) {
+      pill.style.opacity = "0";
+      return;
+    }
+
+    const previous = previousRef.current;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    animationRef.current?.cancel();
+
+    if (previous && !reduced && typeof pill.animate === "function") {
+      const distance = Math.abs(next.y - previous.y);
+      const stretch = Math.min(22, distance * 0.45);
+      animationRef.current = pill.animate(
+        [
+          { transform: `translateY(${previous.y}px)`, height: `${previous.h}px` },
+          {
+            transform: `translateY(${previous.y + (next.y - previous.y) / 2}px)`,
+            height: `${Math.max(previous.h, next.h) + stretch}px`,
+            offset: 0.5,
+          },
+          { transform: `translateY(${next.y}px)`, height: `${next.h}px` },
+        ],
+        { duration: 460, easing: "cubic-bezier(.22,.9,.28,1.18)" },
+      );
+    }
+
+    previousRef.current = next;
+    pill.style.transform = `translateY(${next.y}px)`;
+    pill.style.height = `${next.h}px`;
+    pill.dataset.ready = "";
+
+    const observer = new ResizeObserver(sync);
+    observer.observe(nav);
+    return () => {
+      observer.disconnect();
+      animationRef.current?.cancel();
+    };
+  }, [tab]);
+
   return (
     <aside className="zf-rail zf-glass" aria-label="Section rail">
       <div className="zf-theme" role="group" aria-label="Theme">
@@ -49,9 +121,11 @@ export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailP
             <Moon aria-hidden="true" />
           </button>
         </Tip>
+        <AccentPicker />
       </div>
 
-      <nav className="zf-rail-mid" aria-label="Sections">
+      <nav className="zf-rail-mid" aria-label="Sections" ref={navRef}>
+        <span ref={pillRef} className="zf-rail-pill" aria-hidden="true" />
         {NAV_GROUPS.map((group, index) => (
           <div key={group.label} className="zf-rail-group" role="group" aria-label={group.label}>
             {index > 0 && <span className="zf-rail-sep" aria-hidden="true" />}
@@ -291,6 +365,11 @@ export function MobileMenu(p: MobileMenuProps) {
         <div className="zf-seg" role="group" aria-label="Theme" style={{ margin: "14px 8px 0", display: "flex" }}>
           <button type="button" style={{ flex: 1, minHeight: 40 }} aria-pressed={p.theme === "light"} onClick={(e) => p.onTheme("light", e)}>Light</button>
           <button type="button" style={{ flex: 1, minHeight: 40 }} aria-pressed={p.theme === "dark"} onClick={(e) => p.onTheme("dark", e)}>Dark</button>
+        </div>
+
+        <div className="zf-accent-row">
+          <span className="zf-accent-row-label">Accent colour</span>
+          <AccentPicker />
         </div>
 
         <nav aria-label="All sections">

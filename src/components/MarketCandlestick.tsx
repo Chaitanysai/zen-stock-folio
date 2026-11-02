@@ -22,7 +22,8 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { Candle, CandlesEnvelope, CandleRange } from "@/lib/market-data/types.ts";
-import { describeProvenance } from "@/lib/market-data/freshness.ts";
+import { describeProvenance, RANGE_PRESETS } from "@/lib/market-data/freshness.ts";
+import { chartTimeAxisOptions } from "@/lib/charts/timeAxis";
 import { fetchCandles, MarketDataApiError } from "@/lib/market-data/client.ts";
 import { candleThemeOptions, chartThemeOptions, readChartColors, useChartColors } from "@/hooks/useChartTheme";
 
@@ -78,6 +79,7 @@ export function MarketCandlestick({ symbol, range, height = 260, showProvenance 
   const [state, setState] = useState<PanelState>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
   const colors = useChartColors();
+  const initialAxis = useRef(chartTimeAxisOptions(RANGE_PRESETS[range].resolution));
 
   // Create the chart once per mount; data updates reuse the same series.
   useEffect(() => {
@@ -91,7 +93,8 @@ export function MarketCandlestick({ symbol, range, height = 260, showProvenance 
       ...themed,
       layout: { ...themed.layout, background: { type: ColorType.Solid, color: "transparent" } },
       crosshair: { mode: 1 },
-      timeScale: { ...themed.timeScale, secondsVisible: false },
+      timeScale: { ...themed.timeScale, ...initialAxis.current.timeScale },
+      localization: initialAxis.current.localization,
     });
 
     const series = chart.addSeries(CandlestickSeries, candleThemeOptions(initial));
@@ -136,6 +139,7 @@ export function MarketCandlestick({ symbol, range, height = 260, showProvenance 
           return;
         }
 
+        chartRef.current?.applyOptions(chartTimeAxisOptions(envelope.resolution));
         seriesRef.current?.setData(envelope.candles.map(toBar));
         chartRef.current?.timeScale().fitContent();
         setState({ kind: "ready", envelope });

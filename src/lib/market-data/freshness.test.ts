@@ -8,10 +8,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  RANGE_PRESETS,
   STALE_AFTER_MS,
   buildProvenance,
   dataModeLabel,
   deriveDataMode,
+  isCandleRange,
 } from "@/lib/market-data/freshness.ts";
 
 // Wednesday 2026-10-28, 10:30 IST — a running NSE session.
@@ -148,5 +150,15 @@ describe("dataModeLabel", () => {
     expect(dataModeLabel("realtime")).toBe("Live");
     expect(dataModeLabel("delayed")).toBe("Delayed");
     expect(dataModeLabel("eod")).toBe("EOD");
+  });
+});
+
+describe("candle range presets", () => {
+  it("offers daily closing ranges including six months", () => {
+    expect(RANGE_PRESETS["1mo"].resolution).toBe("1d");
+    expect(RANGE_PRESETS["3mo"].resolution).toBe("1d");
+    expect(RANGE_PRESETS["6mo"]).toEqual({ resolution: "1d", yahooRange: "6mo", yahooInterval: "1d", maxAgeDays: 200 });
+    expect(RANGE_PRESETS["1y"].resolution).toBe("1d");
+    expect(isCandleRange("6mo")).toBe(true);
   });
 });

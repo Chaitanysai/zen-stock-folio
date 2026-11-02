@@ -173,13 +173,26 @@ export function useLivePrices(tickers: string[]): UseLivePricesResult {
       const delay = Math.max(MIN_POLL_MS, getPriceRefreshIntervalMs(getMarketStatus()));
       intervalRef.current = setTimeout(() => {
         if (cancelled) return;
+        // Background tabs are throttled anyway; don't spend a request there.
+        if (document.hidden) {
+          schedule();
+          return;
+        }
         void fetchPrices().then(schedule);
       }, delay);
     };
     schedule();
 
+    // Coming back to the tab should show current prices immediately, not after
+    // the remainder of the poll interval.
+    const onVisibility = () => {
+      if (!document.hidden) void fetchPrices();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
       clearTimeout(intervalRef.current);
       intervalRef.current = null;
       inFlightRef.current?.abort();

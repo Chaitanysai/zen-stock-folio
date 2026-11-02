@@ -27,7 +27,7 @@ export type DataMode = "realtime" | "delayed" | "eod" | "unknown";
 
 export type CandleResolution = "1m" | "5m" | "15m" | "1d";
 
-export type CandleRange = "1d" | "5d" | "1mo" | "3mo" | "1y";
+export type CandleRange = "1d" | "5d" | "1mo" | "3mo" | "6mo" | "1y";
 
 /** A single OHLCV bar. `time` is epoch **seconds** (UTC), as lightweight-charts expects. */
 export interface Candle {

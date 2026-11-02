@@ -9,6 +9,8 @@ import { formatStoredPrice } from "@/lib/dashboard/presentation";
 import type { OverviewMetrics } from "@/lib/dashboard/overview";
 import { compact, signedInr, stagger } from "@/lib/dashboard/format";
 import MarketCandlestick from "@/components/MarketCandlestick";
+import { buildSectorSegments, isConcentrated } from "@/lib/portfolio/sectorMeter";
+import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState, Skel } from "./ui";
 import type { ActiveTab } from "./nav";
 
@@ -17,7 +19,8 @@ export interface SectorSlice { sector: string; value: number; percentage: number
 
 export function SectorCard({ sectors, loading, goTo }: { sectors: SectorSlice[]; loading: boolean; goTo: (id: ActiveTab) => void }) {
   const top = sectors[0];
-  const pct = top ? Math.round(top.percentage) : 0;
+  const segments = buildSectorSegments(sectors);
+  const totalInvested = sectors.reduce((sum, s) => sum + s.value, 0);
   return (
     <section className="zf-card zf-sector zf-lift zf-in" style={stagger(6)} aria-labelledby="zf-sector-title">
       <div className="zf-card-head">
@@ -29,33 +32,50 @@ export function SectorCard({ sectors, loading, goTo }: { sectors: SectorSlice[];
       </div>
       <div className="zf-card-body">
         {loading ? (
-          <div aria-busy="true"><Skel w="40%" h={40} /><div style={{ height: 12 }} /><Skel w="100%" h={12} /></div>
+          <div aria-busy="true">
+            <Skeleton width="40%" height={14} radius={4} />
+            <div style={{ height: 14 }} />
+            <Skeleton width="100%" height={10} radius={999} />
+            <div style={{ height: 18 }} />
+            <Skeleton width="100%" height={12} radius={4} />
+            <div style={{ height: 10 }} />
+            <Skeleton width="100%" height={12} radius={4} />
+          </div>
         ) : !top ? (
           <p className="zf-empty">Sector weights appear once you hold at least one position.</p>
         ) : (
           <>
-            <p className="zf-label">Largest sector: {top.sector}</p>
-            <p className="zf-conc-val">{top.percentage.toFixed(0)}%</p>
+            <p className="zf-label">
+              Invested across {sectors.length} {sectors.length === 1 ? "sector" : "sectors"}
+            </p>
             <div
-              className="zf-progress"
-              role="progressbar"
-              aria-label={`${top.sector} share of invested value`}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={pct}
+              className="zf-meter"
+              role="img"
+              aria-label={`Sector allocation: ${segments.map((s) => `${s.label} ${s.pct.toFixed(1)}%`).join(", ")}`}
             >
-              <span style={{ width: `${Math.min(100, Math.max(2, top.percentage))}%` }} />
+              {segments.map((s) => (
+                <span
+                  key={s.id}
+                  className="zf-meter-seg"
+                  data-other={s.isOther || undefined}
+                  style={{ width: `max(2px, ${s.widthPct}%)`, background: s.color }}
+                  title={`${s.label} · ${s.pct.toFixed(1)}%`}
+                />
+              ))}
             </div>
-            <div className="zf-prog-meta"><span>{compact(top.value)} invested</span><span>of 100%</span></div>
-            <ul className="zf-sectors" aria-label="Top sectors">
-              {sectors.slice(0, 5).map((s) => (
-                <li key={s.sector}>
-                  <span className="zf-sector-name">{s.sector}</span>
-                  <span className="zf-sector-pct">{s.percentage.toFixed(1)}%</span>
-                  <span className="zf-bar" aria-hidden="true"><span style={{ width: `${Math.max(2, s.percentage)}%` }} /></span>
+            <ul className="zf-sector-legend" aria-label="Sector allocation">
+              {segments.map((s) => (
+                <li key={s.id}>
+                  <span className="zf-legend-dot" style={{ background: s.color }} aria-hidden="true" />
+                  <span className="zf-sector-name">{s.label}</span>
+                  <span className="zf-sector-pct">{s.pct.toFixed(1)}%</span>
                 </li>
               ))}
             </ul>
+            {isConcentrated(sectors) && (
+              <p className="zf-conc-badge">Concentrated · {top.sector} {top.percentage.toFixed(0)}%</p>
+            )}
+            <p className="zf-prog-meta"><span>{compact(totalInvested)} invested</span><span>100% of active holdings</span></p>
             <div style={{ marginTop: 14 }}>
               <button type="button" className="zf-link" onClick={() => goTo("sector")}>Sector details</button>
             </div>
