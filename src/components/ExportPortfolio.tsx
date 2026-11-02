@@ -1,5 +1,6 @@
 import { PortfolioStock } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
+import { toCsv } from "@/lib/csv";
 import { Download, FileSpreadsheet, FileText } from "lucide-react";
 interface ExportPortfolioProps {
   stocks: PortfolioStock[];
@@ -36,8 +37,9 @@ const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
   const exportToCSV = () => {
     const headers = ["Ticker", "Stock Name", "Sector", "Entry Date", "Entry Price", "CMP", "52W High", "Quantity", "Exit Price", "Exit Date", "Status"];
     const rows = stocks.map(s => [s.ticker, s.stockName, s.sector || "", s.entryDate, s.entryPrice, s.cmp, s.weekHigh52, s.quantity, s.exitPrice || "", s.exitDate || "", s.status]);
-    const csv = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+    const csv = toCsv(headers, rows);
+    // BOM so Excel reads the UTF-8 (₹, Indian names) correctly.
+    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
