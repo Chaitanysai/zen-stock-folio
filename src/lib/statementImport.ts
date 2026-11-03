@@ -542,6 +542,41 @@ export function detectStatementBroker(
   return { broker, evidence };
 }
 
+const TRADE_LEVEL_SHEET = /^trade\s*level$/i;
+const SCRIP_LEVEL_SHEET = /^scrip\s*level$/i;
+
+const instrumentKey = (lot: StatementLot): string | null => {
+  if (lot.isin) return `isin:${lot.isin}`;
+  if (lot.ticker) return `ticker:${lot.ticker}`;
+  const name = lot.stockName ? normalizeNameKey(lot.stockName) : "";
+  return name ? `name:${name}` : null;
+};
+
+/**
+ * Groww exports the same portfolio twice: "Trade Level" has one row per lot,
+ * "Scrip Level" aggregates those rows per scrip. Importing both duplicates
+ * every open holding and double-counts every realised result, so the summary
+ * yields to the detail whenever it adds no instrument of its own.
+ */
+function summarisedBy(report: SheetReport, reports: SheetReport[]): string | null {
+  if (!SCRIP_LEVEL_SHEET.test(report.sheetName.trim())) return null;
+  const detail = reports.find(
+    (other) =>
+      other !== report &&
+      TRADE_LEVEL_SHEET.test(other.sheetName.trim()) &&
+      other.lots.length > 0,
+  );
+  if (!detail) return null;
+  const known = new Set(
+    detail.lots.map(instrumentKey).filter((key): key is string => key !== null),
+  );
+  const addsInstrument = report.lots.some((lot) => {
+    const key = instrumentKey(lot);
+    return key === null || !known.has(key);
+  });
+  return addsInstrument ? null : detail.sheetName;
+}
+
 /** Parses every independent header block in every sheet. */
 export function parseStatementSheets(
   sheets: Array<{ name: string; matrix: unknown[][] }>,
@@ -590,7 +625,17 @@ export function parseStatementSheets(
     });
   });
 
-  if (reports.length === 0) {
+  const summaryWarnings: string[] = [];
+  const kept = reports.filter((report) => {
+    const detail = summarisedBy(report, reports);
+    if (detail === null) return true;
+    summaryWarnings.push(
+      `${report.sheetName} mirrors ${detail} per scrip; the summary sheet was skipped so holdings are not counted twice.`,
+    );
+    return false;
+  });
+
+  if (kept.length === 0) {
     errors.push(
       headersFound > 0
         ? "Statement header found but no usable data rows — check that rows contain quantity and price values."
@@ -598,11 +643,12 @@ export function parseStatementSheets(
     );
   }
 
-  const lots = reports.flatMap((report) => report.lots);
-  const exclusions = reports.flatMap((report) => report.exclusions);
-  const warnings = reports.flatMap((report) =>
+  const lots = kept.flatMap((report) => report.lots);
+  const exclusions = kept.flatMap((report) => report.exclusions);
+  const warnings = kept.flatMap((report) =>
     report.warnings.map((warning) => `${report.sheetName}: ${warning}`),
   );
+  warnings.push(...summaryWarnings);
 
   const hasUsIsin = lots.some((lot) => lot.isin?.startsWith("US"));
   if (hasUsIsin) {
@@ -612,12 +658,12 @@ export function parseStatementSheets(
   }
 
   const detection = detectStatementBroker(
-    reports.flatMap((report) => report.blocks),
+    kept.flatMap((report) => report.blocks),
     options.fileName,
   );
 
   return {
-    sheets: reports,
+    sheets: kept,
     lots,
     exclusions,
     broker: detection.broker,

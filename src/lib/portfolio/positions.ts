@@ -695,7 +695,9 @@ export interface PositionFilterOptions {
 
 const matchesFilter = (position: Position, filter: PositionFilter): boolean => {
   switch (filter) {
-    case "active": return position.status === "active";
+    // A partially sold position still holds units, so it belongs to the
+    // Active view; the partial filter remains the way to isolate those rows.
+    case "active": return position.remainingQty > 0;
     case "partial": return position.status === "partial";
     case "closed": return position.remainingQty === 0;
     case "unvalued": return position.status === "unvalued";

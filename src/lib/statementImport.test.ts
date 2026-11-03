@@ -239,6 +239,55 @@ describe("workbook scan", () => {
     expect(result.lots.filter((entry) => entry.closed)).toHaveLength(1);
   });
 
+  it("skips Groww's per-scrip summary when the per-trade sheet is present", () => {
+    const tradeSheet = {
+      name: "Trade Level",
+      matrix: [
+        ["Stock name", "ISIN", "Quantity", "Buy date", "Buy price", "Buy value", "Sell date", "Sell price", "Sell value", "Realised P&L", "Remark"],
+        ["HERO MOTORS LIMITED", "INE012G01022", "9", "30-09-2026", "152.44", "1,371.96", "05-10-2026", "163.70", "1,473.30", "101.34", ""],
+        ["", "", "", "", "", "", "", "", "", "", ""],
+        ["", "", "", "", "", "", "", "", "", "", ""],
+        ["Stock name", "ISIN", "Quantity", "Buy date", "Buy price", "Buy value", "Closing date", "Closing price", "Closing value", "Unrealised P&L", "Remark"],
+        ["HERO MOTORS LIMITED", "INE012G01022", "144", "30-09-2026", "152.44", "21,951.36", "29-10-2026", "122.33", "17,615.52", "-4,335.84", ""],
+      ] as unknown[][],
+    };
+    const scripSheet = {
+      name: "Scrip Level",
+      matrix: [
+        ["Realised", "", "", "", "", "", "", "", ""],
+        ["Stock name", "ISIN", "Quantity", "Avg Buy price", "Buy value", "Avg Sell price", "Sell value", "Realised P&L", "Realised P&L %"],
+        ["HERO MOTORS LIMITED", "INE012G01022", "153", "171.66", "26,263.80", "163.70", "25,046.10", "-1,217.70", "-4.64%"],
+        ["", "", "", "", "", "", "", "", ""],
+        ["", "", "", "", "", "", "", "", ""],
+        ["Unrealised", "", "", "", "", "", "", "", ""],
+        ["Stock name", "ISIN", "Quantity", "Avg Buy price", "Buy value", "Closing price", "Closing value", "Unrealised P&L", "Unrealised P&L %"],
+        ["HERO MOTORS LIMITED", "INE012G01022", "144", "152.44", "21,951.36", "122.33", "17,615.52", "-4,335.84", "-19.75%"],
+      ] as unknown[][],
+    };
+
+    const result = parseStatementSheets([scripSheet, tradeSheet]);
+
+    expect(result.errors).toEqual([]);
+    expect(result.sheets.map((sheet) => sheet.sheetName)).toEqual(["Trade Level"]);
+    expect(result.lots).toHaveLength(2);
+    expect(result.lots.filter((entry) => !entry.closed)).toHaveLength(1);
+    expect(result.warnings.join(" ")).toMatch(/Scrip Level.*summary|summary.*Scrip Level/i);
+  });
+
+  it("keeps a scrip-level sheet when it is the only view of that portfolio", () => {
+    const scripOnly = {
+      name: "Scrip Level",
+      matrix: [
+        ["Stock name", "ISIN", "Quantity", "Avg Buy price", "Buy value", "Avg Sell price", "Sell value", "Realised P&L", "Realised P&L %"],
+        ["HERO MOTORS LIMITED", "INE012G01022", "153", "171.66", "26,263.80", "163.70", "25,046.10", "-1,217.70", "-4.64%"],
+      ] as unknown[][],
+    };
+
+    const result = parseStatementSheets([scripOnly]);
+    expect(result.sheets.map((sheet) => sheet.sheetName)).toEqual(["Scrip Level"]);
+    expect(result.lots).toHaveLength(1);
+  });
+
   it("parses separate realised and unrealised blocks in one worksheet", () => {
     const matrix: unknown[][] = [
       ["Unrealised holdings", "", "", "", ""],

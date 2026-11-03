@@ -348,6 +348,18 @@ describe("filterPositions and sortPositions", () => {
     lot({ ticker: "OMEGA", stockName: "Omega Ltd", entryPrice: 100, cmp: 100, entryDate: "7-Jul-2025" }),
   ]);
 
+  it("keeps partially sold positions in the Active view", () => {
+    const { positions: mixed } = build([
+      lot({ ticker: "OPEN", quantity: 10 }),
+      lot({ ticker: "PART", stockName: "Part Ltd", quantity: 10 }),
+      lot({ ticker: "PART", stockName: "Part Ltd", status: "Sold Profit", quantity: 4, exitPrice: 130 }),
+      lot({ ticker: "SHUT", stockName: "Shut Ltd", status: "Sold Profit", quantity: 10, exitPrice: 130 }),
+    ]);
+
+    expect(filterPositions(mixed, { filter: "active" }).map((p) => p.ticker)).toEqual(["OPEN", "PART"]);
+    expect(filterPositions(mixed, { filter: "partial" }).map((p) => p.ticker)).toEqual(["PART"]);
+  });
+
   it("filters by lifecycle, outcome, unknown cost, broker, query and date", () => {
     expect(filterPositions(positions, { filter: "active" }).map((p) => p.ticker)).toEqual(["ALPHA", "BETA", "DELTA", "OMEGA"]);
     expect(filterPositions(positions, { filter: "closed" }).map((p) => p.ticker)).toEqual(["GAMMA"]);
