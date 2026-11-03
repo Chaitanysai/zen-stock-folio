@@ -29,16 +29,30 @@ describe("StatGrid", () => {
     expect(within(today).getByText("Today · Live")).toBeInTheDocument();
   });
 
-  it("reports Total P&L as unrealised plus realised", () => {
+  it("reports unrealised P&L from open positions only", () => {
     const rows = [
       stock({ cmp: 110, quantity: 10 }), // +₹100 unrealised
-      stock({ ticker: "SOLD", status: "Sold Profit", entryPrice: 50, exitPrice: 100, quantity: 10 }), // +₹500 realised
+      stock({ ticker: "SOLD", status: "Sold Profit", entryPrice: 50, exitPrice: 100, quantity: 10 }), // closed
     ];
     renderGrid(rows, { "NSE:AAA": { change: 2 } });
 
-    const total = screen.getByLabelText("Total P&L");
-    expect(total).toHaveTextContent("+₹600");
-    expect(screen.getByText("unrealised + realised")).toBeInTheDocument();
+    const unrealised = screen.getByLabelText("Unrealised P&L");
+    expect(unrealised).toHaveTextContent("+₹100");
+    expect(within(unrealised).getByText("open positions only")).toBeInTheDocument();
+    expect(within(unrealised).queryByText(/unrealised \+ realised/i)).not.toBeInTheDocument();
+    expect(within(unrealised).queryByText(/₹500/)).not.toBeInTheDocument();
+  });
+
+  it("counts open positions only and keeps closed rows out of Home", () => {
+    const rows = [
+      stock({ cmp: 110, quantity: 10 }),
+      stock({ ticker: "SOLD", status: "Sold Profit", entryPrice: 50, exitPrice: 100, quantity: 10 }),
+    ];
+    renderGrid(rows, {});
+
+    const active = screen.getByLabelText("Active positions");
+    expect(within(active).getByText("1", { selector: ".zf-stat-val" })).toBeInTheDocument();
+    expect(within(active).getByText(/closed rows stay in Portfolio/)).toBeInTheDocument();
   });
 
   it("shows no mover rows until quotes carry a day change", () => {

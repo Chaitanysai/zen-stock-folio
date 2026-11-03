@@ -1,15 +1,16 @@
 import { lazy, Suspense, type ReactNode } from "react";
-import { Award, BarChart3, Eye, Layers, Wallet, TrendingUp, Zap } from "lucide-react";
+import { BarChart3, Eye, Layers, Wallet, TrendingUp, Zap } from "lucide-react";
 import type { PortfolioStock } from "@/data/sampleData";
 import type { BrokerImportHandler } from "@/lib/portfolio/brokerImport";
-import type { DayMover, DayMovers, MonthBucket, OverviewMetrics } from "@/lib/dashboard/overview";
+import type { DayMover, DayMovers, OverviewMetrics } from "@/lib/dashboard/overview";
+import type { UnrealisedHolding } from "@/lib/portfolio/positions";
 import { compact, inr, signedInr, signedPct, stagger, toneOf } from "@/lib/dashboard/format";
 import { AddTradeButton, DeltaPill, EmptyState, ImportButton } from "./ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ActiveTab } from "./nav";
 
 // recharts is only needed once there is something to plot.
-const PnlChart = lazy(() => import("./PnlChart"));
+const UnrealisedChart = lazy(() => import("./UnrealisedChart"));
 
 interface BalanceProps {
   loading: boolean;
@@ -183,19 +184,18 @@ export function StatGrid({
   dayLabel?: string;
   priceMode?: string;
 }) {
-  const todayValue = !m.hasDayData && m.todayPnl === 0 ? "—" : signedInr(m.todayPnl);
-  const totalPnl = m.pnl + m.totalRealised;
-  const hasTotal = m.invested > 0 || m.closedCount > 0;
+  const todayValue = m.hasDayData ? signedInr(m.dayMove) : "—";
   const exclusions = [
     m.unpricedCount > 0 ? `${m.unpricedCount} unpriced` : null,
+    m.unknownCostCount > 0 ? `${m.unknownCostCount} unknown cost` : null,
     m.fxIncomplete ? "USD excluded" : null,
-    m.realisedExcluded > 0 ? `${m.realisedExcluded} unvalued` : null,
   ].filter(Boolean).join(" · ");
+  const hasUnrealised = m.pricedCount > 0 && m.invested > 0;
   return (
     <section className="zf-stats" aria-label="Key figures">
       <Stat
         index={1} highlight label="Today's P&L" icon={Zap} loading={loading} value={todayValue}
-        pill={m.todayPct !== null ? { tone: toneOf(m.todayPnl), text: signedPct(m.todayPct) } : null}
+        pill={m.dayMovePct !== null ? { tone: toneOf(m.dayMove), text: signedPct(m.dayMovePct) } : null}
         cap={m.hasDayData
           ? `${dayLabel}${priceMode ? ` · ${priceMode}` : ""}${m.fxIncomplete ? " · USD excluded" : ""}`
           : "Awaiting live quotes"}
@@ -212,76 +212,78 @@ export function StatGrid({
         cap={`${m.active.length + m.fnoOpen.length} open position${m.active.length + m.fnoOpen.length === 1 ? "" : "s"}${m.fxIncomplete ? " · USD excluded" : ""}`}
       />
       <Stat
-        index={3} label="Total P&L" icon={TrendingUp} loading={loading}
-        value={hasTotal ? signedInr(totalPnl) : "—"}
-        cap={hasTotal
-          ? `unrealised + realised${exclusions ? ` · ${exclusions}` : ""}`
-          : (m.active.length > 0 ? "No priced position" : "No positions yet")}
+        index={3} label="Unrealised P&L" icon={TrendingUp} loading={loading}
+        value={hasUnrealised ? signedInr(m.pnl) : "—"}
+        pill={hasUnrealised ? { tone: toneOf(m.pnl), text: signedPct(m.pnlPct) } : null}
+        cap={hasUnrealised
+          ? `open positions only${exclusions ? ` · ${exclusions}` : ""}`
+          : (m.active.length > 0 ? "No priced position with a known cost" : "No open positions yet")}
       />
       <Stat
-        index={4} label="Win rate" icon={Award} loading={loading}
-        value={m.winRate !== null ? `${m.winRate.toFixed(0)}%` : "—"}
-        pill={m.closedCount > 0 ? { tone: toneOf(m.totalRealised), text: `${signedInr(m.totalRealised)} realised` } : null}
-        cap={m.closedCount > 0
-          ? `${m.wins} of ${m.closedCount} closed won${m.realisedExcluded > 0 ? ` · ${m.realisedExcluded} USD unvalued` : ""}`
-          : "No closed trades yet"}
+        index={4} label="Active positions" icon={Layers} loading={loading}
+        value={`${m.active.length}`}
+        cap={`equity holding${m.active.length === 1 ? "" : "s"} · ${m.fnoOpen.length} open F&O · closed rows stay in Portfolio`}
       />
     </section>
   );
 }
 
-// ─── Realised P&L by month ────────────────────────────────────────────────────
-interface PnlProps {
+// ─── Unrealised P&L by holding ────────────────────────────────────────────────
+interface UnrealisedProps {
   loading: boolean;
-  months: MonthBucket[];
-  undated: number;
+  holdings: UnrealisedHolding[];
+  excluded: number;
   onAdd: (stock: PortfolioStock) => void;
   onImport: BrokerImportHandler;
   existingStocks?: PortfolioStock[];
-  /** Shown when some rows were excluded from the monthly INR totals. */
+  /** Shown when some rows were excluded from the INR totals. */
   note?: string | null;
 }
 
-export function PnlCard({
-  loading, months, undated, onAdd, onImport, existingStocks = [], note = null,
-}: PnlProps) {
+/**
+ * Open equity only: a closed position has nothing unrealised left to show, so
+ * it is never plotted here. The Portfolio section holds the complete history.
+ */
+export function UnrealisedCard({
+  loading, holdings, excluded, onAdd, onImport, existingStocks = [], note = null,
+}: UnrealisedProps) {
   return (
     <section className="zf-card zf-pnl zf-in" style={stagger(5)} aria-labelledby="zf-pnl-title">
       <div>
-        <h2 className="zf-card-title" id="zf-pnl-title">Realised P&amp;L by month</h2>
-        <p className="zf-card-sub">Closed equity and F&amp;O trades, grouped by exit month</p>
+        <h2 className="zf-card-title" id="zf-pnl-title">Unrealised P&amp;L by holding</h2>
+        <p className="zf-card-sub">Open positions only, ranked by absolute unrealised result</p>
       </div>
 
       <div className="zf-pnl-panel">
         <div className="zf-pnl-head">
-          <b>Profit and Loss</b>
+          <b>Open positions</b>
           <span className="zf-legend" aria-hidden="true">
-            <span className="zf-chip"><i className="zf-swatch zf-swatch-profit" />Profit</span>
+            <span className="zf-chip"><i className="zf-swatch zf-swatch-profit" />Gain</span>
             <span className="zf-chip"><i className="zf-swatch zf-swatch-loss" />Loss</span>
           </span>
         </div>
 
         {loading ? (
-          <div className="zf-pnl-chart" aria-busy="true"><span className="zf-sr-only" role="status">Loading realised P&amp;L</span></div>
-        ) : months.length === 0 ? (
+          <div className="zf-pnl-chart" aria-busy="true"><span className="zf-sr-only" role="status">Loading unrealised P&amp;L</span></div>
+        ) : holdings.length === 0 ? (
           <EmptyState
             icon={BarChart3}
-            title="No closed trades yet"
+            title="No unrealised result yet"
             actions={<><AddTradeButton onAdd={onAdd} variant="primary" /><ImportButton onImport={onImport} existingStocks={existingStocks} /></>}
           >
-            Realised P&amp;L by month appears once you close a trade. Add a trade you have already exited, or import your past trades.
+            Unrealised P&amp;L appears once you hold a position with a known cost and a market price. Realised results from closed trades live in Portfolio.
           </EmptyState>
         ) : (
           <>
             <Suspense fallback={<div className="zf-pnl-chart" />}>
-              <PnlChart months={months} />
+              <UnrealisedChart holdings={holdings} />
             </Suspense>
             <table className="zf-sr-only">
-              <caption>Realised profit and loss by month</caption>
-              <thead><tr><th scope="col">Month</th><th scope="col">Realised P&amp;L</th><th scope="col">Closed trades</th></tr></thead>
+              <caption>Unrealised profit and loss by holding</caption>
+              <thead><tr><th scope="col">Holding</th><th scope="col">Unrealised P&amp;L</th></tr></thead>
               <tbody>
-                {months.map((x) => (
-                  <tr key={x.key}><th scope="row">{x.label}</th><td>{signedInr(x.value)}</td><td>{x.trades}</td></tr>
+                {holdings.map((x) => (
+                  <tr key={x.key}><th scope="row">{x.ticker}</th><td>{signedInr(x.value)}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -291,8 +293,11 @@ export function PnlCard({
       {note && !loading && (
         <p className="zf-pnl-foot" role="status" style={{ color: "var(--amber)" }}>{note}</p>
       )}
-      {undated > 0 && !loading && (
-        <p className="zf-pnl-foot">{undated} closed trade{undated === 1 ? " has" : "s have"} no exit date and {undated === 1 ? "is" : "are"} not shown.</p>
+      {excluded > 0 && !loading && (
+        <p className="zf-pnl-foot">
+          {excluded} open position{excluded === 1 ? " has" : "s have"} no computable unrealised result and{" "}
+          {excluded === 1 ? "is" : "are"} not shown.
+        </p>
       )}
     </section>
   );

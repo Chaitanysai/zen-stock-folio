@@ -43,6 +43,13 @@ export interface PortfolioStock {
   statementFingerprint?: string;
   /** Broker symbol/exchange as returned, e.g. "NSE:RELIANCE". */
   brokerRef?: string;
+  /** ISIN from the broker statement when it carried one; identity, never a price. */
+  isin?: string;
+  /**
+   * The statement's own realised P&L for a closed row, kept for reconciliation.
+   * The price-derived result stays canonical; a material difference is surfaced.
+   */
+  statementPnl?: number;
   /** Present only on rows imported from a broker connection. */
   broker?: BrokerStockProvenance;
 }

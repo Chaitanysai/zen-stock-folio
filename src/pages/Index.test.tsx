@@ -166,13 +166,14 @@ describe("Index dashboard", () => {
     snapshot = { stocks: [], trades: [], watchlist: [], alerts: [], fnoTrades: [] };
     await renderIndex();
     expect(screen.getByText("No open holdings yet")).toBeInTheDocument();
-    expect(screen.getByText("Realised P&L by month appears once you close a trade.", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Unrealised P&L appears once you hold a position with a known cost and a market price.", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("Nothing on your watchlist")).toBeInTheDocument();
     // Real next actions, wired to the existing dialogs.
     expect(screen.getAllByRole("button", { name: /add trade/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /import/i }).length).toBeGreaterThan(0);
-    const win = screen.getByRole("article", { name: "Win rate" });
-    expect(within(win).getByText("—")).toBeInTheDocument();
+    // Home counts active holdings only, so an empty account reports zero.
+    const active = screen.getByRole("article", { name: "Active positions" });
+    expect(within(active).getByText("0")).toBeInTheDocument();
   });
 
   it("plots realised P&L by month only from closed trades", async () => {
@@ -184,6 +185,10 @@ describe("Index dashboard", () => {
       ],
     };
     await renderIndex();
+    // Realised results belong to the Portfolio history, never to Home.
+    expect(screen.queryByRole("table", { name: "Realised profit and loss by month" })).not.toBeInTheDocument();
+    const rail = screen.getByRole("navigation", { name: "Sections" });
+    fireEvent.click(within(rail).getByRole("button", { name: "Portfolio" }));
     const table = await screen.findByRole("table", { name: "Realised profit and loss by month" });
     expect(within(table).getByText("Jan '26")).toBeInTheDocument();
     expect(within(table).getByText("+₹500")).toBeInTheDocument();

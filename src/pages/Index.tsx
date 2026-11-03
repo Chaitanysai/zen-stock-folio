@@ -9,7 +9,7 @@ import {
   PortfolioStock, TradeStrategy, WatchlistStock, PriceAlert, TradeJournalEntry,
   FnOTrade, fnOTradesData, getSectorAllocation,
 } from "@/data/sampleData";
-import PortfolioTable        from "@/components/PortfolioTable";
+import PortfolioDashboard    from "@/components/dashboard/PortfolioDashboard";
 import TradeStrategyTable    from "@/components/TradeStrategyTable";
 import FnOTable             from "@/components/FnOTable";
 import WatchlistTable        from "@/components/WatchlistTable";
@@ -51,13 +51,14 @@ import { instrumentKey } from "@/lib/market-data/symbols";
 import type { Instrument, Market } from "@/lib/market-data/types";
 import { bestPerformer, describeAiTeaser } from "@/lib/dashboard/presentation";
 import { dataModeLabel } from "@/lib/market-data/freshness.ts";
-import { computeMetrics, dailyMovers, realisedByMonth, toHoldingRow } from "@/lib/dashboard/overview";
+import { computeMetrics, dailyMovers, toHoldingRow } from "@/lib/dashboard/overview";
+import { buildPositions, unrealisedByHolding } from "@/lib/portfolio/positions";
 import { greeting, signedPct, stagger, toneOf, type Tone } from "@/lib/dashboard/format";
 import { MobileMenu, Rail, TopBar } from "@/components/dashboard/Shell";
 import Brokers from "@/components/dashboard/Brokers";
 import { readBrokerCallback } from "@/lib/brokers/client";
 import { useThemeReveal } from "@/hooks/useThemeReveal";
-import { BalanceCard, PnlCard, StatGrid } from "@/components/dashboard/Summary";
+import { BalanceCard, StatGrid, UnrealisedCard } from "@/components/dashboard/Summary";
 import { DayGlow } from "@/components/dashboard/DayGlow";
 import { HoldingsCard } from "@/components/dashboard/Holdings";
 import { HoldingCharts } from "@/components/dashboard/HoldingCharts";
@@ -413,31 +414,37 @@ export default function Index() {
       persistenceError,
     };
   }, [save]);
-  const handlePortfolioEdit   = useCallback((key: string, updatedStock: PortfolioStock) => {
-    const previous = snapshotRef.current.stocks.find((s) => positionKey(s) === key);
-    const nextStocks = snapshotRef.current.stocks.map((s) => positionKey(s) === key ? updatedStock : s);
+  // `live` is a map of `stocks`, so an index into `live` names the same stored
+  // row in the snapshot. Lot-level edit/delete must use that index: two lots of
+  // one ticker share a `positionKey`, so a key would hit both.
+  const handleLotEdit = useCallback((index: number, updatedStock: PortfolioStock) => {
+    const previous = snapshotRef.current.stocks[index];
+    if (!previous) return;
+    const nextStocks = [...snapshotRef.current.stocks];
+    nextStocks[index] = updatedStock;
     // Trades and alerts are NSE-only, so renaming a U.S. row must not touch
     // them even when the ticker happens to match an Indian symbol.
-    const isNse = (previous?.market ?? "NSE") === "NSE";
+    const isNse = (previous.market ?? "NSE") === "NSE";
     const nextTrades = isNse
-      ? snapshotRef.current.trades.map((t) => t.ticker === previous?.ticker ? { ...t, ticker: updatedStock.ticker, livePrice: updatedStock.cmp } : t)
+      ? snapshotRef.current.trades.map((t) => t.ticker === previous.ticker ? { ...t, ticker: updatedStock.ticker, livePrice: updatedStock.cmp } : t)
       : snapshotRef.current.trades;
     const nextAlerts = isNse
-      ? snapshotRef.current.alerts.map((a) => a.ticker === previous?.ticker ? { ...a, ticker: updatedStock.ticker } : a)
+      ? snapshotRef.current.alerts.map((a) => a.ticker === previous.ticker ? { ...a, ticker: updatedStock.ticker } : a)
       : snapshotRef.current.alerts;
     void applySnapshot({ stocks: nextStocks, trades: nextTrades, alerts: nextAlerts }, "Transaction update");
   }, [applySnapshot]);
-  const handlePortfolioDelete = useCallback((key: string) => {
-    const previous = snapshotRef.current.stocks.find((s) => positionKey(s) === key);
-    const nextStocks = snapshotRef.current.stocks.filter((s) => positionKey(s) !== key);
-    const isNse = (previous?.market ?? "NSE") === "NSE";
+  const handleLotDelete = useCallback((index: number) => {
+    const previous = snapshotRef.current.stocks[index];
+    if (!previous) return;
+    const nextStocks = snapshotRef.current.stocks.filter((_, i) => i !== index);
+    const isNse = (previous.market ?? "NSE") === "NSE";
     const nextTrades = isNse
-      ? snapshotRef.current.trades.filter((t) => t.ticker !== previous?.ticker)
+      ? snapshotRef.current.trades.filter((t) => t.ticker !== previous.ticker)
       : snapshotRef.current.trades;
     const nextAlerts = isNse
-      ? snapshotRef.current.alerts.filter((a) => a.ticker !== previous?.ticker)
+      ? snapshotRef.current.alerts.filter((a) => a.ticker !== previous.ticker)
       : snapshotRef.current.alerts;
-    if (selectedChartKey === key) {
+    if (selectedChartKey === positionKey(previous)) {
       const nextActive = nextStocks.find((s) => s.status === "Active");
       setSelectedChartKey(nextActive ? positionKey(nextActive) : null);
     }
@@ -512,7 +519,8 @@ export default function Index() {
   );
   const movers = useMemo(() => dailyMovers(live, prices, usdInr), [live, prices, usdInr]);
   // Stale or failed quotes must not paint a directional glow: neutral only.
-  const glowTone: Tone = priceError !== null || !m.hasDayData ? "flat" : toneOf(m.todayPnl);
+  // The glow follows today's open-position move, never a closed trade.
+  const glowTone: Tone = priceError !== null || !m.hasDayData ? "flat" : toneOf(m.dayMove);
   const dayLabel = market.isOpen ? "Today" : "Last session";
   const totals = useMemo(
     () => portfolioTotals(m.active.map((stock) => ({ stock, cmp: stock.cmp })), usdInr),
@@ -525,7 +533,11 @@ export default function Index() {
   const inrViewNote = inrViewIncomplete
     ? "U.S. holdings are excluded from this INR view until the USD→INR rate is available."
     : null;
-  const monthly = useMemo(() => realisedByMonth(inrView, fnoTrades), [inrView, fnoTrades]);
+  const homePositions = useMemo(() => buildPositions(inrView).positions, [inrView]);
+  const homeUnrealised = useMemo(
+    () => unrealisedByHolding(homePositions, usdInr),
+    [homePositions, usdInr],
+  );
   const holdingRows = useMemo(
     () => inrView.filter((stock) => stock.status === "Active").map(toHoldingRow),
     [inrView],
@@ -720,8 +732,8 @@ export default function Index() {
                     loading={loading} m={m} movers={movers}
                     dayLabel={dayLabel} priceMode={sourceLabel}
                   />
-                  <PnlCard
-                    loading={loading} months={monthly.months} undated={monthly.undated}
+                  <UnrealisedCard
+                    loading={loading} holdings={homeUnrealised.holdings} excluded={homeUnrealised.excluded}
                     onAdd={handlePortfolioAdd} onImport={handlePortfolioImport} existingStocks={stocks}
                     note={inrViewNote}
                   />
@@ -776,13 +788,15 @@ export default function Index() {
                 {renderedTab === "holdings" && (
                   <div className="zf-tab-stack">
                     {user && <BrokerSyncCard userId={user.id} onApplied={reloadPortfolio} />}
-                    <PortfolioTable
+                    <PortfolioDashboard
                       stocks={live}
                       usdInr={usdInr}
+                      loading={loading}
                       onAdd={handlePortfolioAdd}
                       onImport={handlePortfolioImport}
-                      onEdit={handlePortfolioEdit}
-                      onDelete={handlePortfolioDelete}
+                      existingStocks={stocks}
+                      onEditLot={handleLotEdit}
+                      onDeleteLot={handleLotDelete}
                     />
                   </div>
                 )}

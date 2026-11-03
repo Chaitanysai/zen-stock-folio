@@ -775,6 +775,12 @@ export function toPortfolioStock(
   if (lot.buyDate) stock.entryDate = clamp(lot.buyDate, 40);
   if (exitPrice !== null) stock.exitPrice = exitPrice;
   if (lot.closed && lot.sellDate) stock.exitDate = clamp(lot.sellDate, 40);
+  // Identity and the broker's own result are kept for reconciliation; neither
+  // substitutes for a missing cost or price.
+  if (lot.isin) stock.isin = clamp(lot.isin, 24);
+  if (lot.closed && lot.realizedPnl !== null && Number.isFinite(lot.realizedPnl)) {
+    stock.statementPnl = lot.realizedPnl;
+  }
   return stock;
 }
 

@@ -359,7 +359,9 @@ describe("portfolio mapping", () => {
     expect(stocks[1]).toMatchObject({
       ticker: "INFY", entryDate: "12 Dec 2025", exitPrice: 1756.4,
       exitDate: "28 Feb 2026", status: "Sold Loss",
+      isin: "INE009A01021", statementPnl: -2672,
     });
+    expect(stocks[0].statementPnl).toBeUndefined();
   });
 
   it("leaves entryDate unknown when the statement has no purchase date", () => {

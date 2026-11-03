@@ -1192,3 +1192,131 @@
   .zf-chartgrid { grid-template-columns: 1fr; }
   .zf-closecard { padding: 14px; }
 }
+
+/* ════════ PORTFOLIO (history) ════════ */
+/* The tab panel is already one framed card, so its sections sit on that surface
+   with hairlines instead of stacking a second set of shadowed cards. */
+.zf-portfolio { display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 14px; }
+.zf-portfolio > .zf-card { background: transparent; box-shadow: none; }
+
+.zf-pstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.zf-pstat { padding: 16px; justify-content: space-between; gap: 12px; min-height: 128px; }
+.zf-pstat-val { font-size: clamp(19px, 1.9vw, 26px); }
+
+.zf-portfolio-scope {
+  display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 0 4px;
+  font-size: 12px; line-height: 1.55; color: hsl(var(--muted-foreground));
+}
+.zf-portfolio-scope svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 2px; }
+
+.zf-pcharts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+/* Broker breakdown closes the second row beside Profit vs loss. */
+.zf-pchart:last-child { grid-column: span 2; }
+.zf-pchart { padding: var(--card-pad); gap: 12px; }
+.zf-pchart:last-child > .zf-pnl-panel { min-height: 0; }
+.zf-pchart > .zf-pnl-panel { min-height: 230px; }
+
+/* Combined P&L */
+.zf-combined { display: flex; flex-direction: column; gap: 16px; justify-content: center; flex: 1; }
+.zf-combined-total { font: 650 clamp(26px, 2.6vw, 34px)/1 var(--ff-num); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.zf-combined-total[data-tone="up"] { color: hsl(var(--profit)); }
+.zf-combined-total[data-tone="down"] { color: hsl(var(--loss)); }
+.zf-combined-total span {
+  display: block; margin-top: 6px; font: 600 10.5px var(--ff-mono);
+  text-transform: uppercase; letter-spacing: .08em; color: hsl(var(--muted-foreground));
+}
+.zf-combined-bar { display: flex; gap: 3px; height: 16px; border-radius: 999px; background: hsl(var(--surface-3)); overflow: hidden; }
+.zf-combined-part { display: block; height: 100%; min-width: 0; border-radius: 999px; background: hsl(var(--profit)); }
+.zf-combined-part[data-tone="down"] { background: hsl(var(--loss)); }
+.zf-combined-keys { display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 0; }
+.zf-combined-keys > div { display: flex; align-items: center; gap: 8px; }
+.zf-combined-keys dt { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: hsl(var(--muted-foreground)); }
+.zf-combined-keys dd { margin: 0; font: 600 12.5px var(--ff-num); font-variant-numeric: tabular-nums; }
+.zf-key-dot { width: 9px; height: 9px; border-radius: 3px; background: hsl(var(--profit)); }
+.zf-key-dot[data-tone="down"] { background: hsl(var(--loss)); }
+
+/* Profit vs loss */
+.zf-outcome { display: grid; grid-template-columns: 156px minmax(0, 1fr); gap: 18px; align-items: center; flex: 1; }
+.zf-outcome-donut { position: relative; width: 100%; aspect-ratio: 1; }
+.zf-outcome-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+.zf-outcome-center b { font: 650 22px/1 var(--ff-num); font-variant-numeric: tabular-nums; }
+.zf-outcome-center span { margin-top: 4px; font: 600 9.5px var(--ff-mono); text-transform: uppercase; letter-spacing: .07em; color: hsl(var(--muted-foreground)); }
+.zf-outcome-body { min-width: 0; }
+.zf-outcome-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.zf-outcome-legend li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.zf-outcome-legend i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.zf-outcome-legend b { margin-left: auto; font: 600 12.5px var(--ff-num); font-variant-numeric: tabular-nums; }
+.zf-outcome-money { display: grid; gap: 6px; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid hsl(var(--border)); }
+.zf-outcome-money > div { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }
+.zf-outcome-money dt { color: hsl(var(--muted-foreground)); }
+.zf-outcome-money dd { margin: 0; font: 600 12px var(--ff-num); font-variant-numeric: tabular-nums; }
+
+/* Source breakdown */
+.zf-sources { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px 18px; }
+.zf-source { display: grid; gap: 7px; min-width: 0; }
+.zf-source-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.zf-source-head b { font-size: 13px; }
+.zf-source-head span { font: 500 11px var(--ff-mono); color: hsl(var(--muted-foreground)); }
+.zf-source-bar { height: 8px; border-radius: 999px; background: hsl(var(--surface-3)); overflow: hidden; }
+.zf-source-bar > span { display: block; height: 100%; border-radius: 999px; background: hsl(var(--brand)); }
+.zf-source-figures { display: flex; flex-wrap: wrap; gap: 4px 18px; font: 500 11.5px var(--ff-mono); font-variant-numeric: tabular-nums; }
+.zf-source-figures em { font-style: normal; margin-right: 4px; color: hsl(var(--muted-foreground)); }
+.zf-source-note { margin: 0; font-size: 11px; color: hsl(var(--warning)); }
+
+/* Filters and table chrome */
+.zf-filters {
+  display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px;
+  padding: 12px 16px; border-bottom: 1px solid hsl(var(--border));
+}
+.zf-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 132px; min-width: 0; }
+.zf-field-search { flex: 2 1 220px; }
+.zf-field-label { font: 600 10px var(--ff-mono); text-transform: uppercase; letter-spacing: .07em; color: hsl(var(--muted-foreground)); }
+.zf-filters .zf-input { min-height: 34px; height: 34px; padding: 0 10px; border-radius: 10px; }
+.zf-filters .zf-link { align-self: center; }
+.zf-search-wrap { position: relative; display: block; }
+.zf-search-wrap svg { position: absolute; left: 10px; top: 50%; width: 14px; height: 14px; transform: translateY(-50%); color: hsl(var(--muted-foreground)); pointer-events: none; }
+.zf-filters .zf-search-wrap .zf-input { padding-left: 30px; }
+.zf-table-status { padding: 34px 20px; text-align: center; font-size: 13px; color: hsl(var(--muted-foreground)); }
+.zf-link { border: 0; background: transparent; padding: 0; color: hsl(var(--brand-ink)); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.zf-table-foot {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  padding: 12px 16px; border-top: 1px solid hsl(var(--border)); font-size: 12px; color: hsl(var(--muted-foreground));
+}
+.zf-pager { display: inline-flex; align-items: center; gap: 10px; font: 500 12px var(--ff-mono); }
+.zf-th-sort {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent;
+  font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; white-space: nowrap;
+}
+.zf-th-sort.is-active { color: hsl(var(--foreground)); }
+.zf-th-sort span { opacity: .6; font-size: 10px; }
+.zf-row-toggle {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
+  border-radius: 8px; border: 1px solid transparent; background: transparent; color: hsl(var(--muted-foreground)); cursor: pointer;
+}
+.zf-row-toggle:hover { background: hsl(var(--surface-3)); color: hsl(var(--foreground)); }
+.zf-row-toggle svg { width: 14px; height: 14px; }
+.zf-lots { padding: 6px 16px 16px; background: hsl(var(--surface-2)); }
+.zf-lots-title { margin: 0 0 8px; font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+
+@media (max-width: 1200px) {
+  .zf-pcharts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .zf-pchart:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 860px) {
+  .zf-pstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .zf-pcharts { grid-template-columns: 1fr; }
+  .zf-pchart:last-child { grid-column: auto; }
+}
+@media (max-width: 768px), (pointer: coarse) {
+  .zf-filters .zf-input { min-height: 44px; height: 44px; }
+}
+@media (max-width: 600px) {
+  .zf-portfolio { padding: 10px; }
+  .zf-pstats { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .zf-pstat { padding: 14px; min-height: 118px; }
+  .zf-outcome { grid-template-columns: 1fr; gap: 14px; }
+  .zf-outcome-donut { max-width: 170px; margin: 0 auto; }
+  .zf-filters { padding: 12px; }
+}

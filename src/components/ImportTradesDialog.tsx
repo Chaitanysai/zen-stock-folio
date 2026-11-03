@@ -10,6 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, formatBytes } from "@/lib/importTrades";
 import { parseRows } from "@/lib/portfolio/csvImport";
 import { formatNative } from "@/lib/portfolio/display";
+import { previewImportLifecycle, statementDiscrepancies } from "@/lib/portfolio/positions";
+import { signedInr } from "@/lib/dashboard/format";
 import {
   planBrokerImport,
   type BrokerImportHandler,
@@ -133,12 +135,14 @@ const ImportTradesDialog = ({ onImport, existingStocks = [], trigger }: ImportTr
     [resolved],
   );
 
-  const unknownCostCount = preview.filter((stock) => !hasKnownCost(stock)).length;
-  const missingDateCount = preview.filter((stock) => !stock.entryDate).length;
-  const closedWithoutPnl = preview.filter((stock) => stock.status === "Sold").length;
-  const openCount = preview.filter((stock) => stock.status === "Active").length;
-  const closedCount = preview.length - openCount;
   const blockCount = parsed ? parsed.sheets.reduce((sum, sheet) => sum + sheet.blocks.length, 0) : 0;
+  // Lifecycle counts are taken from the portfolio that would exist after the
+  // import, using the same engine as the Portfolio dashboard — never from
+  // statement age, and never by treating a closed row as active.
+  const lifecycle = useMemo(
+    () => (plan && !plan.error ? previewImportLifecycle(plan.nextStocks) : null),
+    [plan],
+  );
 
   const searchFallback = async (list: ResolvedLot[]): Promise<Record<number, string>> => {
     const found: Record<number, string> = {};
@@ -324,6 +328,15 @@ const ImportTradesDialog = ({ onImport, existingStocks = [], trigger }: ImportTr
   };
 
   const previewRows = mode === "template" ? templateStocks : preview;
+  const openCount = previewRows.filter((stock) => stock.status === "Active").length;
+  const closedCount = previewRows.length - openCount;
+  const unknownCostCount = previewRows.filter((stock) => !hasKnownCost(stock)).length;
+  const missingDateCount = previewRows.filter((stock) => !stock.entryDate).length;
+  const closedWithoutPnl = previewRows.filter((stock) => stock.status === "Sold").length;
+  const discrepancies = useMemo(
+    () => (mode === "statement" && preview.length > 0 ? statementDiscrepancies(preview) : null),
+    [mode, preview],
+  );
   const canImport = Boolean(request && plan && !plan.error && (!needsConfirmation || confirmed));
 
   return (
@@ -501,17 +514,45 @@ const ImportTradesDialog = ({ onImport, existingStocks = [], trigger }: ImportTr
 
           {/* What the import will do */}
           {request && plan && !plan.error && previewRows.length > 0 && (
-            <div className="border border-border rounded-lg p-3 space-y-1" role="status">
+            <div className="border border-border rounded-lg p-3 space-y-1.5" role="status">
               <p className="text-xs text-foreground font-medium">Import summary</p>
               <p className="text-[11px] text-muted-foreground">
                 {request.source ? `${SOURCE_LABEL[request.source]} statement` : "Template CSV"} ·{" "}
                 {plan.added} added · {plan.replaced} replaced · {plan.retained} retained · {plan.excluded} excluded
+              </p>
+              {lifecycle && (
+                <p className="text-[11px] text-muted-foreground">
+                  Portfolio after import: {lifecycle.activePositions} active ·{" "}
+                  {lifecycle.partialPositions} partially sold · {lifecycle.closedPositions} closed
+                  {lifecycle.unvaluedPositions > 0 && ` · ${lifecycle.unvaluedPositions} historical-unvalued`}.
+                </p>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Home shows active holdings only.{" "}
+                {closedCount > 0
+                  ? `The ${closedCount} fully closed row${closedCount === 1 ? "" : "s"} in this import go to Portfolio history and do not change Home's value, holding count or P&L.`
+                  : "Every row in this import stays open, so Home's active holdings include them."}
               </p>
               {(unknownCostCount > 0 || missingDateCount > 0 || closedWithoutPnl > 0) && (
                 <p className="text-[11px] text-amber-600 dark:text-amber-400">
                   {unknownCostCount > 0 && `${unknownCostCount} row${unknownCostCount === 1 ? " has" : "s have"} no purchase price; invested value and P&L stay unavailable for them. `}
                   {missingDateCount > 0 && `${missingDateCount} row${missingDateCount === 1 ? " has" : "s have"} no transaction date; the date is shown as unknown. `}
                   {closedWithoutPnl > 0 && `${closedWithoutPnl} closed row${closedWithoutPnl === 1 ? "" : "s"} cannot derive a realised result.`}
+                </p>
+              )}
+              {discrepancies && discrepancies.differing.length > 0 && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  {discrepancies.differing.length} closed row
+                  {discrepancies.differing.length === 1 ? " reports" : "s report"} a P&amp;L that differs from the
+                  computed result:{" "}
+                  {discrepancies.differing.slice(0, 3).map((row) => (
+                    <span key={row.ticker}>
+                      {row.ticker} computed {signedInr(row.computed)} · reported {signedInr(row.reported)}
+                      {discrepancies.differing.length > 3 ? "; " : ""}
+                    </span>
+                  ))}
+                  {discrepancies.differing.length > 3 && `and ${discrepancies.differing.length - 3} more. `}
+                  The computed result stays in use; nothing is overwritten.
                 </p>
               )}
             </div>
