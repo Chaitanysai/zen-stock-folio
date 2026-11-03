@@ -297,7 +297,7 @@
 }
 
 @layer components {
-  /* â”€â”€ Semantic color helpers â”€â”€ */
+  /* ── Semantic color helpers ── */
   .text-profit   { color: hsl(var(--profit)); }
   .text-loss     { color: hsl(var(--loss)); }
   .text-warning  { color: hsl(var(--warning)); }
@@ -307,7 +307,7 @@
   .border-profit { border-color: hsl(var(--profit)); }
   .border-loss   { border-color: hsl(var(--loss)); }
 
-  /* â”€â”€ Page background â”€â”€ */
+  /* ── Page background ── */
   .mesh-bg,
   .atmosphere-bg {
     background-color: hsl(var(--background));
@@ -316,7 +316,7 @@
   /* Full-page canvases keep the light fixed while content scrolls. */
   .atmosphere-bg { background-attachment: fixed; }
 
-  /* â”€â”€ Glass surfaces (level 1 â†’ 3). Opaque fallback lives at file end. â”€â”€ */
+  /* ── Glass surfaces (level 1 → 3). Opaque fallback lives at file end. ── */
   .glass-surface,
   .glass-elevated,
   .glass-overlay {
@@ -364,7 +364,7 @@
     background-color: hsl(var(--scrim) / .46);
   }
 
-  /* â”€â”€ STAT CARD â”€â”€ */
+  /* ── STAT CARD ── */
   .stat-card {
     position: relative;
     background: hsl(var(--card));
@@ -395,7 +395,7 @@
   .stat-card-profit::before { background: hsl(var(--profit)); opacity: 1; }
   .stat-card-loss::before   { background: hsl(var(--loss)); opacity: 1; }
 
-  /* â”€â”€ GLASS CARD â”€â”€ */
+  /* ── GLASS CARD ── */
   .glass-card {
     background-color: hsl(var(--glass-surface));
     border: 1px solid hsl(var(--glass-border));
@@ -411,7 +411,7 @@
     box-shadow: var(--glass-highlight), var(--shadow-2);
   }
 
-  /* â”€â”€ HEADER GLASS â”€â”€ */
+  /* ── HEADER GLASS ── */
   .header-glass {
     background: hsl(var(--background) / 0.92);
     backdrop-filter: blur(24px) saturate(180%);
@@ -419,7 +419,7 @@
     border-bottom: 1px solid hsl(var(--border));
   }
 
-  /* â”€â”€ TAB BAR â”€â”€ */
+  /* ── TAB BAR ── */
   .tab-bar-glass {
     background: hsl(var(--card));
     border: 1px solid hsl(var(--border));
@@ -433,7 +433,7 @@
     box-shadow: 0 2px 12px hsl(var(--brand) / 0.35);
   }
 
-  /* â”€â”€ SIDEBAR â”€â”€ */
+  /* ── SIDEBAR ── */
   .sidebar-tray {
     position: fixed;
     left: 0; top: 0;
@@ -470,7 +470,7 @@
   @media (min-width: 640px) { .sidebar-overlay { position: absolute; } }
   .sidebar-overlay.open { opacity: 1; pointer-events: all; }
 
-  /* â”€â”€ BOTTOM NAV â”€â”€ */
+  /* ── BOTTOM NAV ── */
   .bottom-nav-glass {
     background: hsl(var(--card) / 0.95);
     backdrop-filter: blur(20px);
@@ -482,7 +482,7 @@
     box-shadow: 0 -4px 20px hsl(var(--scrim) / 0.3);
   }
 
-  /* â”€â”€ TABLE OVERRIDES (wc-ctnr) â”€â”€ */
+  /* ── TABLE OVERRIDES (wc-ctnr) ── */
   .wc-ctnr table {
     width: 100%;
     border-collapse: separate;
@@ -533,16 +533,16 @@
     background: hsl(var(--accent) / .7) !important;
   }
 
-  /* â”€â”€ Typography helpers â”€â”€ */
+  /* ── Typography helpers ── */
   .table-header {
     @apply text-[10px] font-semibold uppercase tracking-widest;
     color: hsl(var(--muted-foreground));
   }
 
-  /* â”€â”€ Dropdown â”€â”€ */
+  /* ── Dropdown ── */
   /* Popper wrappers copy z-index from the panel itself (--z-pop / --z-tip in the ui primitives). */
 
-  /* â”€â”€ Animations â”€â”€ */
+  /* ── Animations ── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -567,7 +567,7 @@
   .stagger > *:nth-child(6) { animation-delay: 275ms; }
   .stagger > *:nth-child(7) { animation-delay: 330ms; }
 
-  /* â”€â”€ Scrollbars â”€â”€ */
+  /* ── Scrollbars ── */
   .scroll-x-mobile {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -575,7 +575,7 @@
   }
   .scroll-x-mobile::-webkit-scrollbar { display: none; }
 
-  /* â”€â”€ Smooth transitions â”€â”€ */
+  /* ── Smooth transitions ── */
   *, *::before, *::after {
     transition-property: background-color, border-color, color, box-shadow;
     transition-duration: 160ms;
@@ -611,7 +611,7 @@
 /* Tabular figures wherever the codebase marks numbers as mono */
 .font-mono, .tabular-nums { font-variant-numeric: tabular-nums; }
 
-/* Readability fallback: no blur support or reduced transparency â†’ opaque glass. */
+/* Readability fallback: no blur support or reduced transparency → opaque glass. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root, .dark {
     --glass-surface: var(--card); --glass-elevated: var(--popover); --glass-overlay: var(--popover); --glass-pop: var(--popover);

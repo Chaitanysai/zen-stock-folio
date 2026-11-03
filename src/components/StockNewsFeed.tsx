@@ -242,7 +242,7 @@ export default function StockNewsFeed({ stocks }: Props) {
                 <>
                   <Wifi size={11} className="shrink-0 text-profit" aria-hidden="true" />
                   <span className="text-xs text-muted-foreground">
-                    {loading && !lastUpdated ? "Connecting to live newsâ€¦" : "Live Â· Auto-refreshes every 5 min"}
+                    {loading && !lastUpdated ? "Connecting to live news…" : "Live · Auto-refreshes every 5 min"}
                   </span>
                 </>
               )}

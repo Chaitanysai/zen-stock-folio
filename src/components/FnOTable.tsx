@@ -1,9 +1,9 @@
 ﻿/**
  * FnOTable.tsx
- * F&O Portfolio Journal â€” tracks stock futures and options positions.
+ * F&O Portfolio Journal — tracks stock futures and options positions.
  *
- * P&L = (ltp - entry) Ã— lots Ã— lotSize  (FUT/CE)
- *       (entry - ltp) Ã— lots Ã— lotSize  (PE)
+ * P&L = (ltp - entry) × lots × lotSize  (FUT/CE)
+ *       (entry - ltp) × lots × lotSize  (PE)
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -299,12 +299,12 @@ const CSS = `
 
 function fmt(n: number) {
   const abs = Math.abs(n);
-  if (abs >= 100000) return `â‚¹${(n / 100000).toFixed(2)}L`;
-  if (abs >= 1000) return `â‚¹${(n / 1000).toFixed(1)}K`;
-  return `â‚¹${n.toFixed(0)}`;
+  if (abs >= 100000) return `₹${(n / 100000).toFixed(2)}L`;
+  if (abs >= 1000) return `₹${(n / 1000).toFixed(1)}K`;
+  return `₹${n.toFixed(0)}`;
 }
 function fmtP(n: number) { return n.toFixed(2); }
-function sign(n: number) { return n >= 0 ? "+" : "âˆ’"; }
+function sign(n: number) { return n >= 0 ? "+" : "−"; }
 function uid() { return "fno-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7); }
 
 interface ModalProps {
@@ -437,7 +437,7 @@ function FnOModal({ initial, onSave, onClose }: ModalProps) {
 
           <div className="fno-field-row">
             <div className="fno-field">
-              <label className="fno-label" htmlFor="fno-entry-price">{form.instrumentType === "FUT" ? "Entry Price (â‚¹)" : "Entry Premium (â‚¹)"}<span>*</span></label>
+              <label className="fno-label" htmlFor="fno-entry-price">{form.instrumentType === "FUT" ? "Entry Price (₹)" : "Entry Premium (₹)"}<span>*</span></label>
               <input id="fno-entry-price" className="fno-input" placeholder="0.00" type="number" step="0.05" value={form.entryPrice}
                 onChange={e => f("entryPrice", e.target.value)} />
             </div>
@@ -450,7 +450,7 @@ function FnOModal({ initial, onSave, onClose }: ModalProps) {
 
           <div className="fno-field-row">
             <div className="fno-field">
-              <label className="fno-label" htmlFor="fno-exit-price">{form.instrumentType === "FUT" ? "Exit Price (â‚¹)" : "Exit Premium (â‚¹)"}</label>
+              <label className="fno-label" htmlFor="fno-exit-price">{form.instrumentType === "FUT" ? "Exit Price (₹)" : "Exit Premium (₹)"}</label>
               <input id="fno-exit-price" className="fno-input" placeholder="Leave blank if still open" type="number" step="0.05" value={form.exitPrice}
                 onChange={e => f("exitPrice", e.target.value)} />
             </div>
@@ -465,8 +465,8 @@ function FnOModal({ initial, onSave, onClose }: ModalProps) {
             <label className="fno-label" htmlFor="fno-status">Status</label>
             <select id="fno-status" className="fno-select" value={form.status} onChange={e => f("status", e.target.value)}>
               <option value="Open">Open</option>
-              <option value="Closed Profit">Closed â€” Profit</option>
-              <option value="Closed Loss">Closed â€” Loss</option>
+              <option value="Closed Profit">Closed — Profit</option>
+              <option value="Closed Loss">Closed — Loss</option>
               <option value="Expired">Expired (worthless)</option>
             </select>
           </div>
@@ -491,7 +491,7 @@ function FnOModal({ initial, onSave, onClose }: ModalProps) {
                 <div className="fno-preview-item">
                   <div className="fno-preview-lbl">Estimated P&L</div>
                   <div className={`fno-preview-val ${estPnl >= 0 ? "pos" : "neg"}`}>
-                    {estPnl >= 0 ? "+" : "âˆ’"}{fmt(Math.abs(estPnl))}
+                    {estPnl >= 0 ? "+" : "−"}{fmt(Math.abs(estPnl))}
                   </div>
                 </div>
               )}
@@ -616,14 +616,14 @@ export default function FnOTable({ trades, onUpdate }: Props) {
           <div className="fno-toolbar-left">
             <div>
               <div className="fno-title">F&O Positions</div>
-              <div className="fno-sub-text">{open.length} open Â· {closed.length} closed Â· All values in â‚¹ INR</div>
+              <div className="fno-sub-text">{open.length} open · {closed.length} closed · All values in ₹ INR</div>
             </div>
           </div>
           <div className="fno-toolbar-right">
             <button type="button" className="fno-refresh-btn" onClick={fetchLivePrices} disabled={refreshing}
               title={ltpSource ? "Last source: " + ltpSource + ". Fetches live option premiums via Upstox NFO keys, futures via Upstox/Yahoo." : "Fetches live option premiums (CE/PE) via Upstox and futures prices via Upstox/Yahoo."}>
               <RefreshCw size={13} className={refreshing ? "fno-spinning" : ""} />
-              {refreshing ? "Updatingâ€¦" : ltpSource ? "Live âœ“" : "Refresh LTP"}
+              {refreshing ? "Updating…" : ltpSource ? "Live ✓" : "Refresh LTP"}
             </button>
             <button type="button" className="fno-add-btn" onClick={() => setShowModal(true)}>
               <Plus size={14} /> Add Trade
@@ -669,7 +669,7 @@ export default function FnOTable({ trades, onUpdate }: Props) {
         <div className="fno-table-wrap">
           {filtered.length === 0 ? (
             <div className="fno-empty">
-              <div className="fno-empty-icon">ðŸ“Š</div>
+              <div className="fno-empty-icon">📊</div>
               <div className="fno-empty-title">No F&O trades found</div>
               <div className="fno-empty-sub">
                 {filter === "ALL"
@@ -688,10 +688,10 @@ export default function FnOTable({ trades, onUpdate }: Props) {
                   <th className="c">Type</th>
                   <th className="r">Strike</th>
                   <th>Expiry</th>
-                  <th className="r">Lots Ã— Size</th>
-                  <th className="r">Entry (â‚¹)</th>
-                  <th className="r">LTP (â‚¹)</th>
-                  <th className="r">P&L (â‚¹)</th>
+                  <th className="r">Lots × Size</th>
+                  <th className="r">Entry (₹)</th>
+                  <th className="r">LTP (₹)</th>
+                  <th className="r">P&L (₹)</th>
                   <th className="c">Status</th>
                   <th><span className="sr-only">Actions</span></th>
                 </tr>
@@ -711,22 +711,22 @@ export default function FnOTable({ trades, onUpdate }: Props) {
                         {t.notes && <div className="fno-expiry" style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>{t.notes}</div>}
                       </td>
                       <td className="c"><span className={`fno-badge fno-badge-${t.instrumentType}`}>{t.instrumentType}</span></td>
-                      <td className="r"><span className="fno-price">{t.strike ? `â‚¹${t.strike.toLocaleString("en-IN")}` : "â€”"}</span></td>
+                      <td className="r"><span className="fno-price">{t.strike ? `₹${t.strike.toLocaleString("en-IN")}` : "—"}</span></td>
                       <td><span className="fno-expiry fno-expiry-date">{fmtExpiry(t.expiry)}</span></td>
                       <td className="r">
-                        <span className="fno-price">{t.lots} Ã— {t.lotSize.toLocaleString("en-IN")}</span>
+                        <span className="fno-price">{t.lots} × {t.lotSize.toLocaleString("en-IN")}</span>
                         <div className="fno-cell-sub">{(t.lots * t.lotSize).toLocaleString("en-IN")} units</div>
                       </td>
                       <td className="r">
-                        <span className="fno-price">â‚¹{fmtP(t.entryPrice)}</span>
+                        <span className="fno-price">₹{fmtP(t.entryPrice)}</span>
                         <div className="fno-cell-sub">{fmt(t.entryPrice * t.lots * t.lotSize)}</div>
                       </td>
                       <td className="r">
                         <span className={`fno-ltp ${hasLive ? "live" : ""}`}>
                           {hasLive && <span className="fno-live-dot" />}
-                          â‚¹{fmtP(ltp)}
+                          ₹{fmtP(ltp)}
                         </span>
-                        {t.iv && <div className="fno-cell-sub">IV {t.iv.toFixed(1)}% {t.delta ? `Â· Î” ${t.delta.toFixed(2)}` : ""}</div>}
+                        {t.iv && <div className="fno-cell-sub">IV {t.iv.toFixed(1)}% {t.delta ? `· Δ ${t.delta.toFixed(2)}` : ""}</div>}
                       </td>
                       <td className="r">
                         <div className={`fno-pnl ${pos ? "pos" : "neg"}`}>{sign(pnl)}{fmt(Math.abs(pnl))}</div>

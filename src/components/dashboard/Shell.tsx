@@ -39,12 +39,12 @@ interface RailProps {
 export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailProps) {
   const navRef = useRef<HTMLElement | null>(null);
   const pillRef = useRef<HTMLSpanElement | null>(null);
-  const previousRef = useRef<{ y: number; h: number } | null>(null);
+  const previousRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
   const animationRef = useRef<Animation | null>(null);
 
-  // The pill is measured from the active button so it can travel between rail
-  // items. Mid-flight the height grows a little, which reads as the pill
-  // stretching toward its destination before it settles.
+  // The pill is measured from the active button so its size always matches the
+  // button's box (the rail shrinks at short viewports). Width and height stay
+  // equal so the highlight remains a perfect circle while it travels.
   useLayoutEffect(() => {
     const nav = navRef.current;
     const pill = pillRef.current;
@@ -52,7 +52,15 @@ export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailP
 
     const targetFor = () => {
       const active = nav.querySelector<HTMLElement>('[aria-current="page"]');
-      return active ? { y: active.offsetTop, h: active.offsetHeight } : null;
+      return active
+        ? { x: active.offsetLeft, y: active.offsetTop, w: active.offsetWidth, h: active.offsetHeight }
+        : null;
+    };
+
+    const place = (target: { x: number; y: number; w: number; h: number }) => {
+      pill.style.transform = `translate(${target.x}px, ${target.y}px)`;
+      pill.style.width = `${target.w}px`;
+      pill.style.height = `${target.h}px`;
     };
 
     const sync = () => {
@@ -63,8 +71,7 @@ export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailP
       }
       animationRef.current?.cancel();
       previousRef.current = next;
-      pill.style.transform = `translateY(${next.y}px)`;
-      pill.style.height = `${next.h}px`;
+      place(next);
       pill.dataset.ready = "";
     };
 
@@ -79,25 +86,17 @@ export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailP
     animationRef.current?.cancel();
 
     if (previous && !reduced && typeof pill.animate === "function") {
-      const distance = Math.abs(next.y - previous.y);
-      const stretch = Math.min(22, distance * 0.45);
       animationRef.current = pill.animate(
         [
-          { transform: `translateY(${previous.y}px)`, height: `${previous.h}px` },
-          {
-            transform: `translateY(${previous.y + (next.y - previous.y) / 2}px)`,
-            height: `${Math.max(previous.h, next.h) + stretch}px`,
-            offset: 0.5,
-          },
-          { transform: `translateY(${next.y}px)`, height: `${next.h}px` },
+          { transform: `translate(${previous.x}px, ${previous.y}px)` },
+          { transform: `translate(${next.x}px, ${next.y}px)` },
         ],
-        { duration: 460, easing: "cubic-bezier(.22,.9,.28,1.18)" },
+        { duration: 380, easing: "cubic-bezier(.22,.9,.28,1.06)" },
       );
     }
 
     previousRef.current = next;
-    pill.style.transform = `translateY(${next.y}px)`;
-    pill.style.height = `${next.h}px`;
+    place(next);
     pill.dataset.ready = "";
 
     const observer = new ResizeObserver(sync);
@@ -186,7 +185,11 @@ interface TopBarProps {
 export function TopBar(props: TopBarProps) {
   const { tab, onSelect, market, triggeredAlerts } = props;
   const [bellOpen, setBellOpen] = useState(false);
-  const pills = PRIMARY_NAV.includes(tab) ? PRIMARY_NAV : [...PRIMARY_NAV, tab];
+  const extraTab = PRIMARY_NAV.includes(tab) ? null : tab;
+  // The current section is appended as an extra pill only while the header has
+  // room for it; an overflowed pill leaves a clipped crescent of its indicator.
+  const [fitExtra, setFitExtra] = useState(true);
+  const pills = extraTab && fitExtra ? [...PRIMARY_NAV, extraTab] : PRIMARY_NAV;
   const count = triggeredAlerts.length;
 
   // Sliding active-pill indicator: measure the active button so the fill can
@@ -199,17 +202,71 @@ export function TopBar(props: TopBarProps) {
   useLayoutEffect(() => {
     const nav = pillNavRef.current;
     if (!nav) return;
+    const header = nav.closest<HTMLElement>(".zf-top");
+
+    const syncExtra = () => {
+      if (!extraTab || nav.clientWidth === 0) return;
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        setFitExtra(true);
+        return;
+      }
+      const left = header?.querySelector<HTMLElement>(".zf-top-left");
+      const right = header?.querySelector<HTMLElement>(".zf-top-right");
+      if (!left || !right) return;
+      const probe = document.createElement("span");
+      probe.className = "zf-nav-item";
+      probe.textContent = navItem(extraTab).label;
+      probe.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;";
+      nav.appendChild(probe);
+      const extraWidth = probe.offsetWidth;
+      probe.remove();
+      const compactWidth = nav.scrollWidth - (fitExtra ? extraWidth : 0);
+      const available = right.getBoundingClientRect().left - left.getBoundingClientRect().right - 24;
+      const fits = available >= compactWidth + extraWidth + 2;
+      setFitExtra((current) => (current === fits ? current : fits));
+    };
+
     const measure = () => {
       const active = nav.querySelector<HTMLElement>('[aria-current="page"]');
-      if (!active) return;
+      if (!active) {
+        // Collapse the fill too: an absolutely positioned indicator left at its
+        // old width still counts toward the nav's scrollable overflow.
+        setIndicator({ x: 0, w: 0 });
+        setIndicatorReady(false);
+        return;
+      }
       setIndicator({ x: active.offsetLeft, w: active.offsetWidth });
+      setIndicatorReady(true);
+      // Narrow headers scroll the pill row; reveal the active pill so the
+      // indicator never shows up as a clipped crescent at the scroll edge.
+      const pad = 4;
+      const start = active.offsetLeft - pad;
+      const end = active.offsetLeft + active.offsetWidth + pad;
+      let next = nav.scrollLeft;
+      if (start < nav.scrollLeft) next = start;
+      else if (end > nav.scrollLeft + nav.clientWidth) next = end - nav.clientWidth;
+      if (next !== nav.scrollLeft) {
+        const starts = Array.from(nav.querySelectorAll<HTMLElement>(".zf-nav-item"))
+          .map((el) => el.offsetLeft - pad)
+          .filter((s) => s <= start && s + nav.clientWidth >= end);
+        if (starts.length > 0) {
+          const ahead = starts.filter((s) => s >= next).sort((a, b) => a - b);
+          next = ahead[0] ?? starts.sort((a, b) => b - a)[0];
+        }
+        nav.scrollLeft = next;
+      }
     };
+
+    syncExtra();
     measure();
-    setIndicatorReady(true);
-    const ro = new ResizeObserver(measure);
+    const ro = new ResizeObserver(() => {
+      syncExtra();
+      measure();
+    });
     ro.observe(nav);
+    if (header) ro.observe(header);
     return () => ro.disconnect();
-  }, [tab, pills.length]);
+  }, [tab, pills.length, fitExtra, extraTab]);
 
   return (
     <header className="zf-top">

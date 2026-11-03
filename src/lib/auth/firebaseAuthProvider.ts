@@ -92,7 +92,7 @@ export const firebaseAuthProvider: AuthProvider = {
       await signInWithPopup(getFirebaseAuth(), provider);
     } catch (error) {
       const code = (error as { code?: string })?.code ?? "";
-      // User closed the popup â€” not an error worth surfacing.
+      // User closed the popup — not an error worth surfacing.
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
       // Every other failure is surfaced as a friendly message; never leave the
       // caller with an unhandled rejection or a raw Firebase error string.

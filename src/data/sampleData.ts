@@ -313,9 +313,9 @@ export function getSectorAllocation(stocks: PortfolioStock[]): { sector: string;
     })).sort((a, b) => b.value - a.value);
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════════════════
 // F&O DATA TYPES + SAMPLE DATA
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════════════════
 
 export type FnOInstrumentType = "FUT" | "CE" | "PE";
 export type FnOStatus = "Open" | "Closed Profit" | "Closed Loss" | "Expired";
@@ -342,7 +342,7 @@ export interface FnOTrade {
 
 // NSE standard lot sizes (as of 2025)
 export const LOT_SIZES: Record<string, number> = {
-  // â”€â”€ Nifty 50 & large-cap F&O stocks (NSE lot sizes as of 2025-26) â”€â”€
+  // ── Nifty 50 & large-cap F&O stocks (NSE lot sizes as of 2025-26) ──
   RELIANCE:      250,
   TCS:           150,
   INFY:          300,
@@ -363,14 +363,14 @@ export const LOT_SIZES: Record<string, number> = {
   ASIANPAINT:    200,
   ULTRACEMCO:    200,
   ONGC:          3850,
-  // â”€â”€ IT & Midcap tech â”€â”€
+  // ── IT & Midcap tech ──
   OFSS:          75,       // Oracle Financial Services
   MPHASIS:       275,
   LTTS:          150,
   PERSISTENT:    150,
   COFORGE:       150,
   TECHM:         600,
-  // â”€â”€ Banking & Finance â”€â”€
+  // ── Banking & Finance ──
   FEDERALBNK:    5000,
   INDUSINDBK:    500,
   BANDHANBNK:    2500,
@@ -383,13 +383,13 @@ export const LOT_SIZES: Record<string, number> = {
   HDFCLIFE:      1100,
   SBILIFE:       750,
   ICICIGI:       375,
-  // â”€â”€ Auto & EV â”€â”€
+  // ── Auto & EV ──
   HEROMOTOCO:    300,
   BAJAJAUTO:     250,
   EICHERMOT:     175,
   MM:            700,
   TVSMOTOR:      700,
-  // â”€â”€ Energy & Infra â”€â”€
+  // ── Energy & Infra ──
   POWERGRID:     3850,
   NTPC:          3000,
   COALINDIA:     4200,
@@ -400,13 +400,13 @@ export const LOT_SIZES: Record<string, number> = {
   ADANIGREEN:    500,
   ADANITRANS:    500,
   TORNTPOWER:    500,
-  // â”€â”€ Pharma & Healthcare â”€â”€
+  // ── Pharma & Healthcare ──
   DRREDDY:       125,
   CIPLA:         650,
   DIVISLAB:      300,
   BIOCON:        2500,
   APOLLOHOSP:    250,
-  // â”€â”€ FMCG & Consumer â”€â”€
+  // ── FMCG & Consumer ──
   HINDUNILVR:    300,
   NESTLEIND:     40,
   BRITANNIA:     200,
@@ -414,15 +414,15 @@ export const LOT_SIZES: Record<string, number> = {
   DABUR:         2750,
   MARICO:        2000,
   GODREJCP:      1000,
-  // â”€â”€ Metals & Materials â”€â”€
+  // ── Metals & Materials ──
   HINDALCO:      1700,
   JSWSTEEL:      1350,
   VEDL:          4000,
   NMDC:          7500,
   SAIL:          7500,
-  // â”€â”€ Telecom & Media â”€â”€
+  // ── Telecom & Media ──
   BHARTIARTL:    475,
-  // â”€â”€ Index derivatives (unit = 1 per lot) â”€â”€
+  // ── Index derivatives (unit = 1 per lot) ──
   NIFTY:         50,
   BANKNIFTY:     15,
   FINNIFTY:      40,
@@ -446,8 +446,8 @@ export function calcFnOPnL(trade: FnOTrade): number {
 
 // Helper: calc F&O invested (margin approximation)
 export function calcFnOInvested(trade: FnOTrade): number {
-  // Options: premium paid = entry Ã— lots Ã— lotSize
-  // Futures: margin â‰ˆ 15% of notional (approximate)
+  // Options: premium paid = entry × lots × lotSize
+  // Futures: margin ≈ 15% of notional (approximate)
   if (trade.instrumentType === "FUT") {
     return trade.entryPrice * trade.lots * trade.lotSize * 0.15;
   }
@@ -511,7 +511,7 @@ export const fnOTradesData: FnOTrade[] = [
     entryDate: "15-Mar-2025",
     exitDate: "25-Mar-2025",
     status: "Closed Loss",
-    notes: "Earnings play â€” went against",
+    notes: "Earnings play — went against",
   },
   {
     id: "fno-3",
@@ -540,7 +540,7 @@ export const fnOTradesData: FnOTrade[] = [
     entryDate: "05-Apr-2025",
     status: "Open",
     ltp: 2490.0,
-    notes: "Swing trade â€” Q4 results play",
+    notes: "Swing trade — Q4 results play",
   },
   {
     id: "fno-5",
