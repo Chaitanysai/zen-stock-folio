@@ -495,6 +495,14 @@ export interface UnrealisedHolding {
   key: string;
   ticker: string;
   label: string;
+  market: string;
+  /** Broker/source the position belongs to. */
+  sourceLabel: string;
+  /**
+   * Chart label. A ticker held through several sources is two positions, so
+   * the source joins the label; otherwise the bars read as duplicates.
+   */
+  axisLabel: string;
   value: number;
 }
 
@@ -524,14 +532,35 @@ export function unrealisedByHolding(
       key: position.key,
       ticker: position.ticker,
       label: position.name,
+      market: position.market,
+      sourceLabel: position.sourceLabel,
+      axisLabel: position.ticker,
       value: position.unrealised * factor,
     });
   }
 
-  holdings.sort(
-    (a, b) => Math.abs(b.value) - Math.abs(a.value) || a.ticker.localeCompare(b.ticker),
+  const tickerCounts = new Map<string, number>();
+  const scopeCounts = new Map<string, number>();
+  for (const holding of holdings) {
+    tickerCounts.set(holding.ticker, (tickerCounts.get(holding.ticker) ?? 0) + 1);
+    const scope = `${holding.ticker}:${holding.sourceLabel}`;
+    scopeCounts.set(scope, (scopeCounts.get(scope) ?? 0) + 1);
+  }
+  const labelled = holdings.map((holding) => {
+    if ((tickerCounts.get(holding.ticker) ?? 0) < 2) return holding;
+    const sourceScoped = (scopeCounts.get(`${holding.ticker}:${holding.sourceLabel}`) ?? 0) > 1;
+    return {
+      ...holding,
+      axisLabel: sourceScoped
+        ? `${holding.ticker} · ${holding.market} · ${holding.sourceLabel}`
+        : `${holding.ticker} · ${holding.sourceLabel}`,
+    };
+  });
+
+  labelled.sort(
+    (a, b) => Math.abs(b.value) - Math.abs(a.value) || a.axisLabel.localeCompare(b.axisLabel),
   );
-  return { holdings: holdings.slice(0, limit), excluded };
+  return { holdings: labelled.slice(0, limit), excluded };
 }
 
 export interface OutcomeDistribution {

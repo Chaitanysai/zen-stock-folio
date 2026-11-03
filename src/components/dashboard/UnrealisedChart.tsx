@@ -12,7 +12,7 @@ function HoldingTip({ active, payload }: TipProps) {
   if (!holding) return null;
   return (
     <div className="glass-elevated rounded-xl px-3 py-2 text-xs">
-      <div className="font-mono text-muted-foreground">{holding.ticker}</div>
+      <div className="font-mono text-muted-foreground">{holding.ticker} · {holding.sourceLabel}</div>
       <div className="zf-num mt-0.5 text-sm font-semibold" style={{ color: holding.value < 0 ? "hsl(var(--loss))" : "hsl(var(--profit))" }}>
         {signedInr(holding.value)}
       </div>
@@ -30,6 +30,10 @@ const axisTick = (v: number) => (v === 0 ? "0" : `${v < 0 ? "−" : ""}${compact
  * equivalent text table.
  */
 export default function UnrealisedChart({ holdings }: { holdings: UnrealisedHolding[] }) {
+  const labelWidth = Math.min(
+    200,
+    Math.max(76, ...holdings.map((holding) => holding.axisLabel.length * 7.4)),
+  );
   return (
     <div className="zf-pnl-chart" aria-hidden="true">
       <ResponsiveContainer width="100%" height="100%">
@@ -43,10 +47,12 @@ export default function UnrealisedChart({ holdings }: { holdings: UnrealisedHold
           <XAxis type="number" tickLine={false} axisLine={false} tickFormatter={axisTick} />
           <YAxis
             type="category"
-            dataKey="ticker"
-            width={76}
+            dataKey="axisLabel"
+            width={labelWidth}
             tickLine={false}
             axisLine={false}
+            // Recharts wraps any tick wider than the axis; keep source labels on one line.
+            tick={{ fontSize: 11, width: undefined }}
           />
           <ReferenceLine x={0} stroke="hsl(var(--border-strong))" />
           <Tooltip content={<HoldingTip />} cursor={{ fill: "hsl(var(--foreground) / .05)" }} />

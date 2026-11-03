@@ -286,6 +286,23 @@ describe("unrealisedByHolding", () => {
     ].sort((a, b) => Math.abs(b[1] as number) - Math.abs(a[1] as number)));
     expect(result.excluded).toBe(1);
   });
+
+  it("names the source only when one ticker spans several positions", () => {
+    const { positions } = build([
+      lot({ ticker: "HEROMOTORS", source: "manual", entryPrice: 150, cmp: 120 }),
+      lot({ ticker: "HEROMOTORS", source: "groww", entryPrice: 140, cmp: 120 }),
+      lot({ ticker: "TCS", entryPrice: 100, cmp: 130 }),
+    ]);
+    const result = unrealisedByHolding(positions, null);
+    const hero = result.holdings.filter((row) => row.ticker === "HEROMOTORS");
+
+    expect(hero).toHaveLength(2);
+    expect(hero.map((row) => row.axisLabel).sort()).toEqual([
+      "HEROMOTORS · Groww",
+      "HEROMOTORS · Manual",
+    ]);
+    expect(result.holdings.find((row) => row.ticker === "TCS")?.axisLabel).toBe("TCS");
+  });
 });
 
 describe("outcomeDistribution", () => {

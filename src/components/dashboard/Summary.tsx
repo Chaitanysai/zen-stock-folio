@@ -283,7 +283,7 @@ export function UnrealisedCard({
               <thead><tr><th scope="col">Holding</th><th scope="col">Unrealised P&amp;L</th></tr></thead>
               <tbody>
                 {holdings.map((x) => (
-                  <tr key={x.key}><th scope="row">{x.ticker}</th><td>{signedInr(x.value)}</td></tr>
+                  <tr key={x.key}><th scope="row">{x.axisLabel}</th><td>{signedInr(x.value)}</td></tr>
                 ))}
               </tbody>
             </table>

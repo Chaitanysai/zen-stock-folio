@@ -144,7 +144,7 @@ export function UnrealisedChartCard({ data, index = 0 }: { data: UnrealisedByHol
             <thead><tr><th scope="col">Holding</th><th scope="col">Unrealised P&amp;L</th></tr></thead>
             <tbody>
               {data.holdings.map((h) => (
-                <tr key={h.key}><th scope="row">{h.ticker}</th><td>{signedInr(h.value)}</td></tr>
+                <tr key={h.key}><th scope="row">{h.axisLabel}</th><td>{signedInr(h.value)}</td></tr>
               ))}
             </tbody>
           </table>
