@@ -6,6 +6,7 @@ import {
 } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase/firestore";
 import { parseSnapshot } from "./parseSnapshot";
+import type { PortfolioSnapshot } from "./snapshotTypes";
 import type { PortfolioDataStore } from "./types";
 
 /**
@@ -37,6 +38,26 @@ export const USERS_COLLECTION = "users";
 const firestoreErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : "Cloud sync failed";
 
+/**
+ * Firestore rejects explicit `undefined` anywhere in a document, and a value
+ * nested in an array makes the error name only the document — no field path.
+ * Snapshot producers use `undefined` to mean "absent" (unknown dates,
+ * fingerprints, F&O notes), so those keys are removed at the SDK boundary
+ * instead of letting the whole save fail. Plain objects only: Firestore
+ * sentinels such as FieldValue/Timestamp must pass through untouched.
+ */
+const pruneUndefined = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(pruneUndefined);
+  if (typeof value !== "object" || value === null) return value;
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null) return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry !== undefined) out[key] = pruneUndefined(entry);
+  }
+  return out;
+};
+
 export const firestorePortfolioStore: PortfolioDataStore = {
   name: "firestore",
 
@@ -58,7 +79,7 @@ export const firestorePortfolioStore: PortfolioDataStore = {
     try {
       await setDoc(doc(getFirebaseDb(), PORTFOLIOS_COLLECTION, userId), {
         uid: userId,
-        snapshot,
+        snapshot: pruneUndefined(snapshot) as PortfolioSnapshot,
         updatedAt: serverTimestamp(),
       });
       return null;

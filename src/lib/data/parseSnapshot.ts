@@ -42,14 +42,18 @@ function normalizeStock(value: unknown): PortfolioStock | null {
   const row = value as PortfolioStock;
   if (typeof row.ticker !== "string" || !row.ticker) return null;
   const market = asMarket(row.market);
+  const entryDate = asText(row.entryDate);
+  const statementFingerprint = asText(row.statementFingerprint);
   return {
     ...row,
     market,
     currency: asCurrency(market),
     source: row.source && SOURCES.has(row.source) ? row.source : "manual",
     entryPrice: asCost(row.entryPrice),
-    entryDate: asText(row.entryDate),
-    statementFingerprint: asText(row.statementFingerprint),
+    // Firestore rejects explicit `undefined`, so absent optionals are omitted
+    // rather than carried as keys. Their absence already means "not known".
+    ...(entryDate ? { entryDate } : {}),
+    ...(statementFingerprint ? { statementFingerprint } : {}),
   };
 }
 

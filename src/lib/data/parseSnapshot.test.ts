@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { parseSnapshot } from "./parseSnapshot";
 
+const containsUndefined = (value: unknown): boolean => {
+  if (Array.isArray(value)) return value.some(containsUndefined);
+  if (typeof value === "object" && value !== null) {
+    return Object.values(value).some((entry) => entry === undefined || containsUndefined(entry));
+  }
+  return false;
+};
+
 const base = {
   stocks: [
     { ticker: "RELIANCE", stockName: "Reliance", entryDate: "2025-01-01", entryPrice: 100, cmp: 110, weekHigh52: 120, quantity: 1, status: "Active" },
@@ -39,6 +47,23 @@ describe("parseSnapshot market defaults", () => {
     // Garbage falls back to the market default.
     expect(parsed?.stocks[3]).toMatchObject({ market: "US", currency: "USD" });
     expect(parsed?.stocks[4]).toMatchObject({ market: "NSE", currency: "INR" });
+  });
+
+  it("omits absent optional fields instead of storing explicit undefined", () => {
+    // Firestore rejects explicit `undefined` anywhere in a document and names
+    // only the document, not the field. A legacy row without a date or import
+    // fingerprint must not gain those keys while being normalized.
+    const parsed = parseSnapshot({
+      ...base,
+      stocks: [
+        { ticker: "RELIANCE", stockName: "Reliance", cmp: 110, quantity: 1, status: "Active" },
+      ],
+    });
+    const row = parsed?.stocks[0];
+    expect(row).toBeDefined();
+    expect(Object.keys(row ?? {})).not.toContain("entryDate");
+    expect(Object.keys(row ?? {})).not.toContain("statementFingerprint");
+    expect(containsUndefined(parsed)).toBe(false);
   });
 
   it("defaults executions to an empty array", () => {

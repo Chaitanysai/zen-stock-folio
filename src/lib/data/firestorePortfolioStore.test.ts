@@ -134,6 +134,31 @@ describe("firestorePortfolioStore.saveSnapshot", () => {
     expect(payload.updatedAt).toBe("SERVER_TIMESTAMP");
   });
 
+  it("strips explicit undefined values that Firestore would reject", async () => {
+    // Firestore rejects `undefined` anywhere in the document and names only the
+    // document path. Producers use undefined to mean "absent", so the adapter
+    // must drop those keys instead of failing the whole save.
+    firestoreMock.doc.mockReturnValue("ref");
+    firestoreMock.setDoc.mockResolvedValueOnce(undefined);
+
+    const withGaps = {
+      ...snapshotShape,
+      stocks: [
+        { ticker: "RELIANCE", status: "Active", entryDate: undefined, statementFingerprint: undefined },
+      ],
+      fnoTrades: [{ id: "f1", strike: undefined, notes: undefined }],
+    } as unknown as PortfolioSnapshot;
+
+    await expect(firestorePortfolioStore.saveSnapshot("user-a", withGaps)).resolves.toBeNull();
+
+    const [, payload] = firestoreMock.setDoc.mock.calls[0];
+    expect(payload.snapshot).toStrictEqual({
+      ...snapshotShape,
+      stocks: [{ ticker: "RELIANCE", status: "Active" }],
+      fnoTrades: [{ id: "f1" }],
+    });
+  });
+
   it("returns an error string instead of throwing on failure", async () => {
     firestoreMock.doc.mockReturnValue("ref");
     firestoreMock.setDoc.mockRejectedValueOnce(new Error("permission denied"));
