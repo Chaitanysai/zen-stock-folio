@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { journalNotesPatch } from "./snapshotUpdates";
+import { accountResetPatch, journalNotesPatch } from "./snapshotUpdates";
 import type { PortfolioSnapshot } from "@/lib/data/snapshotTypes";
 import type { PortfolioStock } from "@/data/sampleData";
 
@@ -35,6 +35,48 @@ const applySnapshot = (
   current: PortfolioSnapshot,
   partial: Partial<PortfolioSnapshot>,
 ): PortfolioSnapshot => ({ ...current, ...partial });
+
+describe("accountResetPatch", () => {
+  it("empties every account-owned collection", () => {
+    const patch = accountResetPatch();
+
+    expect(patch.stocks).toEqual([]);
+    expect(patch.trades).toEqual([]);
+    expect(patch.watchlist).toEqual([]);
+    expect(patch.alerts).toEqual([]);
+    expect(patch.fnoTrades).toEqual([]);
+    expect(patch.executions).toEqual([]);
+  });
+
+  it("leaves an empty snapshot after merge and a serialized reload", () => {
+    const populated: PortfolioSnapshot = {
+      ...baseSnapshot(),
+      executions: [
+        {
+          id: "indmoney:1",
+          source: "indmoney",
+          market: "NSE",
+          ticker: "ALPHA",
+          side: "BUY",
+          quantity: 10,
+          price: 100,
+          executedAt: "2026-01-05T09:15:00Z",
+          currency: "INR",
+        },
+      ],
+    };
+
+    const reset = applySnapshot(populated, accountResetPatch());
+    const reloaded = JSON.parse(JSON.stringify(reset)) as PortfolioSnapshot;
+
+    expect(reloaded.stocks).toEqual([]);
+    expect(reloaded.trades).toEqual([]);
+    expect(reloaded.watchlist).toEqual([]);
+    expect(reloaded.alerts).toEqual([]);
+    expect(reloaded.fnoTrades).toEqual([]);
+    expect(reloaded.executions).toEqual([]);
+  });
+});
 
 describe("journalNotesPatch", () => {
   it("updates notes while preserving every unrelated stock field", () => {

@@ -30,6 +30,7 @@ interface PortfolioDashboardProps {
   existingStocks?: PortfolioStock[];
   onEditLot: (index: number, updated: PortfolioStock) => void;
   onDeleteLot: (index: number) => void;
+  onResetAll: () => void;
 }
 
 function SummaryCard({
@@ -66,7 +67,7 @@ function SummaryCard({
  * realised or historical figures.
  */
 export default function PortfolioDashboard({
-  stocks, usdInr, loading, onAdd, onImport, existingStocks = [], onEditLot, onDeleteLot,
+  stocks, usdInr, loading, onAdd, onImport, existingStocks = [], onEditLot, onDeleteLot, onResetAll,
 }: PortfolioDashboardProps) {
   const { positions, issues } = useMemo(() => buildPositions(stocks), [stocks]);
   const summary = useMemo(
@@ -204,6 +205,7 @@ export default function PortfolioDashboard({
         existingStocks={existingStocks}
         onEditLot={onEditLot}
         onDeleteLot={onDeleteLot}
+        onResetAll={onResetAll}
       />
     </div>
   );

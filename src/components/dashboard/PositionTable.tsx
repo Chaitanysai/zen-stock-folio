@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Download, Pencil, Search, Trash2, Wallet, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, Pencil, Search, Trash2, TriangleAlert, Wallet, X } from "lucide-react";
 import type { PortfolioStock } from "@/data/sampleData";
 import {
   filterPositions,
@@ -17,6 +17,7 @@ import { formatInr, formatNative, type Currency } from "@/lib/portfolio/display"
 import { signedInr } from "@/lib/dashboard/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -99,10 +100,12 @@ interface PositionTableProps {
   existingStocks?: PortfolioStock[];
   onEditLot: (index: number, updated: PortfolioStock) => void;
   onDeleteLot: (index: number) => void;
+  /** Clears every account-owned collection so fresh imports start clean. */
+  onResetAll: () => void;
 }
 
 export default function PositionTable({
-  stocks, positions, usdInr, loading, onAdd, onImport, existingStocks = [], onEditLot, onDeleteLot,
+  stocks, positions, usdInr, loading, onAdd, onImport, existingStocks = [], onEditLot, onDeleteLot, onResetAll,
 }: PositionTableProps) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<PositionFilter>("all");
@@ -114,6 +117,8 @@ export default function PositionTable({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<{ index: number; stock: PortfolioStock } | null>(null);
   const [deleting, setDeleting] = useState<{ index: number; stock: PortfolioStock; ticker: string } | null>(null);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetPhrase, setResetPhrase] = useState("");
 
   const brokers = useMemo(() => {
     const seen = new Map<string, string>();
@@ -231,6 +236,14 @@ export default function PositionTable({
             </Button>
             <ImportButton onImport={onImport} existingStocks={existingStocks} />
             <AddTradeButton onAdd={onAdd} variant="primary" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs border-loss/40 text-loss hover:bg-loss/10 hover:text-loss"
+              onClick={() => setResetOpen(true)}
+            >
+              <TriangleAlert className="h-3.5 w-3.5" /> Reset data
+            </Button>
           </div>
         </div>
 
@@ -409,6 +422,74 @@ export default function PositionTable({
               onClick={() => { if (deleting) onDeleteLot(deleting.index); }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={resetOpen}
+        onOpenChange={(open) => {
+          setResetOpen(open);
+          if (!open) setResetPhrase("");
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <TriangleAlert className="h-5 w-5 text-loss" aria-hidden="true" />
+              Reset all account data?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes everything recorded in this account so you can import fresh statements.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div role="note" className="rounded-lg border border-loss/40 bg-loss/10 p-3">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-loss">
+              This cannot be undone
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-4 text-[13px] text-foreground">
+              <li>
+                <span className="font-mono font-semibold">{stocks.length}</span> recorded transaction
+                {stocks.length === 1 ? "" : "s"} — manual and imported, open and closed
+              </li>
+              <li>Every journal trade and F&amp;O trade</li>
+              <li>Every watchlist entry and price alert</li>
+              <li>Every imported broker fill</li>
+            </ul>
+            <p className="mt-2 text-[12px] text-muted-foreground">
+              Your broker connection and downloaded Excel files are untouched, so you can re-import straight away.
+            </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="zf-reset-phrase" className="text-xs text-muted-foreground">
+              Type <span className="font-mono font-semibold text-foreground">RESET</span> to confirm
+            </Label>
+            <Input
+              id="zf-reset-phrase"
+              value={resetPhrase}
+              onChange={(event) => setResetPhrase(event.target.value)}
+              placeholder="RESET"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="bg-secondary border-border font-mono text-sm"
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              // The default alert-action classes paint the primary gradient over
+              // the destructive fill; clear it so the confirm stays red.
+              style={{ backgroundImage: "none" }}
+              disabled={resetPhrase !== "RESET"}
+              onClick={onResetAll}
+            >
+              Reset everything
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

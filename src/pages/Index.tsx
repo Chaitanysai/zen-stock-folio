@@ -39,7 +39,7 @@ import {
 } from "@/hooks/usePortfolioSync";
 import type { Execution } from "@/lib/data/snapshotTypes";
 import { useAuth }           from "@/contexts/AuthContext";
-import { journalNotesPatch } from "@/lib/portfolio/snapshotUpdates";
+import { accountResetPatch, journalNotesPatch } from "@/lib/portfolio/snapshotUpdates";
 import {
   planBrokerImport, type BrokerImportOutcome, type BrokerImportRequest,
 } from "@/lib/portfolio/brokerImport";
@@ -450,6 +450,10 @@ export default function Index() {
     }
     void applySnapshot({ stocks: nextStocks, trades: nextTrades, alerts: nextAlerts }, "Transaction deletion");
   }, [applySnapshot, selectedChartKey]);
+  const handleAccountReset   = useCallback(() => {
+    setSelectedChartKey(null);
+    void applySnapshot(accountResetPatch(), "Account reset");
+  }, [applySnapshot]);
   const handleTradeEdit       = useCallback((originalTicker: string, updatedTrade: TradeStrategy) => { void applySnapshot({ trades: snapshotRef.current.trades.map((t) => t.ticker === originalTicker ? updatedTrade : t) }, "Trade update"); }, [applySnapshot]);
   const handleTradeDelete     = useCallback((ticker: string) => { void applySnapshot({ trades: snapshotRef.current.trades.filter((t) => t.ticker !== ticker) }, "Trade deletion"); }, [applySnapshot]);
   const handleWatchlistAdd    = useCallback((stock: WatchlistStock) => { void applySnapshot({ watchlist: [...snapshotRef.current.watchlist, stock] }, "Watchlist update"); }, [applySnapshot]);
@@ -797,6 +801,7 @@ export default function Index() {
                       existingStocks={stocks}
                       onEditLot={handleLotEdit}
                       onDeleteLot={handleLotDelete}
+                      onResetAll={handleAccountReset}
                     />
                   </div>
                 )}

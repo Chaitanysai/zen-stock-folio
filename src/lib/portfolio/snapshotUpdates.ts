@@ -2,6 +2,24 @@ import type { PortfolioSnapshot } from "@/lib/data/snapshotTypes";
 import type { TradeJournalEntry } from "@/data/sampleData";
 
 /**
+ * Clears every collection the dashboard owns. Broker credentials and the
+ * connection record live outside the snapshot, so they survive a reset.
+ */
+export function accountResetPatch(): Pick<
+  PortfolioSnapshot,
+  "stocks" | "trades" | "watchlist" | "alerts" | "fnoTrades" | "executions"
+> {
+  return {
+    stocks: [],
+    trades: [],
+    watchlist: [],
+    alerts: [],
+    fnoTrades: [],
+    executions: [],
+  };
+}
+
+/**
  * Builds the stocks patch for a journal edit. Callers must apply the patch
  * through the snapshot pipeline (`applySnapshot`) so `snapshotRef` and the
  * persisted snapshot stay in sync — updating stocks state directly is what
