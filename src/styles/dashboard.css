@@ -133,7 +133,39 @@
 .zf-rbtn.zf-danger:hover { color: hsl(var(--loss)); }
 
 /* ════════ STAGE + TOP BAR ════════ */
-.zf-stage { flex: 1; min-width: 0; height: 100%; overflow: auto; scroll-behavior: auto; }
+.zf-stage { flex: 1; min-width: 0; height: 100%; overflow: auto; scroll-behavior: auto; z-index: 1; }
+
+/* Today's P&L wash: fixed behind the rail, top bar and cards.
+   The base layer is neutral; the two tinted layers cross-fade with the tone. */
+.zf-dayglow {
+  position: fixed; inset: 0 0 auto 0; height: min(46vh, 520px);
+  z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(60% 100% at 50% 0%, hsl(var(--foreground) / .045), transparent 70%),
+    linear-gradient(180deg, hsl(var(--foreground) / .025), transparent 78%);
+}
+.zf-dayglow::before, .zf-dayglow::after {
+  content: ""; position: absolute; inset: 0; opacity: 0;
+  transition: opacity 600ms ease;
+}
+.zf-dayglow::before {
+  background:
+    radial-gradient(60% 100% at 50% 0%, hsl(var(--profit) / .20), hsl(var(--profit) / .06) 45%, transparent 75%),
+    linear-gradient(180deg, hsl(var(--profit) / .085), transparent 72%);
+}
+.zf-dayglow::after {
+  background:
+    radial-gradient(60% 100% at 50% 0%, hsl(var(--loss) / .14), hsl(var(--loss) / .045) 45%, transparent 75%),
+    linear-gradient(180deg, hsl(var(--loss) / .065), transparent 72%);
+}
+.zf-dayglow[data-tone="up"]::before { opacity: 1; }
+.zf-dayglow[data-tone="down"]::after { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .zf-dayglow::before, .zf-dayglow::after { transition: none; }
+}
+@media (max-width: 720px) {
+  .zf-dayglow { height: min(38vh, 360px); }
+}
 
 .zf-top {
   position: sticky; top: 0; z-index: 40;
@@ -412,6 +444,32 @@
 }
 .zf-stat-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-top: 10px; min-height: 24px; }
 .zf-stat-cap { font-size: 12px; color: hsl(var(--muted-foreground)); }
+
+/* Today's top mover and laggard, inside the highlighted card. */
+.zf-stat-movers {
+  display: grid; gap: 6px; margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid hsl(var(--border) / .9);
+  /* On phones and tablets the highlight card spans the full width; the
+     two-column rows would otherwise stretch to the card's full length. */
+  max-width: 26rem;
+}
+.zf-stat-hl .zf-stat-movers { border-top-color: hsl(0 0% 100% / .22); }
+/* Two rows per mover: label and amount, then instrument and percentage. The
+   narrow stat tile leaves the ticker no room beside the figure on one line. */
+.zf-stat-mover {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline;
+  column-gap: 8px; row-gap: 1px; min-width: 0;
+  font-size: 11.5px; line-height: 1.3; font-variant-numeric: tabular-nums;
+}
+.zf-stat-mover-cap { grid-column: 1; opacity: .8; }
+.zf-stat-mover[data-tone="up"] .zf-stat-mover-cap::before { content: "↑ "; font-weight: 700; }
+.zf-stat-mover[data-tone="down"] .zf-stat-mover-cap::before { content: "↓ "; font-weight: 700; }
+.zf-stat-mover-id { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.zf-stat-mover-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zf-stat-mover b { grid-column: 2; text-align: right; font-weight: 650; white-space: nowrap; }
+.zf-stat-mover em { font-style: normal; opacity: .82; white-space: nowrap; margin-left: auto; }
+.zf-stat-mover-none { grid-column: 1 / -1; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zf-stat-hl .zf-stat-mover, .zf-stat-hl .zf-stat-mover-none { color: hsl(var(--on-brand)); }
 
 /* The one highlight card: warm orange, white text */
 .zf-stat-hl {
@@ -838,7 +896,7 @@
   .zf-strip { order: 9; }
   .zf-page-head { order: 0; }
   .zf-notice { order: 0; border-radius: 18px; }
-  .zf-stats { gap: 10px; }
+  .zf-stats { gap: 10px; grid-auto-rows: auto; }
   .zf-stat { padding: 14px; min-height: 132px; }
   .zf-stat-hl { grid-column: 1 / -1; min-height: 116px; }
   .zf-searchpill { width: 100%; flex: 1 1 180px; }
@@ -862,7 +920,7 @@
   .zf-tile-val { margin-left: auto; }
   .zf-tile-cap { flex-basis: 100%; order: 3; padding-left: 38px; margin-top: -4px; }
   .zf-balance-actions { grid-template-columns: 1fr 1fr; }
-  .zf-stats { grid-template-columns: minmax(0, 1fr); }
+  .zf-stats { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; }
   .zf-stat-hl { grid-column: auto; }
   .zf-stat { min-height: 0; }
 }

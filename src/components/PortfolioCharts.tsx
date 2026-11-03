@@ -1,4 +1,4 @@
-import { PortfolioStock, calcInvestedValue } from "@/data/sampleData";
+import { PortfolioStock, calcInvestedValue, hasKnownCost } from "@/data/sampleData";
 import {
   BarChart, Bar, Cell,
   PieChart, Pie,
@@ -251,20 +251,24 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
     ? `${selectedStock.ticker} (${marketOf(selectedStock)})`
     : null;
 
-  // P&L per stock
+  // P&L per stock. Unknown cost means unknown P&L, never the full market value.
   const plData = stocks.map((s) => {
     const live = quoteFor(prices, s);
     const cmp = live?.price ?? s.cmp;
-    const pl = isValidPrice(cmp) ? (cmp - s.entryPrice) * s.quantity : null;
+    const pl =
+      isValidPrice(cmp) && hasKnownCost(s) ? (cmp - s.entryPrice) * s.quantity : null;
     return { name: s.ticker, pl };
   });
   const unpricedCount = plData.filter((entry) => entry.pl === null).length;
 
-  // Allocation
-  const allocationData = stocks.map((s) => ({
-    name: s.ticker,
-    value: calcInvestedValue(s),
-  }));
+  // Allocation: fall back to market value for unknown-cost rows so the
+  // position stays visible without inventing a cost.
+  const allocationData = stocks.map((s) => {
+    const live = quoteFor(prices, s);
+    const cmp = live?.price ?? s.cmp;
+    const value = calcInvestedValue(s) ?? (isValidPrice(cmp) ? cmp * s.quantity : 0);
+    return { name: s.ticker, value };
+  });
 
   const axisStyle = {
     fill: "hsl(var(--muted-foreground))",
@@ -369,7 +373,7 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
               </p>
               {unpricedCount > 0 && (
                 <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
-                  {unpricedCount} position{unpricedCount === 1 ? "" : "s"} without a market price {unpricedCount === 1 ? "is" : "are"} excluded from this chart.
+                  {unpricedCount} position{unpricedCount === 1 ? "" : "s"} without a market price or cost basis {unpricedCount === 1 ? "is" : "are"} excluded from this chart.
                 </p>
               )}
             </div>

@@ -1,7 +1,8 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Award, BarChart3, Eye, Layers, Wallet, TrendingUp, Zap } from "lucide-react";
 import type { PortfolioStock } from "@/data/sampleData";
-import type { MonthBucket, OverviewMetrics } from "@/lib/dashboard/overview";
+import type { BrokerImportHandler } from "@/lib/portfolio/brokerImport";
+import type { DayMover, DayMovers, MonthBucket, OverviewMetrics } from "@/lib/dashboard/overview";
 import { compact, inr, signedInr, signedPct, stagger, toneOf } from "@/lib/dashboard/format";
 import { AddTradeButton, DeltaPill, EmptyState, ImportButton } from "./ui";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +16,9 @@ interface BalanceProps {
   m: OverviewMetrics;
   watchCount: number;
   onAdd: (stock: PortfolioStock) => void;
-  onImport: (stocks: PortfolioStock[]) => void;
+  onImport: BrokerImportHandler;
+  /** Existing holdings, used to preview broker replacement counts. */
+  existingStocks?: PortfolioStock[];
   goTo: (id: ActiveTab) => void;
   openFno: () => void;
   /** INR P&L from USD→INR movement, reported separately from price P&L. */
@@ -27,7 +30,7 @@ interface BalanceProps {
 }
 
 export function BalanceCard({
-  loading, m, watchCount, onAdd, onImport, goTo, openFno,
+  loading, m, watchCount, onAdd, onImport, existingStocks = [], goTo, openFno,
   fxPnl = null, fxEstimated = false, fxNote = null,
 }: BalanceProps) {
   const hasEquity = m.pricedCount > 0;
@@ -85,7 +88,7 @@ export function BalanceCard({
 
       <div className="zf-balance-actions">
         <AddTradeButton onAdd={onAdd} variant="primary" />
-        <ImportButton onImport={onImport} variant="outline" />
+        <ImportButton onImport={onImport} existingStocks={existingStocks} variant="outline" />
       </div>
 
       <div className="zf-inset" role="group" aria-label="Asset mix">
@@ -128,9 +131,10 @@ interface StatProps {
   cap: string;
   highlight?: boolean;
   index: number;
+  children?: ReactNode;
 }
 
-function Stat({ label, icon: Icon, value, loading, pill, cap, highlight, index }: StatProps) {
+function Stat({ label, icon: Icon, value, loading, pill, cap, highlight, index, children }: StatProps) {
   return (
     <article className={`zf-card zf-stat zf-in${highlight ? " zf-stat-hl" : ""}`} style={stagger(index)} aria-label={label}>
       <div className="zf-stat-top">
@@ -143,31 +147,76 @@ function Stat({ label, icon: Icon, value, loading, pill, cap, highlight, index }
           {!loading && pill && <DeltaPill tone={pill.tone}>{pill.text}</DeltaPill>}
           <span className="zf-stat-cap">{cap}</span>
         </div>
+        {!loading && children}
       </div>
     </article>
   );
 }
 
-export function StatGrid({ loading, m }: { loading: boolean; m: OverviewMetrics }) {
+function MoverLine({ label, mover, tone }: { label: string; mover: DayMover | null; tone: "up" | "down" }) {
+  if (!mover) {
+    return (
+      <span className="zf-stat-mover" data-tone="flat">
+        <span className="zf-stat-mover-cap">{label}</span>
+        <span className="zf-stat-mover-none">No {tone === "up" ? "gainer" : "loser"} today</span>
+      </span>
+    );
+  }
+  return (
+    <span className="zf-stat-mover" data-tone={tone}>
+      <span className="zf-stat-mover-cap">{label}</span>
+      <b>{signedInr(mover.dayPnl)}</b>
+      <span className="zf-stat-mover-id">
+        <span className="zf-stat-mover-name" title={`${mover.name} (${mover.market})`}>{mover.ticker}</span>
+        {mover.dayPct !== null && <em>{signedPct(mover.dayPct)}</em>}
+      </span>
+    </span>
+  );
+}
+
+export function StatGrid({
+  loading, m, movers, dayLabel = "Today", priceMode = "",
+}: {
+  loading: boolean;
+  m: OverviewMetrics;
+  movers: DayMovers;
+  dayLabel?: string;
+  priceMode?: string;
+}) {
   const todayValue = !m.hasDayData && m.todayPnl === 0 ? "—" : signedInr(m.todayPnl);
+  const totalPnl = m.pnl + m.totalRealised;
+  const hasTotal = m.invested > 0 || m.closedCount > 0;
+  const exclusions = [
+    m.unpricedCount > 0 ? `${m.unpricedCount} unpriced` : null,
+    m.fxIncomplete ? "USD excluded" : null,
+    m.realisedExcluded > 0 ? `${m.realisedExcluded} unvalued` : null,
+  ].filter(Boolean).join(" · ");
   return (
     <section className="zf-stats" aria-label="Key figures">
       <Stat
         index={1} highlight label="Today's P&L" icon={Zap} loading={loading} value={todayValue}
         pill={m.todayPct !== null ? { tone: toneOf(m.todayPnl), text: signedPct(m.todayPct) } : null}
-        cap={m.hasDayData ? (m.fxIncomplete ? "Today · USD rows excluded" : "Today") : "Awaiting live quotes"}
-      />
+        cap={m.hasDayData
+          ? `${dayLabel}${priceMode ? ` · ${priceMode}` : ""}${m.fxIncomplete ? " · USD excluded" : ""}`
+          : "Awaiting live quotes"}
+      >
+        {m.hasDayData && (
+          <span className="zf-stat-movers">
+            <MoverLine label="Top gainer" mover={movers.gainer} tone="up" />
+            <MoverLine label="Top loser" mover={movers.loser} tone="down" />
+          </span>
+        )}
+      </Stat>
       <Stat
         index={2} label="Total invested" icon={Wallet} loading={loading} value={inr(m.invested)}
         cap={`${m.active.length + m.fnoOpen.length} open position${m.active.length + m.fnoOpen.length === 1 ? "" : "s"}${m.fxIncomplete ? " · USD excluded" : ""}`}
       />
       <Stat
-        index={3} label="Unrealised P&L" icon={TrendingUp} loading={loading}
-        value={m.invested > 0 ? signedInr(m.pnl) : "—"}
-        pill={m.invested > 0 ? { tone: toneOf(m.pnl), text: signedPct(m.pnlPct) } : null}
-        cap={m.invested > 0
-          ? (m.unpricedCount > 0 ? `${m.unpricedCount} unpriced excluded` : "on cost")
-          : (m.active.length > 0 ? "No priced position" : "No open positions")}
+        index={3} label="Total P&L" icon={TrendingUp} loading={loading}
+        value={hasTotal ? signedInr(totalPnl) : "—"}
+        cap={hasTotal
+          ? `unrealised + realised${exclusions ? ` · ${exclusions}` : ""}`
+          : (m.active.length > 0 ? "No priced position" : "No positions yet")}
       />
       <Stat
         index={4} label="Win rate" icon={Award} loading={loading}
@@ -187,12 +236,15 @@ interface PnlProps {
   months: MonthBucket[];
   undated: number;
   onAdd: (stock: PortfolioStock) => void;
-  onImport: (stocks: PortfolioStock[]) => void;
+  onImport: BrokerImportHandler;
+  existingStocks?: PortfolioStock[];
   /** Shown when some rows were excluded from the monthly INR totals. */
   note?: string | null;
 }
 
-export function PnlCard({ loading, months, undated, onAdd, onImport, note = null }: PnlProps) {
+export function PnlCard({
+  loading, months, undated, onAdd, onImport, existingStocks = [], note = null,
+}: PnlProps) {
   return (
     <section className="zf-card zf-pnl zf-in" style={stagger(5)} aria-labelledby="zf-pnl-title">
       <div>
@@ -215,7 +267,7 @@ export function PnlCard({ loading, months, undated, onAdd, onImport, note = null
           <EmptyState
             icon={BarChart3}
             title="No closed trades yet"
-            actions={<><AddTradeButton onAdd={onAdd} variant="primary" /><ImportButton onImport={onImport} /></>}
+            actions={<><AddTradeButton onAdd={onAdd} variant="primary" /><ImportButton onImport={onImport} existingStocks={existingStocks} /></>}
           >
             Realised P&amp;L by month appears once you close a trade. Add a trade you have already exited, or import your past trades.
           </EmptyState>

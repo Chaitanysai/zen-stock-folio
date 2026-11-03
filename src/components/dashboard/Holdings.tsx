@@ -4,6 +4,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { PortfolioStock } from "@/data/sampleData";
+import type { BrokerImportHandler } from "@/lib/portfolio/brokerImport";
 import {
   filterHoldings, sortHoldings, type HoldingFilter, type HoldingRow, type HoldingSortKey,
 } from "@/lib/dashboard/overview";
@@ -22,7 +23,9 @@ interface Props {
   onSelect: (key: string) => void;
   openPortfolio: () => void;
   onAdd: (stock: PortfolioStock) => void;
-  onImport: (stocks: PortfolioStock[]) => void;
+  onImport: BrokerImportHandler;
+  /** Existing holdings, used to preview broker replacement counts. */
+  existingStocks?: PortfolioStock[];
   /** True when U.S. rows were converted so the columns read in one currency. */
   convertedToInr?: boolean;
   /** Shown when some positions could not be included in this INR view. */
@@ -40,7 +43,7 @@ const COLUMNS: { key: HoldingSortKey; label: string; sortLabel: string }[] = [
 ];
 
 export function HoldingsCard({
-  rows, loading, selected, onSelect, openPortfolio, onAdd, onImport,
+  rows, loading, selected, onSelect, openPortfolio, onAdd, onImport, existingStocks = [],
   convertedToInr = false, note = null,
 }: Props) {
   const [query, setQuery] = useState("");
@@ -119,7 +122,7 @@ export function HoldingsCard({
         <EmptyState
           icon={Wallet}
           title="No open holdings yet"
-          actions={<><AddTradeButton onAdd={onAdd} variant="primary" /><ImportButton onImport={onImport} /></>}
+          actions={<><AddTradeButton onAdd={onAdd} variant="primary" /><ImportButton onImport={onImport} existingStocks={existingStocks} /></>}
         >
           Add the trades you hold, or import them from a CSV or XLSX file, to see value and profit here.
         </EmptyState>

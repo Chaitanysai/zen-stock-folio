@@ -1,4 +1,4 @@
-import { PortfolioStock, calcInvestedValue } from "@/data/sampleData";
+import { PortfolioStock, hasKnownCost } from "@/data/sampleData";
 import { TrendingUp, TrendingDown, Wallet, BarChart3, Activity, Award } from "lucide-react";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { quoteFor } from "@/lib/portfolio/valuation";
@@ -18,8 +18,12 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
   // Only count active positions for invested / current value
   const activeStocks = stocks.filter((s) => s.status === "Active");
   const closedStocks = stocks.filter((s) => s.status !== "Active");
+  // Positions whose statement never stated a purchase price still have a
+  // market value, but no cost, invested total, or P&L.
+  const costedStocks = activeStocks.filter(hasKnownCost);
+  const unknownCostCount = activeStocks.length - costedStocks.length;
 
-  const totalInvested = activeStocks.reduce(
+  const totalInvested = costedStocks.reduce(
     (sum, s) => sum + s.entryPrice * s.quantity,
     0
   );
@@ -30,7 +34,13 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
     return sum + cmp * s.quantity;
   }, 0);
 
-  const totalPL = totalCurrentValue - totalInvested;
+  const costedCurrentValue = costedStocks.reduce((sum, s) => {
+    const live = quoteFor(prices, s);
+    const cmp = live?.price ?? s.cmp;
+    return sum + cmp * s.quantity;
+  }, 0);
+
+  const totalPL = costedCurrentValue - totalInvested;
   const profitPct = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
 
   const todayPL = activeStocks.reduce((sum, s) => {
@@ -38,14 +48,14 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
     return sum + ((live?.change ?? 0) * s.quantity);
   }, 0);
 
-  // Win rate from closed trades
-  const winners = closedStocks.filter((s) => {
-    const pl = ((s.exitPrice ?? s.cmp) - s.entryPrice) * s.quantity;
-    return pl > 0;
-  });
+  // Win rate from closed trades whose outcome is actually known.
+  const scoredClosed = closedStocks
+    .filter((s) => hasKnownCost(s) && s.exitPrice !== undefined)
+    .map((s) => ((s.exitPrice as number) - (s.entryPrice as number)) * s.quantity);
+  const winners = scoredClosed.filter((pl) => pl > 0);
   const winRate =
-    closedStocks.length > 0
-      ? (winners.length / closedStocks.length) * 100
+    scoredClosed.length > 0
+      ? (winners.length / scoredClosed.length) * 100
       : 0;
 
   const isProfit = totalPL >= 0;
@@ -62,7 +72,9 @@ const DashboardStats = ({ stocks }: DashboardStatsProps) => {
     {
       label: "Invested",
       value: fmt(totalInvested),
-      sub: `${activeStocks.length} active · ${closedStocks.length} closed`,
+      sub: `${activeStocks.length} active · ${closedStocks.length} closed${
+        unknownCostCount > 0 ? ` · ${unknownCostCount} cost unknown` : ""
+      }`,
       icon: Wallet,
       iconColor: "text-primary",
       iconBg: "bg-primary/10",

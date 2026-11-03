@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PortfolioStock, calcProfitLoss, calcHoldingDays } from "@/data/sampleData";
+import { PortfolioStock, calcProfitLoss, calcHoldingDays, hasKnownCost } from "@/data/sampleData";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,32 +83,53 @@ const TradeHistory = ({ stocks }: TradeHistoryProps) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map(stock => {
+            {filtered.map((stock, index) => {
                 const pl = calcProfitLoss(stock);
-                const plPct = ((stock.exitPrice! - stock.entryPrice) / stock.entryPrice) * 100;
+                const plPct =
+                  pl !== null && hasKnownCost(stock) && stock.exitPrice
+                    ? ((stock.exitPrice - stock.entryPrice) / stock.entryPrice) * 100
+                    : null;
                 const days = calcHoldingDays(stock.entryDate, stock.exitDate);
                 return (
-                  <TableRow key={stock.ticker} className="border-border hover:bg-accent/50">
+                  <TableRow key={`${stock.ticker}-${index}`} className="border-border hover:bg-accent/50">
                     <TableCell className="zf-sticky-col font-mono font-semibold text-primary text-sm">{stock.ticker}</TableCell>
                     <TableCell className="text-sm truncate max-w-[140px]">{stock.stockName}</TableCell>
-                    <TableCell className="text-right font-mono text-sm">₹{stock.entryPrice.toFixed(1)}</TableCell>
+                    <TableCell className="text-right font-mono text-sm">
+                      {hasKnownCost(stock) ? `₹${stock.entryPrice.toFixed(1)}` : <span className="text-muted-foreground" title="The statement only reported a market value">—</span>}
+                    </TableCell>
                     <TableCell className="text-right font-mono text-sm">₹{stock.exitPrice?.toFixed(2)}</TableCell>
                     <TableCell className="text-right font-mono text-sm">{stock.quantity}</TableCell>
                     <TableCell className="text-right">
-                      <span className={`font-mono text-sm font-medium ${pl >= 0 ? "text-profit" : "text-loss"}`}>
-                        {pl >= 0 ? "+" : "−"}₹{Math.abs(pl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
-                      </span>
+                      {pl === null ? (
+                        <span className="font-mono text-sm text-muted-foreground" title="No cost basis in the statement">—</span>
+                      ) : (
+                        <span className={`font-mono text-sm font-medium ${pl >= 0 ? "text-profit" : "text-loss"}`}>
+                          {pl >= 0 ? "+" : "−"}₹{Math.abs(pl).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className={`font-mono text-sm ${plPct >= 0 ? "text-profit" : "text-loss"}`}>
-                        {plPct >= 0 ? "+" : "−"}{Math.abs(plPct).toFixed(2)}%
-                      </span>
+                      {plPct === null ? (
+                        <span className="font-mono text-sm text-muted-foreground">—</span>
+                      ) : (
+                        <span className={`font-mono text-sm ${plPct >= 0 ? "text-profit" : "text-loss"}`}>
+                          {plPct >= 0 ? "+" : "−"}{Math.abs(plPct).toFixed(2)}%
+                        </span>
+                      )}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm text-muted-foreground">{days}d</TableCell>
+                    <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                      {days === null ? "—" : `${days}d`}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`text-xs ${pl >= 0 ? "border-profit text-profit bg-profit/10" : "border-loss text-loss bg-loss/10"}`}>
-                        {pl >= 0 ? "✅ Profit" : "❌ Loss"}
-                      </Badge>
+                      {pl === null ? (
+                        <Badge variant="outline" className="text-xs border-border text-muted-foreground bg-muted/40" title="Closed, but the statement had no cost or realised P&L">
+                          Closed
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className={`text-xs ${pl >= 0 ? "border-profit text-profit bg-profit/10" : "border-loss text-loss bg-loss/10"}`}>
+                          {pl >= 0 ? "✅ Profit" : "❌ Loss"}
+                        </Badge>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

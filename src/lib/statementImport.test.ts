@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   applySearchSymbol,
+  assignFingerprints,
   createIsinResolver,
   detectHeaderRow,
+  detectStatementBroker,
   lotsFromSheet,
   parseStatementDate,
   parseStatementNumber,
@@ -12,6 +14,7 @@ import {
   toPortfolioStock,
   type HeaderMatch,
   type ResolvedLot,
+  type StatementBroker,
   type StatementLot,
 } from "@/lib/statementImport";
 
@@ -39,10 +42,10 @@ const ZERODHA_MATRIX: unknown[][] = [
 
 const matrixOf = (rows: unknown[][]): { name: string; matrix: unknown[][] }[] => [{ name: "Stocks", matrix: rows }];
 
-const resultOf = (matrix: unknown[][]) => {
-  const result = parseStatementSheets(matrixOf(matrix));
+const resultOf = (matrix: unknown[][], fileName?: string) => {
+  const result = parseStatementSheets(matrixOf(matrix), fileName ? { fileName } : {});
   expect(result.errors, result.errors.join("; ")).toEqual([]);
-  return { lots: result.lots, warnings: result.warnings };
+  return result;
 };
 
 const resolver = createIsinResolver({
@@ -57,6 +60,23 @@ const headerOf = (matrix: unknown[][]): HeaderMatch => {
   const header = detectHeaderRow(matrix);
   expect(header, "header row must be detected").toBeTruthy();
   return header!;
+};
+
+const lot = (over: Partial<StatementLot> = {}): StatementLot => ({
+  ticker: null, stockName: null, isin: null, quantity: 1,
+  buyDate: null, buyPrice: 10, buyValue: 10, sellDate: null, sellPrice: null,
+  sellValue: null, marketValue: null, realizedPnl: null, cmp: null, remark: null, closed: false,
+  ...over,
+});
+
+const mapResolved = (
+  resolved: ResolvedLot[],
+  source: StatementBroker = "groww",
+) => {
+  const fingerprints = assignFingerprints(resolved.map((row) => row.lot), source);
+  return resolved
+    .map((row, index) => toPortfolioStock(row, { source, fingerprint: fingerprints[index] }))
+    .filter((stock): stock is NonNullable<typeof stock> => stock !== null);
 };
 
 describe("statement number policy", () => {
@@ -133,7 +153,7 @@ describe("lot extraction", () => {
     const warnings: string[] = [];
     const lots = lotsFromSheet(GROWW_MATRIX, header, warnings);
 
-    // The parenthesised "(5)" quantity row is negative and therefore rejected
+    // The parenthesised "(5)" quantity row is negative and therefore excluded
     // by the quantity gate; the Grand Total row terminates the scan.
     expect(lots).toHaveLength(2);
     const [open, loss] = lots;
@@ -172,9 +192,25 @@ describe("lot extraction", () => {
       ["Ghost Holdings", "INE999999999", "5", ""],
     ];
     const warnings: string[] = [];
-    const lots = lotsFromSheet(matrix, headerOf(matrix), warnings);
+    const exclusions: { rowNumber: number; reason: string }[] = [];
+    const lots = lotsFromSheet(matrix, headerOf(matrix), warnings, {
+      exclusions: exclusions as never,
+    });
     expect(lots).toHaveLength(0);
+    expect(exclusions[0]).toMatchObject({ rowNumber: 2, reason: "missing-price" });
     expect(warnings[0]).toMatch(/no buy price or current price/);
+  });
+
+  it("stops after two blank rows so a later banner is not read as data", () => {
+    const matrix: unknown[][] = [
+      ["Stock name", "ISIN", "Quantity", "Buy price"],
+      ["Infosys", "INE009A01021", "5", "100"],
+      ["", "", "", ""],
+      ["", "", "", ""],
+      ["Reliance Industries", "INE002A01018", "7", "200"],
+    ];
+    const lots = lotsFromSheet(matrix, headerOf(matrix), []);
+    expect(lots).toHaveLength(1);
   });
 });
 
@@ -200,7 +236,45 @@ describe("workbook scan", () => {
     expect(result.errors).toEqual([]);
     expect(result.sheets.map((sheet) => sheet.sheetName)).toEqual(["Holdings", "Closed"]);
     expect(result.lots).toHaveLength(2);
-    expect(result.lots.filter((lot) => lot.closed)).toHaveLength(1);
+    expect(result.lots.filter((entry) => entry.closed)).toHaveLength(1);
+  });
+
+  it("parses separate realised and unrealised blocks in one worksheet", () => {
+    const matrix: unknown[][] = [
+      ["Unrealised holdings", "", "", "", ""],
+      ["Stock name", "ISIN", "Quantity", "Buy price", "Buy value"],
+      ["Reliance Industries", "INE002A01018", "15", "2,450.50", "36,757.50"],
+      ["Infosys", "INE009A01021", "20", "1,890", "37,800"],
+      ["", "", "", "", ""],
+      ["", "", "", "", ""],
+      ["Realised trades", "", "", "", "", "", "", ""],
+      ["Stock name", "ISIN", "Quantity", "Buy date", "Buy price", "Sell date", "Sell price", "Realised P&L"],
+      ["Tata Consultancy", "INE467I01027", "5", "01-03-2024", "3,900", "10-09-2025", "4,100", "1,000"],
+      ["Grand Total", "", "", "", "", "", "", "1,000"],
+    ];
+
+    const result = resultOf(matrix);
+    const sheet = result.sheets[0];
+    expect(sheet.blocks).toHaveLength(2);
+    expect(sheet.blocks.map((block) => block.section)).toEqual(["unrealised", "realised"]);
+    expect(sheet.blocks.map((block) => block.lots.length)).toEqual([2, 1]);
+    expect(result.lots).toHaveLength(3);
+    expect(result.lots.filter((entry) => entry.closed)).toHaveLength(1);
+  });
+
+  it("does not treat a repeated header as a new transaction", () => {
+    const matrix: unknown[][] = [
+      ["Stock name", "ISIN", "Quantity", "Buy price", "Buy value"],
+      ["Reliance Industries", "INE002A01018", "15", "2,450.50", "36,757.50"],
+      ["", "", "", "", ""],
+      ["", "", "", "", ""],
+      ["Stock name", "ISIN", "Quantity", "Buy price", "Buy value"],
+      ["Infosys", "INE009A01021", "20", "1,890", "37,800"],
+    ];
+    const result = resultOf(matrix);
+    expect(result.sheets[0].blocks).toHaveLength(2);
+    expect(result.lots).toHaveLength(2);
+    expect(result.lots.some((entry) => entry.stockName === "Stock name")).toBe(false);
   });
 
   it("warns about US-listed rows instead of silently mislabelling currency", () => {
@@ -223,21 +297,6 @@ describe("workbook scan", () => {
 });
 
 describe("identity resolution", () => {
-  const resolver = createIsinResolver({
-    equities: [
-      ["RELIANCE", "INE002A01018", "Reliance Industries Ltd"],
-      ["INFY", "INE009A01021", "Infosys Ltd"],
-      ["TCS", "INE467I01027", "Tata Consultancy Services Ltd"],
-    ],
-  });
-
-  const lot = (over: Partial<StatementLot>): StatementLot => ({
-    ticker: null, stockName: null, isin: null, quantity: 1,
-    buyDate: null, buyPrice: 10, buyValue: 10, sellDate: null, sellPrice: null,
-    sellValue: null, realizedPnl: null, cmp: null, remark: null, closed: false,
-    ...over,
-  });
-
   it("prefers the statement's own symbol, then ISIN, then a unique name", () => {
     const resolved = resolveLots(
       [
@@ -278,32 +337,24 @@ describe("identity resolution", () => {
 });
 
 describe("portfolio mapping", () => {
-  const resolver = createIsinResolver({
-    equities: [["INFY", "INE009A01021", "Infosys Ltd"]],
-  });
-
   it("maps open and closed lots, clamping persisted text", () => {
     const lots: StatementLot[] = [
-      {
-        ticker: "INFY", stockName: "I".repeat(300), isin: null, quantity: 15,
-        buyDate: null, buyPrice: 2450.5, buyValue: null, sellDate: null, sellPrice: null,
-        sellValue: null, realizedPnl: null, cmp: 2612.35, remark: null, closed: false,
-      },
-      {
-        ticker: null, stockName: "Infosys Ltd", isin: "INE009A01021", quantity: 20,
-        buyDate: "12 Dec 2025", buyPrice: 1890, buyValue: null, sellDate: "28 Feb 2026",
-        sellPrice: 1756.4, sellValue: null, realizedPnl: -2672, cmp: null, remark: null, closed: true,
-      },
+      lot({ ticker: "INFY", stockName: "I".repeat(300), quantity: 15, buyPrice: 2450.5, cmp: 2612.35 }),
+      lot({
+        stockName: "Infosys Ltd", isin: "INE009A01021", quantity: 20,
+        buyDate: "12 Dec 2025", buyPrice: 1890, sellDate: "28 Feb 2026",
+        sellPrice: 1756.4, realizedPnl: -2672, closed: true,
+      }),
     ];
-    const stocks = resolveLots(lots, resolver)
-      .map(toPortfolioStock)
-      .filter((stock): stock is NonNullable<typeof stock> => stock !== null);
+    const stocks = mapResolved(resolveLots(lots, resolver));
 
     expect(stocks[0]).toMatchObject({
-      ticker: "INFY", entryPrice: 2450.5, cmp: 2612.35, weekHigh52: 2612.35,
-      quantity: 15, status: "Active",
+      ticker: "INFY", entryPrice: 2450.5, cmp: 2612.35, quantity: 15, status: "Active",
+      source: "groww",
     });
     expect(stocks[0].stockName).toHaveLength(200);
+    expect(stocks[0].weekHigh52).toBeUndefined();
+    expect(stocks[0].statementFingerprint).toBeTruthy();
 
     expect(stocks[1]).toMatchObject({
       ticker: "INFY", entryDate: "12 Dec 2025", exitPrice: 1756.4,
@@ -311,30 +362,85 @@ describe("portfolio mapping", () => {
     });
   });
 
-  it("defaults entryDate to today when the statement omits it", () => {
-    const stocks = resolveLots([{
-      ticker: "INFY", stockName: "Infosys Ltd", isin: null, quantity: 1,
-      buyDate: null, buyPrice: 1890, buyValue: null, sellDate: null, sellPrice: null,
-      sellValue: null, realizedPnl: null, cmp: null, remark: null, closed: false,
-    }], resolver).map(toPortfolioStock);
-
-    expect(stocks[0]?.entryDate).toMatch(/^\d{2} [A-Z][a-z]{2} \d{4}$/);
+  it("leaves entryDate unknown when the statement has no purchase date", () => {
+    const stocks = mapResolved(resolveLots([lot({ ticker: "INFY", stockName: "Infosys Ltd" })], resolver));
+    expect(stocks[0].entryDate).toBeUndefined();
   });
 
-  it("drops rows with no resolvable symbol or a non-positive price", () => {
-    const unresolved = resolveLots([{
-      ticker: null, stockName: "Mystery", isin: null, quantity: 1,
-      buyDate: null, buyPrice: 10, buyValue: null, sellDate: null, sellPrice: null,
-      sellValue: null, realizedPnl: null, cmp: null, remark: null, closed: false,
-    }], resolver).map(toPortfolioStock);
-    expect(unresolved[0]).toBeNull();
+  it("never substitutes CMP for a missing purchase price", () => {
+    const stocks = mapResolved(resolveLots([
+      lot({ isin: "INE002A01018", quantity: 15, buyPrice: null, buyValue: null, cmp: 2612.35 }),
+    ], resolver));
 
-    const zeroPrice = resolveLots([{
-      ticker: "INFY", stockName: null, isin: null, quantity: 1,
-      buyDate: null, buyPrice: null, buyValue: null, sellDate: null, sellPrice: null,
-      sellValue: null, realizedPnl: null, cmp: null, remark: null, closed: false,
-    }], resolver).map(toPortfolioStock);
-    expect(zeroPrice[0]).toBeNull();
+    expect(stocks[0]).toMatchObject({
+      ticker: "RELIANCE", entryPrice: null, cmp: 2612.35, quantity: 15, status: "Active",
+    });
+    // No 52-week high is stated, so none is invented from CMP.
+    expect(stocks[0].weekHigh52).toBeUndefined();
+  });
+
+  it("marks a closed lot without an exit price as Sold instead of guessing a result", () => {
+    const stocks = mapResolved(resolveLots([
+      lot({ isin: "INE467I01027", quantity: 5, buyPrice: 3900, sellDate: "10 Sep 2025", closed: true }),
+    ], resolver));
+    expect(stocks[0]).toMatchObject({ ticker: "TCS", status: "Sold" });
+    expect(stocks[0].exitPrice).toBeUndefined();
+  });
+
+  it("drops rows with no resolvable symbol or no usable price", () => {
+    const unresolved = mapResolved(resolveLots([lot({ stockName: "Mystery" })], resolver));
+    expect(unresolved[0]).toBeUndefined();
+
+    const zeroPrice = mapResolved(resolveLots([
+      lot({ ticker: "INFY", buyPrice: null, buyValue: null, cmp: null, closed: false }),
+    ], resolver));
+    expect(zeroPrice[0]).toBeUndefined();
+  });
+});
+
+describe("broker detection", () => {
+  it("recognises Groww from name/ISIN columns and Zerodha from a symbol column", () => {
+    expect(resultOf(GROWW_MATRIX).broker).toBe("groww");
+    expect(resultOf(ZERODHA_MATRIX).broker).toBe("zerodha");
+  });
+
+  it("uses the file name only as supporting evidence", () => {
+    const anonymous = [
+      ["Code", "Qty", "Rate", "Value"],
+      ["RELIANCE", "10", "2,450", "24,500"],
+    ];
+    const named = detectStatementBroker([{ fields: ["symbol", "quantity", "buyPrice", "buyValue"], lots: [] }], "stocks_pnl_zerodha.xlsx");
+    expect(named.broker).toBe("zerodha");
+    expect(named.evidence.some((line) => /file name mentions Zerodha/i.test(line))).toBe(true);
+    expect(parseStatementSheets(matrixOf(anonymous), { fileName: "stocks_pnl_zerodha.xlsx" }).broker).toBe("zerodha");
+  });
+});
+
+describe("statement fingerprints", () => {
+  it("is identical for the same statement and does not depend on the import date", () => {
+    const lots = resultOf(ZERODHA_MATRIX).lots;
+    expect(assignFingerprints(lots, "zerodha")).toEqual(assignFingerprints(lots, "zerodha"));
+  });
+
+  it("keeps genuinely identical lots distinct with an occurrence suffix", () => {
+    const repeated = resultOf(ZERODHA_MATRIX).lots[1];
+    const fingerprints = assignFingerprints([repeated, { ...repeated }], "zerodha");
+    expect(fingerprints[0]).not.toBe(fingerprints[1]);
+    expect(fingerprints[0]).toMatch(/#0$/);
+    expect(fingerprints[1]).toMatch(/#1$/);
+  });
+
+  it("changes when the statement changes a stable attribute", () => {
+    const lots = resultOf(ZERODHA_MATRIX).lots;
+    const changed = { ...lots[0], quantity: lots[0].quantity + 1 };
+    expect(assignFingerprints([lots[0]], "zerodha")[0])
+      .not.toBe(assignFingerprints([changed], "zerodha")[0]);
+  });
+
+  it("scopes fingerprints by broker so equal rows never collide", () => {
+    const rows = resultOf(ZERODHA_MATRIX).lots;
+    expect(assignFingerprints(rows, "zerodha")[0])
+      .not.toBe(assignFingerprints(rows, "groww")[0]);
   });
 });
 
@@ -347,6 +453,11 @@ describe("statement keys", () => {
       .not.toBe(statementKey({ ...base, exitDate: "28 Feb 2026" }));
     expect(statementKey({ ...base, exitDate: undefined }))
       .not.toBe(statementKey({ ...base, entryPrice: 1891 }));
+  });
+
+  it("treats an unknown cost and an absent date as real values, not today", () => {
+    const key = statementKey({ ticker: "INFY", entryDate: undefined, entryPrice: null, quantity: 2 });
+    expect(key).toBe("INFY||2||");
   });
 });
 
@@ -401,42 +512,40 @@ describe("broker profiles (synthetic, unverified)", () => {
       .map(([col]) => col);
     expect(quantityCols).toEqual([3]);
 
-    const { lots, warnings } = resultOf(UPSTOX_MATRIX);
-    expect(warnings).toEqual([]);
-    expect(lots).toHaveLength(2);
-    expect(lots[0]).toMatchObject({
+    const result = resultOf(UPSTOX_MATRIX);
+    expect(result.warnings).toEqual([]);
+    expect(result.lots).toHaveLength(2);
+    expect(result.lots[0]).toMatchObject({
       ticker: "RELIANCE", quantity: 15, closed: true,
       buyPrice: 2450.5, sellPrice: 2610, realizedPnl: 2392.5,
     });
-    expect(lots[1]).toMatchObject({
+    expect(result.lots[1]).toMatchObject({
       ticker: "INFY", quantity: 5, closed: false, buyPrice: 1890,
     });
   });
 
   it("Dhan: Total Qty, Buy Average and open lots with Current Price", () => {
-    const { lots, warnings } = resultOf(DHAN_MATRIX);
-    expect(warnings).toEqual([]);
-    expect(lots).toHaveLength(2);
-    expect(lots[0]).toMatchObject({
+    const result = resultOf(DHAN_MATRIX);
+    expect(result.warnings).toEqual([]);
+    expect(result.lots).toHaveLength(2);
+    expect(result.lots[0]).toMatchObject({
       ticker: "TCS", quantity: 10, buyPrice: 3900, sellPrice: 4100,
       realizedPnl: 2000, closed: true,
     });
-    expect(lots[1]).toMatchObject({
+    expect(result.lots[1]).toMatchObject({
       ticker: "INFY", quantity: 20, buyPrice: 1890, cmp: 1990, closed: false,
     });
   });
 
   it("INDmoney IN: Current Value on open holdings never marks the lot closed", () => {
-    const { lots, warnings } = resultOf(INDMONEY_IN_MATRIX);
-    expect(warnings).toEqual([]);
-    expect(lots).toHaveLength(1);
-    expect(lots[0]).toMatchObject({
+    const result = resultOf(INDMONEY_IN_MATRIX);
+    expect(result.warnings).toEqual([]);
+    expect(result.lots).toHaveLength(1);
+    expect(result.lots[0]).toMatchObject({
       ticker: null, stockName: "Reliance Industries", quantity: 15,
       buyPrice: 2450.5, cmp: 2612.35, realizedPnl: 2427.75, closed: false,
     });
-    const stocks = resolveLots(lots, resolver)
-      .map(toPortfolioStock)
-      .filter((stock): stock is NonNullable<typeof stock> => stock !== null);
+    const stocks = mapResolved(resolveLots(result.lots, resolver));
     expect(stocks[0]?.status).toBe("Active");
   });
 

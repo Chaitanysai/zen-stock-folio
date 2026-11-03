@@ -9,6 +9,7 @@ import {
   calcFnOPnL,
   calcInvestedValue,
   calcProfitLoss,
+  hasKnownCost,
   type FnOTrade,
   type PortfolioStock,
 } from "@/data/sampleData";
@@ -56,6 +57,11 @@ export interface OverviewMetrics {
   pricedCount: number;
   /** Active equity rows skipped because no usable market price existed. */
   unpricedCount: number;
+  /**
+   * Priced active rows with no recorded cost. Their market value is included,
+   * but they contribute to neither invested nor unrealised P&L.
+   */
+  unknownCostCount: number;
   /** True when a USD row was excluded for want of a current USD→INR rate. */
   fxIncomplete: boolean;
   /** Closed equity rows whose realised P&L could not be converted to INR. */
@@ -86,8 +92,10 @@ export function computeMetrics(
 
   let equityInvested = 0;
   let equityValue = 0;
+  let costedValue = 0;
   let pricedCount = 0;
   let unpricedCount = 0;
+  let unknownCostCount = 0;
   let fxIncomplete = false;
 
   for (const stock of active) {
@@ -96,14 +104,23 @@ export function computeMetrics(
       continue;
     }
     const value = valueInr(stock, stock.cmp, usdInr);
-    const cost = valueInr(stock, stock.entryPrice, usdInr);
-    if (value === null || cost === null || !Number.isFinite(value) || !Number.isFinite(cost)) {
+    if (value === null || !Number.isFinite(value)) {
       fxIncomplete = true;
       continue;
     }
     equityValue += value;
-    equityInvested += cost;
     pricedCount += 1;
+    if (!hasKnownCost(stock)) {
+      unknownCostCount += 1;
+      continue;
+    }
+    const cost = valueInr(stock, stock.entryPrice, usdInr);
+    if (cost === null || !Number.isFinite(cost)) {
+      fxIncomplete = true;
+      continue;
+    }
+    equityInvested += cost;
+    costedValue += value;
   }
 
   const fnoInvested = fnoOpen.reduce((sum, t) => sum + calcFnOInvested(t), 0);
@@ -112,7 +129,9 @@ export function computeMetrics(
 
   const invested = equityInvested + fnoInvested;
   const current = equityValue + fnoValue;
-  const pnl = equityValue - equityInvested + fnoUnrealised;
+  // Only costed rows may contribute P&L; including unknown-cost market value
+  // here would report their full value as profit.
+  const pnl = costedValue - equityInvested + fnoUnrealised;
   const pnlPct = invested > 0 ? (pnl / invested) * 100 : 0;
 
   let realisedEquity = 0;
@@ -124,9 +143,16 @@ export function computeMetrics(
   }
   const totalRealised = realisedEquity + fnoClosed.reduce((sum, t) => sum + calcFnOPnL(t), 0);
 
-  // Win/loss is a direction, not an amount, so it needs no conversion.
-  const wins =
-    closed.filter((s) => calcProfitLoss(s) > 0).length + fnoClosed.filter((t) => calcFnOPnL(t) > 0).length;
+  // Win/loss is a direction, not an amount. Lots whose cost is unknown have no
+  // outcome, so they are excluded from the rate rather than counted as losses.
+  let wins = fnoClosed.filter((t) => calcFnOPnL(t) > 0).length;
+  let scoreableClosed = fnoClosed.length;
+  for (const stock of closed) {
+    const pnl = calcProfitLoss(stock);
+    if (pnl === null || !Number.isFinite(pnl)) continue;
+    scoreableClosed += 1;
+    if (pnl > 0) wins += 1;
+  }
   const closedCount = closed.length + fnoClosed.length;
 
   const equityDay = active.reduce((sum, stock) => {
@@ -157,7 +183,7 @@ export function computeMetrics(
     equityInvested, equityValue, fnoInvested, fnoValue,
     invested, current, pnl, pnlPct, totalRealised,
     closedCount, wins,
-    winRate: closedCount > 0 ? (wins / closedCount) * 100 : null,
+    winRate: scoreableClosed > 0 ? (wins / scoreableClosed) * 100 : null,
     dayMove,
     dayMovePct: hasDayData && previous > 0 ? (dayMove / previous) * 100 : null,
     hasDayData,
@@ -165,9 +191,84 @@ export function computeMetrics(
     todayPct: hasDayData && previous > 0 ? (todayPnl / previous) * 100 : null,
     pricedCount,
     unpricedCount,
+    unknownCostCount,
     fxIncomplete,
     realisedExcluded,
   };
+}
+
+// ─── Today's movers ───────────────────────────────────────────────────────────
+
+export interface DayMover {
+  /** `market:ticker`, matching the holdings row it came from. */
+  key: string;
+  market: Market;
+  ticker: string;
+  name: string;
+  /** Today's move in INR: per-share change × quantity, converted at the FX rate. */
+  dayPnl: number;
+  /** The quote's native daily percentage; currency conversion does not change it. */
+  dayPct: number | null;
+}
+
+export interface DayMovers {
+  gainer: DayMover | null;
+  loser: DayMover | null;
+  /** Active rows whose quote and FX rate produced a day P&L. */
+  eligible: number;
+  /** Active rows skipped: no quote, no change, or no USD→INR rate. */
+  excluded: number;
+}
+
+type QuoteMove = { change: number | null; changePercent?: number | null };
+
+/**
+ * The strongest riser and faller among open holdings.
+ *
+ * Only quotes actually received count, and USD rows need a current rate: an
+ * unknown day move is excluded and counted, never ranked as zero. A day with
+ * no losing holding reports no loser rather than inventing one.
+ */
+export function dailyMovers(
+  live: PortfolioStock[],
+  prices: Record<string, QuoteMove>,
+  usdInr: number | null,
+): DayMovers {
+  let gainer: DayMover | null = null;
+  let loser: DayMover | null = null;
+  let eligible = 0;
+  let excluded = 0;
+
+  for (const stock of live) {
+    if (stock.status !== "Active") continue;
+    const quote = quoteFor(prices, stock);
+    const dayPnl = dayPnlInr(stock, quote?.change ?? null, usdInr);
+    if (dayPnl === null || !Number.isFinite(dayPnl)) {
+      excluded += 1;
+      continue;
+    }
+    eligible += 1;
+    const mover: DayMover = {
+      key: positionKey(stock),
+      market: stock.market ?? "NSE",
+      ticker: stock.ticker,
+      name: stock.stockName || stock.ticker,
+      dayPnl,
+      dayPct:
+        typeof quote?.changePercent === "number" && Number.isFinite(quote.changePercent)
+          ? quote.changePercent
+          : null,
+    };
+    // Equal moves keep the first row in stable position-key order.
+    if (dayPnl > 0 && (gainer === null || dayPnl > gainer.dayPnl || (dayPnl === gainer.dayPnl && mover.key < gainer.key))) {
+      gainer = mover;
+    }
+    if (dayPnl < 0 && (loser === null || dayPnl < loser.dayPnl || (dayPnl === loser.dayPnl && mover.key < loser.key))) {
+      loser = mover;
+    }
+  }
+
+  return { gainer, loser, eligible, excluded };
 }
 
 // ─── Realised P&L by month ────────────────────────────────────────────────────
@@ -192,9 +293,10 @@ export function realisedByMonth(
   stocks: PortfolioStock[],
   fnoTrades: FnOTrade[],
   limit = 12,
-): { months: MonthBucket[]; undated: number } {
+): { months: MonthBucket[]; undated: number; unscored: number } {
   const totals = new Map<string, { value: number; trades: number }>();
   let undated = 0;
+  let unscored = 0;
 
   const add = (exitDate: string | undefined, pnl: number) => {
     const date = parseTradingDate(exitDate);
@@ -206,10 +308,16 @@ export function realisedByMonth(
     totals.set(key, bucket);
   };
 
-  stocks.filter((s) => s.status !== "Active").forEach((s) => add(s.exitDate, calcProfitLoss(s)));
+  stocks.filter((s) => s.status !== "Active").forEach((s) => {
+    const pnl = calcProfitLoss(s);
+    // A closed lot with no cost (or no exit price) has no realised amount to
+    // place in a month; count it so the UI can say the chart is partial.
+    if (pnl === null || !Number.isFinite(pnl)) { unscored += 1; return; }
+    add(s.exitDate, pnl);
+  });
   fnoTrades.filter((t) => t.status !== "Open").forEach((t) => add(t.exitDate, calcFnOPnL(t)));
 
-  if (totals.size === 0) return { months: [], undated };
+  if (totals.size === 0) return { months: [], undated, unscored };
 
   const keys = [...totals.keys()].sort();
   const [fy, fm] = keys[0].split("-").map(Number);
@@ -225,7 +333,7 @@ export function realisedByMonth(
       trades: bucket?.trades ?? 0,
     });
   }
-  return { months: months.slice(-limit), undated };
+  return { months: months.slice(-limit), undated, unscored };
 }
 
 // ─── Holdings table ───────────────────────────────────────────────────────────
@@ -238,10 +346,12 @@ export interface HoldingRow {
   name: string;
   sector: string;
   qty: number;
-  avg: number;
+  /** `null` when the statement never stated a purchase price. */
+  avg: number | null;
   /** `null` when no usable price exists — never rendered as zero. */
   ltp: number | null;
-  invested: number;
+  /** `null` when cost is unknown — never zero. */
+  invested: number | null;
   value: number | null;
   pnl: number | null;
   pnlPct: number | null;
@@ -254,6 +364,7 @@ export function toHoldingRow(stock: PortfolioStock): HoldingRow {
   const invested = calcInvestedValue(stock);
   const priced = isValidPrice(stock.cmp);
   const value = priced ? stock.cmp * stock.quantity : null;
+  const pnl = value === null || invested === null ? null : value - invested;
   return {
     key: positionKey(stock),
     market: stock.market ?? "NSE",
@@ -261,12 +372,12 @@ export function toHoldingRow(stock: PortfolioStock): HoldingRow {
     name: stock.stockName || stock.ticker,
     sector: stock.sector || "Other",
     qty: stock.quantity,
-    avg: stock.entryPrice,
+    avg: hasKnownCost(stock) ? stock.entryPrice : null,
     ltp: priced ? stock.cmp : null,
     invested,
     value,
-    pnl: value === null ? null : value - invested,
-    pnlPct: value === null || invested <= 0 ? null : ((value - invested) / invested) * 100,
+    pnl,
+    pnlPct: pnl === null || invested === null || invested <= 0 ? null : (pnl / invested) * 100,
   };
 }
 

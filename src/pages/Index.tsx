@@ -40,7 +40,9 @@ import {
 import type { Execution } from "@/lib/data/snapshotTypes";
 import { useAuth }           from "@/contexts/AuthContext";
 import { journalNotesPatch } from "@/lib/portfolio/snapshotUpdates";
-import { statementKey } from "@/lib/statementImport";
+import {
+  planBrokerImport, type BrokerImportOutcome, type BrokerImportRequest,
+} from "@/lib/portfolio/brokerImport";
 import { evaluateAlerts } from "@/lib/portfolio/priceAlerts";
 import {
   currencyOf, isValidPrice, marketOf, portfolioTotals, positionKey, quoteFor, toInrStocks,
@@ -49,13 +51,14 @@ import { instrumentKey } from "@/lib/market-data/symbols";
 import type { Instrument, Market } from "@/lib/market-data/types";
 import { bestPerformer, describeAiTeaser } from "@/lib/dashboard/presentation";
 import { dataModeLabel } from "@/lib/market-data/freshness.ts";
-import { computeMetrics, realisedByMonth, toHoldingRow } from "@/lib/dashboard/overview";
-import { greeting, signedPct, stagger } from "@/lib/dashboard/format";
+import { computeMetrics, dailyMovers, realisedByMonth, toHoldingRow } from "@/lib/dashboard/overview";
+import { greeting, signedPct, stagger, toneOf, type Tone } from "@/lib/dashboard/format";
 import { MobileMenu, Rail, TopBar } from "@/components/dashboard/Shell";
 import Brokers from "@/components/dashboard/Brokers";
 import { readBrokerCallback } from "@/lib/brokers/client";
 import { useThemeReveal } from "@/hooks/useThemeReveal";
 import { BalanceCard, PnlCard, StatGrid } from "@/components/dashboard/Summary";
+import { DayGlow } from "@/components/dashboard/DayGlow";
 import { HoldingsCard } from "@/components/dashboard/Holdings";
 import { HoldingCharts } from "@/components/dashboard/HoldingCharts";
 import { FnoCard, InsightCard, PriceChartCard, SectorCard, WatchlistCard } from "@/components/dashboard/Sections";
@@ -378,14 +381,38 @@ export default function Index() {
   }), [prices, stocks]);
 
   const handlePortfolioAdd    = useCallback((stock: PortfolioStock) => { void applySnapshot({ stocks: [...snapshotRef.current.stocks, stock] }, "Portfolio update"); }, [applySnapshot]);
-  const handlePortfolioImport = useCallback((importedStocks: PortfolioStock[]) => {
-    // Statement re-imports must never duplicate history: skip rows whose
-    // statement key is already present, regardless of import path.
-    const seen = new Set(snapshotRef.current.stocks.map(statementKey));
-    const fresh = importedStocks.filter((stock) => !seen.has(statementKey(stock)));
-    if (fresh.length === 0) return;
-    void applySnapshot({ stocks: [...snapshotRef.current.stocks, ...fresh] }, "Portfolio import");
-  }, [applySnapshot]);
+  /**
+   * Broker statements are authoritative for their own rows only. The plan
+   * removes/replaces previous rows of the same broker and keeps every manual,
+   * INDmoney and other-broker row untouched. The whole snapshot is persisted
+   * with one write; a cloud failure leaves the complete local copy intact and
+   * is reported back to the dialog instead of losing the replacement.
+   */
+  const handlePortfolioImport = useCallback(async (request: BrokerImportRequest): Promise<BrokerImportOutcome> => {
+    const plan = planBrokerImport(snapshotRef.current.stocks, request);
+    if (plan.error) {
+      return {
+        ok: false, added: 0, replaced: 0, retained: 0, excluded: plan.excluded, message: plan.error,
+      };
+    }
+
+    const nextSnapshot: PortfolioSnapshot = { ...snapshotRef.current, stocks: plan.nextStocks };
+    // Persist before committing the UI so the screen never claims a replacement
+    // the store did not accept. `save` writes the local cache first.
+    const persistenceError = await save(nextSnapshot);
+    snapshotRef.current = nextSnapshot;
+    setStocks(plan.nextStocks);
+
+    return {
+      ok: true,
+      source: request.source ?? "manual",
+      added: plan.added,
+      replaced: plan.replaced,
+      retained: plan.retained,
+      excluded: plan.excluded,
+      persistenceError,
+    };
+  }, [save]);
   const handlePortfolioEdit   = useCallback((key: string, updatedStock: PortfolioStock) => {
     const previous = snapshotRef.current.stocks.find((s) => positionKey(s) === key);
     const nextStocks = snapshotRef.current.stocks.map((s) => positionKey(s) === key ? updatedStock : s);
@@ -483,6 +510,10 @@ export default function Index() {
     () => computeMetrics(live, fnoTrades, prices, new Date(), usdInr),
     [live, fnoTrades, prices, usdInr],
   );
+  const movers = useMemo(() => dailyMovers(live, prices, usdInr), [live, prices, usdInr]);
+  // Stale or failed quotes must not paint a directional glow: neutral only.
+  const glowTone: Tone = priceError !== null || !m.hasDayData ? "flat" : toneOf(m.todayPnl);
+  const dayLabel = market.isOpen ? "Today" : "Last session";
   const totals = useMemo(
     () => portfolioTotals(m.active.map((stock) => ({ stock, cmp: stock.cmp })), usdInr),
     [m.active, usdInr],
@@ -607,6 +638,7 @@ export default function Index() {
       <div className="zf">
         <a className="zf-skip" href="#zf-main">Skip to content</a>
 
+        <DayGlow tone={glowTone} />
         <Rail
           tab={tab}
           onSelect={goTo}
@@ -680,14 +712,17 @@ export default function Index() {
                 <div className="zf-row1">
                   <BalanceCard
                     loading={loading} m={m} watchCount={watchlist.length}
-                    onAdd={handlePortfolioAdd} onImport={handlePortfolioImport}
+                    onAdd={handlePortfolioAdd} onImport={handlePortfolioImport} existingStocks={stocks}
                     goTo={goTo} openFno={openFno}
                     fxPnl={totals.fxPnlInr} fxEstimated={totals.fxEstimated} fxNote={fxNote}
                   />
-                  <StatGrid loading={loading} m={m} />
+                  <StatGrid
+                    loading={loading} m={m} movers={movers}
+                    dayLabel={dayLabel} priceMode={sourceLabel}
+                  />
                   <PnlCard
                     loading={loading} months={monthly.months} undated={monthly.undated}
-                    onAdd={handlePortfolioAdd} onImport={handlePortfolioImport}
+                    onAdd={handlePortfolioAdd} onImport={handlePortfolioImport} existingStocks={stocks}
                     note={inrViewNote}
                   />
                 </div>
@@ -699,7 +734,7 @@ export default function Index() {
                     selected={chartSelectedKey}
                     onSelect={(key) => { setSearchedSymbol(null); setSelectedChartKey(key); }}
                     openPortfolio={() => goTo("holdings")}
-                    onAdd={handlePortfolioAdd} onImport={handlePortfolioImport}
+                    onAdd={handlePortfolioAdd} onImport={handlePortfolioImport} existingStocks={stocks}
                     convertedToInr={hasUsd}
                     note={inrViewNote}
                   />

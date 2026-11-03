@@ -18,6 +18,25 @@ const asMarket = (value: unknown): "NSE" | "US" => (value === "US" ? "US" : "NSE
  */
 const asCurrency = (market: "NSE" | "US"): "INR" | "USD" => (market === "US" ? "USD" : "INR");
 
+const SOURCES = new Set<NonNullable<PortfolioStock["source"]>>([
+  "manual",
+  "indmoney",
+  "groww",
+  "zerodha",
+]);
+
+/**
+ * A stored cost of `0`, a blank string or a non-finite number is not a cost;
+ * it normalizes to `null` so downstream maths cannot treat it as free shares.
+ * Legacy documents never hold `null`, so this only affects rows whose source
+ * statement never stated a purchase price.
+ */
+const asCost = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+
+const asText = (value: unknown): string | undefined =>
+  typeof value === "string" && value.trim() ? value : undefined;
+
 function normalizeStock(value: unknown): PortfolioStock | null {
   if (typeof value !== "object" || value === null) return null;
   const row = value as PortfolioStock;
@@ -27,7 +46,10 @@ function normalizeStock(value: unknown): PortfolioStock | null {
     ...row,
     market,
     currency: asCurrency(market),
-    source: row.source === "indmoney" ? "indmoney" : "manual",
+    source: row.source && SOURCES.has(row.source) ? row.source : "manual",
+    entryPrice: asCost(row.entryPrice),
+    entryDate: asText(row.entryDate),
+    statementFingerprint: asText(row.statementFingerprint),
   };
 }
 

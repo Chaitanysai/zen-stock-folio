@@ -1,4 +1,4 @@
-import { PortfolioStock } from "@/data/sampleData";
+import { PortfolioStock, hasKnownCost } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
 import { toCsv } from "@/lib/csv";
 import { isValidPrice } from "@/lib/portfolio/valuation";
@@ -21,8 +21,11 @@ const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
   };
   const plOf = (s: PortfolioStock) => {
     const price = exitOrCmp(s);
-    return price === null ? "" : (price - s.entryPrice) * s.quantity;
+    // A blank cell, not a zero: the statement never stated a purchase price.
+    return price === null || !hasKnownCost(s) ? "" : (price - s.entryPrice) * s.quantity;
   };
+  const entryPriceOf = (s: PortfolioStock) => (hasKnownCost(s) ? s.entryPrice : "");
+  const investedOf = (s: PortfolioStock) => (hasKnownCost(s) ? s.entryPrice * s.quantity : "");
 
   const exportToExcel = async () => {
     // xlsx is ~400 KB minified; load it only when the user actually exports.
@@ -31,8 +34,8 @@ const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
       Ticker: s.ticker,
       "Stock Name": s.stockName,
       Sector: s.sector || "",
-      "Entry Date": s.entryDate,
-      "Entry Price": s.entryPrice,
+      "Entry Date": s.entryDate ?? "",
+      "Entry Price": entryPriceOf(s),
       CMP: pricedCmp(s) ?? "",
       "52W High": s.weekHigh52,
       "52W Low": s.weekLow52 || "",
@@ -40,7 +43,7 @@ const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
       "Exit Price": s.exitPrice || "",
       "Exit Date": s.exitDate || "",
       Status: s.status,
-      "Invested Value": s.entryPrice * s.quantity,
+      "Invested Value": investedOf(s),
       "Current/Final Value": valueOf(s),
       "P&L": plOf(s),
     }));
@@ -53,7 +56,7 @@ const ExportPortfolio = ({ stocks }: ExportPortfolioProps) => {
 
   const exportToCSV = () => {
     const headers = ["Ticker", "Stock Name", "Sector", "Entry Date", "Entry Price", "CMP", "52W High", "Quantity", "Exit Price", "Exit Date", "Status"];
-    const rows = stocks.map(s => [s.ticker, s.stockName, s.sector || "", s.entryDate, s.entryPrice, pricedCmp(s) ?? "", s.weekHigh52, s.quantity, s.exitPrice || "", s.exitDate || "", s.status]);
+    const rows = stocks.map(s => [s.ticker, s.stockName, s.sector || "", s.entryDate ?? "", entryPriceOf(s), pricedCmp(s) ?? "", s.weekHigh52, s.quantity, s.exitPrice || "", s.exitDate || "", s.status]);
     const csv = toCsv(headers, rows);
     // BOM so Excel reads the UTF-8 (₹, Indian names) correctly.
     const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });

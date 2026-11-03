@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FnOTrade, PortfolioStock } from "@/data/sampleData";
 import {
-  computeMetrics, filterHoldings, realisedByMonth, sortHoldings, toHoldingRow,
+  computeMetrics, dailyMovers, filterHoldings, realisedByMonth, sortHoldings, toHoldingRow,
 } from "./overview";
 import { compact, inr, signedInr, signedPct } from "./format";
 
@@ -80,9 +80,70 @@ describe("computeMetrics", () => {
   });
 });
 
+describe("dailyMovers", () => {
+  it("picks the highest riser and deepest faller from per-holding day moves", () => {
+    const rows = [
+      stock({ ticker: "UP", cmp: 110, quantity: 10 }), // +₹100
+      stock({ ticker: "BIG", cmp: 320, quantity: 10 }), // +₹200
+      stock({ ticker: "DOWN", cmp: 90, quantity: 5 }), // −₹50
+    ];
+    const { gainer, loser, eligible, excluded } = dailyMovers(rows, {
+      "NSE:UP": { change: 10, changePercent: 10 },
+      "NSE:BIG": { change: 20, changePercent: 6.67 },
+      "NSE:DOWN": { change: -10, changePercent: -10 },
+    }, null);
+
+    expect(eligible).toBe(3);
+    expect(excluded).toBe(0);
+    expect(gainer).toMatchObject({ key: "NSE:BIG", ticker: "BIG", dayPnl: 200, dayPct: 6.67 });
+    expect(loser).toMatchObject({ key: "NSE:DOWN", ticker: "DOWN", dayPnl: -50, dayPct: -10 });
+  });
+
+  it("excludes rows with no quote change instead of treating them as flat", () => {
+    const rows = [stock({ ticker: "QUOTED" }), stock({ ticker: "QUIET" })];
+    const { gainer, loser, eligible, excluded } = dailyMovers(rows, { "NSE:QUOTED": { change: 3 } }, null);
+    expect(eligible).toBe(1);
+    expect(excluded).toBe(1);
+    expect(gainer?.ticker).toBe("QUOTED");
+    expect(loser).toBeNull();
+  });
+
+  it("converts a U.S. day move at the supplied rate and drops it without one", () => {
+    const rows = [stock({ ticker: "AAPL", market: "US", currency: "USD", quantity: 2 })];
+    const prices = { "US:AAPL": { change: 4, changePercent: 1.5 } };
+
+    expect(dailyMovers(rows, prices, null)).toMatchObject({ gainer: null, eligible: 0, excluded: 1 });
+    const converted = dailyMovers(rows, prices, 85);
+    expect(converted.gainer).toMatchObject({ key: "US:AAPL", dayPnl: 4 * 2 * 85, dayPct: 1.5 });
+  });
+
+  it("reports no loser (or no gainer) rather than one with the wrong sign", () => {
+    const up = dailyMovers([stock({ ticker: "UP" })], { "NSE:UP": { change: 2 } }, null);
+    expect(up.gainer?.ticker).toBe("UP");
+    expect(up.loser).toBeNull();
+
+    const down = dailyMovers([stock({ ticker: "DOWN" })], { "NSE:DOWN": { change: -2 } }, null);
+    expect(down.gainer).toBeNull();
+    expect(down.loser?.ticker).toBe("DOWN");
+  });
+
+  it("ranks only open holdings", () => {
+    const rows = [
+      stock({ ticker: "CLOSED", status: "Sold Profit", exitPrice: 500 }),
+      stock({ ticker: "OPEN" }),
+    ];
+    const { gainer, eligible } = dailyMovers(rows, {
+      "NSE:CLOSED": { change: 50 },
+      "NSE:OPEN": { change: 1 },
+    }, null);
+    expect(eligible).toBe(1);
+    expect(gainer?.ticker).toBe("OPEN");
+  });
+});
+
 describe("realisedByMonth", () => {
   it("returns no months, never a placeholder series, without closed trades", () => {
-    expect(realisedByMonth([stock({})], [fno({})])).toEqual({ months: [], undated: 0 });
+    expect(realisedByMonth([stock({})], [fno({})])).toEqual({ months: [], undated: 0, unscored: 0 });
   });
 
   it("sums closed equity and F&O by exit month and zero-fills the gap", () => {

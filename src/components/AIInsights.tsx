@@ -14,7 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import type { PortfolioStock, TradeStrategy } from "@/data/sampleData";
+import { hasKnownCost, type PortfolioStock, type TradeStrategy } from "@/data/sampleData";
 import { isValidPrice } from "@/lib/portfolio/valuation";
 import { fetchApi, getApiUnavailableMessage } from "@/lib/api";
 
@@ -33,34 +33,50 @@ function buildCtx(stocks: PortfolioStock[], trades: TradeStrategy[]): string {
   const active = stocks.filter((s) => s.status === "Active");
   const soldProfit = stocks.filter((s) => s.status === "Sold Profit");
   const soldLoss = stocks.filter((s) => s.status === "Sold Loss");
+  const soldUnknown = stocks.filter((s) => s.status === "Sold");
 
   const priced = (s: PortfolioStock) => isValidPrice(s.cmp);
-  const invested = active.reduce((s, x) => s + x.entryPrice * x.quantity, 0);
-  const pricedCost = active.reduce((s, x) => s + (priced(x) ? x.entryPrice * x.quantity : 0), 0);
+  const costed = (s: PortfolioStock) => hasKnownCost(s);
+  const invested = active.reduce((s, x) => s + (costed(x) ? x.entryPrice * x.quantity : 0), 0);
+  const pricedCost = active.reduce(
+    (s, x) => s + (priced(x) && costed(x) ? x.entryPrice * x.quantity : 0),
+    0,
+  );
   const current = active.reduce((s, x) => s + (priced(x) ? x.cmp * x.quantity : 0), 0);
-  const unrealPnl = current - pricedCost;
+  // Only rows with both a cost and a price have a P&L; unknown-cost market
+  // value must not appear as profit.
+  const costedCurrent = active.reduce(
+    (s, x) => s + (priced(x) && costed(x) ? x.cmp * x.quantity : 0),
+    0,
+  );
+  const unrealPnl = costedCurrent - pricedCost;
   const unrealPct = pricedCost > 0 ? ((unrealPnl / pricedCost) * 100).toFixed(2) : "0";
   const unpriced = active.filter((s) => !priced(s)).length;
+  const unknownCost = active.filter((s) => !costed(s)).length;
   const realPnl = stocks
-    .filter((s) => s.exitPrice)
+    .filter((s) => s.exitPrice && costed(s))
     .reduce((s, x) => s + (x.exitPrice! - x.entryPrice) * x.quantity, 0);
 
   const positions = active
     .map((s) => {
+      if (!costed(s)) {
+        return `  • ${s.ticker} (${s.sector ?? "—"}): ${s.quantity} qty @ cost unavailable | ${priced(s) ? `CMP ₹${s.cmp}` : "CMP N/A"} | P&L unavailable (no purchase price)`;
+      }
       if (!priced(s)) {
         return `  • ${s.ticker} (${s.sector ?? "—"}): ${s.quantity} qty @ ₹${s.entryPrice} | CMP N/A | P&L unavailable (no market price)`;
       }
       const pnl = (s.cmp - s.entryPrice) * s.quantity;
-      const pnlPct = s.entryPrice > 0
-        ? ((pnl / (s.entryPrice * s.quantity)) * 100).toFixed(1)
-        : "0";
+      const pnlPct = ((pnl / (s.entryPrice * s.quantity)) * 100).toFixed(1);
       return `  ${pnl >= 0 ? "📈" : "📉"} ${s.ticker} (${s.sector ?? "—"}): ${s.quantity} qty @ ₹${s.entryPrice} | CMP ₹${s.cmp} | P&L ₹${pnl.toFixed(0)} (${pnlPct}%)`;
     })
     .join("\n");
 
-  const closed = [...soldProfit, ...soldLoss]
+  const closed = [...soldProfit, ...soldLoss, ...soldUnknown]
     .map((s) => {
-      const pnl = ((s.exitPrice ?? s.cmp) - s.entryPrice) * s.quantity;
+      if (!costed(s) || !s.exitPrice) {
+        return `  ${s.ticker}: P&L unavailable (cost or exit price missing) (${s.status})`;
+      }
+      const pnl = (s.exitPrice - s.entryPrice) * s.quantity;
       return `  ${s.ticker}: ₹${pnl.toFixed(0)} (${s.status})`;
     })
     .join("\n");
@@ -72,7 +88,7 @@ Active: ${active.length} positions
 Invested:  ₹${invested.toFixed(0)}
 Current:   ₹${current.toFixed(0)}
 Unrealised P&L: ₹${unrealPnl.toFixed(0)} (${unrealPct}%)
-${unpriced > 0 ? `Unpriced: ${unpriced} position${unpriced === 1 ? "" : "s"} with no market price (excluded from Current and Unrealised P&L)\n` : ""}Realised P&L:   ₹${realPnl.toFixed(0)} (${soldProfit.length} wins, ${soldLoss.length} losses)
+${unpriced > 0 ? `Unpriced: ${unpriced} position${unpriced === 1 ? "" : "s"} with no market price (excluded from Current and Unrealised P&L)\n` : ""}${unknownCost > 0 ? `Unknown cost: ${unknownCost} position${unknownCost === 1 ? "" : "s"} with no purchase price (market value included, P&L excluded)\n` : ""}Realised P&L:   ₹${realPnl.toFixed(0)} (${soldProfit.length} wins, ${soldLoss.length} losses${soldUnknown.length > 0 ? `, ${soldUnknown.length} with unknown P&L` : ""})
 Sectors: ${sectors.join(", ") || "N/A"}
 
 Active Positions:

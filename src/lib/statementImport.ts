@@ -26,6 +26,7 @@ export type CanonicalField =
   | "sellDate"
   | "sellPrice"
   | "sellValue"
+  | "marketValue"
   | "realizedPnl"
   | "cmp"
   | "remark";
@@ -37,6 +38,7 @@ const NUMERIC_FIELDS: CanonicalField[] = [
   "buyValue",
   "sellPrice",
   "sellValue",
+  "marketValue",
   "realizedPnl",
   "cmp",
 ];
@@ -52,24 +54,57 @@ export interface StatementLot {
   sellDate: string | null;
   sellPrice: number | null;
   sellValue: number | null;
+  /** Broker's current holding value, not sale proceeds. */
+  marketValue: number | null;
   realizedPnl: number | null;
   cmp: number | null;
   remark: string | null;
   closed: boolean;
 }
 
+/** Brokers whose statements can be imported as a replaceable source. */
+export type StatementBroker = "groww" | "zerodha";
+export type DetectedBroker = StatementBroker | "unknown";
+
+export interface StatementExclusion {
+  rowNumber: number;
+  reason: "invalid-quantity" | "missing-price";
+  detail: string;
+}
+
+export type BlockSection = "realised" | "unrealised" | "mixed";
+
+/** One independent header + data table inside a worksheet. */
+export interface SheetBlockReport {
+  headerRowNumber: number;
+  /** First row after the block's data (exclusive); null when the block runs to the end. */
+  endRowNumber: number | null;
+  fields: CanonicalField[];
+  section: BlockSection;
+  lots: StatementLot[];
+  exclusions: StatementExclusion[];
+  warnings: string[];
+}
+
 export interface SheetReport {
   sheetName: string;
   sheetIndex: number;
+  /** First detected header row, kept for summary display. */
   headerRowNumber: number | null;
+  /** Union of every block's fields. */
   fields: CanonicalField[];
+  blocks: SheetBlockReport[];
   lots: StatementLot[];
+  exclusions: StatementExclusion[];
   warnings: string[];
 }
 
 export interface StatementParseResult {
   sheets: SheetReport[];
   lots: StatementLot[];
+  exclusions: StatementExclusion[];
+  broker: DetectedBroker;
+  brokerEvidence: string[];
   warnings: string[];
   errors: string[];
 }
@@ -131,6 +166,7 @@ addAliases("sellValue", [
   "sell value", "sale value", "exit value", "sell amount", "sold value",
   "realised value", "realized value", "redemption value",
 ]);
+addAliases("marketValue", ["market value", "current value", "current market value", "present value"]);
 addAliases("realizedPnl", [
   "realised p&l", "realized p&l", "realised pnl", "realized pnl",
   "realised profit", "realized profit", "realised profit and loss",
@@ -145,7 +181,6 @@ addAliases("cmp", [
   "current market price", "closing price", "close price",
   "last price", "last close price",
 ]);
-addAliases("sellValue", ["market value", "current value", "current market value", "present value"]);
 addAliases("remark", [
   "remark", "remarks", "note", "notes", "comment", "comments",
 ]);
@@ -258,13 +293,6 @@ function formatDay(day: number, month: number, year: number): string | null {
   return `${String(day).padStart(2, "0")} ${months[month - 1]} ${year}`;
 }
 
-export const todayStamp = (): string =>
-  formatDay(
-    new Date().getDate(),
-    new Date().getMonth() + 1,
-    new Date().getFullYear(),
-  ) ?? "01 Jan 2000";
-
 // ── Header detection ─────────────────────────────────────────────────────────
 
 export interface HeaderMatch {
@@ -274,12 +302,13 @@ export interface HeaderMatch {
 }
 
 /**
- * Finds the header row: a row matching ≥1 identity column and ≥2 numeric
- * columns, followed within 3 rows by a row whose mapped numeric cells parse as
- * numbers (rejects legends and "column description" blocks).
+ * Every row that looks like a table header: ≥1 identity column, ≥2 numeric
+ * columns, and a following row whose mapped numeric cells parse as numbers.
+ * One worksheet may contain several independent tables (realised and
+ * unrealised sections, or a repeated header after a page break).
  */
-export function detectHeaderRow(matrix: unknown[][]): HeaderMatch | null {
-  let best: HeaderMatch | null = null;
+export function detectHeaderRows(matrix: unknown[][]): HeaderMatch[] {
+  const rows: HeaderMatch[] = [];
 
   for (let r = 0; r < matrix.length; r++) {
     const row = matrix[r] ?? [];
@@ -292,15 +321,26 @@ export function detectHeaderRow(matrix: unknown[][]): HeaderMatch | null {
     const identity = IDENTITY_FIELDS.filter((f) => fields.has(f)).length;
     const numeric = NUMERIC_FIELDS.filter((f) => fields.has(f)).length;
     if (identity < 1 || numeric < 2) continue;
-
     if (!hasNumericEvidence(matrix, r, mapping)) continue;
 
-    if (!best || fields.size > best.fields.size) {
-      best = { rowIndex: r, mapping, fields };
-      if (fields.size >= 9) break;
+    const match: HeaderMatch = { rowIndex: r, mapping, fields };
+    const previous = rows[rows.length - 1];
+    // A two-row banner can satisfy the test twice; keep the richer adjacent row
+    // as the single header instead of creating an empty block before the data.
+    if (previous && r - previous.rowIndex <= 1) {
+      if (fields.size > previous.fields.size) rows[rows.length - 1] = match;
+      continue;
     }
+    rows.push(match);
   }
-  return best;
+  return rows;
+}
+
+/** Richest detected header row, retained for single-table callers and tests. */
+export function detectHeaderRow(matrix: unknown[][]): HeaderMatch | null {
+  const rows = detectHeaderRows(matrix);
+  if (rows.length === 0) return null;
+  return rows.reduce((best, row) => (row.fields.size > best.fields.size ? row : best));
 }
 
 function hasNumericEvidence(
@@ -311,11 +351,18 @@ function hasNumericEvidence(
   const numericCols = [...mapping.entries()]
     .filter(([, field]) => NUMERIC_FIELDS.includes(field))
     .map(([col]) => col);
+  const identityCols = [...mapping.entries()]
+    .filter(([, field]) => IDENTITY_FIELDS.includes(field))
+    .map(([col]) => col);
   if (numericCols.length === 0) return false;
 
   for (let r = headerRow + 1; r <= Math.min(headerRow + 3, matrix.length - 1); r++) {
     const row = matrix[r] ?? [];
     if (row.length === 0 || row.every((cell) => String(cell ?? "").trim() === "")) continue;
+    // The evidence row must carry an identity value; otherwise a later table's
+    // data can validate a legend row that has no data under it.
+    const hasIdentity = identityCols.some((col) => String(row[col] ?? "").trim() !== "");
+    if (!hasIdentity) continue;
     for (const col of numericCols) {
       if (parseStatementNumber(row[col]) !== null) return true;
     }
@@ -327,15 +374,25 @@ function hasNumericEvidence(
 
 const TOTAL_ROW = /^(grand\s+)?(net\s+)?total\b|^summary\b|^closing balance\b/;
 
+export interface LotExtractionOptions {
+  /** First row after this block's data (exclusive). */
+  endRow?: number;
+  /** Collects data rows that were rejected, for the import preview. */
+  exclusions?: StatementExclusion[];
+}
+
 export function lotsFromSheet(
   matrix: unknown[][],
   header: HeaderMatch,
   warnings: string[],
+  options: LotExtractionOptions = {},
 ): StatementLot[] {
   const lots: StatementLot[] = [];
+  const endRow = Math.min(options.endRow ?? matrix.length, matrix.length);
+  const exclusions = options.exclusions;
   let blankRun = 0;
 
-  for (let r = header.rowIndex + 1; r < matrix.length; r++) {
+  for (let r = header.rowIndex + 1; r < endRow; r++) {
     const row = matrix[r] ?? [];
     if (row.length === 0 || row.every((cell) => String(cell ?? "").trim() === "")) {
       blankRun += 1;
@@ -344,7 +401,7 @@ export function lotsFromSheet(
     }
     blankRun = 0;
 
-    const firstText = String(row[0] ?? "").trim();
+    const firstText = String(row.find((cell) => String(cell ?? "").trim() !== "") ?? "").trim();
     if (TOTAL_ROW.test(firstText.toLowerCase())) break;
 
     const cell = (field: CanonicalField): unknown => {
@@ -362,33 +419,53 @@ export function lotsFromSheet(
     if (!isin && !symbol && !name) continue;
 
     const quantity = parseStatementNumber(cell("quantity"));
+    if (quantity === null || quantity <= 0) {
+      exclusions?.push({
+        rowNumber: r + 1,
+        reason: "invalid-quantity",
+        detail: `Quantity "${text("quantity")}" is missing or not a positive number.`,
+      });
+      continue;
+    }
+
     const buyPrice = parseStatementNumber(cell("buyPrice"));
     const buyValue = parseStatementNumber(cell("buyValue"));
     const sellPrice = parseStatementNumber(cell("sellPrice"));
     const sellValue = parseStatementNumber(cell("sellValue"));
+    const marketValue = parseStatementNumber(cell("marketValue"));
     const realizedPnl = parseStatementNumber(cell("realizedPnl"));
     const cmp = parseStatementNumber(cell("cmp"));
-    if (quantity === null || quantity <= 0) continue;
 
     const buyDate = parseStatementDate(cell("buyDate"));
     const sellDate = parseStatementDate(cell("sellDate"));
-    // An "Invested/Current value" pair on open-holding exports must not read
-    // as a closed lot, so closure keys off the sell date/price only.
-    const closed = sellDate !== null || sellPrice !== null;
 
     const derivedBuyPrice = buyPrice ?? (buyValue !== null ? round4(buyValue / quantity) : null);
     const derivedBuyValue = buyValue ?? (derivedBuyPrice !== null ? round4(derivedBuyPrice * quantity) : null);
-    const derivedSellValue = sellValue ?? (sellPrice !== null ? round4(sellPrice * quantity) : null);
+    const derivedSellPrice = sellPrice ?? (sellValue !== null ? round4(sellValue / quantity) : null);
+    const derivedSellValue =
+      sellValue ?? (derivedSellPrice !== null ? round4(derivedSellPrice * quantity) : null);
+    // Holding exports report a total current value rather than a unit price.
+    const derivedCmp = cmp ?? (marketValue !== null ? round4(marketValue / quantity) : null);
+
+    // Closure keys off sale columns only. A "Current value" column on an open
+    // holding export must never read as a sale.
+    const closed = sellDate !== null || derivedSellPrice !== null || sellValue !== null;
+
+    if (derivedBuyPrice === null && derivedCmp === null && derivedSellPrice === null) {
+      exclusions?.push({
+        rowNumber: r + 1,
+        reason: "missing-price",
+        detail: "No buy price, current price, or sale value on this row.",
+      });
+      warnings.push(`Row ${r + 1}: no buy price or current price — skipped`);
+      continue;
+    }
+
     const derivedPnl =
       realizedPnl ??
       (derivedBuyValue !== null && derivedSellValue !== null
         ? round4(derivedSellValue - derivedBuyValue)
         : null);
-
-    if (derivedBuyPrice === null && cmp === null) {
-      warnings.push(`Row ${r + 1}: no buy price or current price — skipped`);
-      continue;
-    }
 
     lots.push({
       ticker: symbol,
@@ -399,10 +476,11 @@ export function lotsFromSheet(
       buyPrice: derivedBuyPrice,
       buyValue: derivedBuyValue,
       sellDate,
-      sellPrice,
+      sellPrice: derivedSellPrice,
       sellValue: derivedSellValue,
+      marketValue,
       realizedPnl: derivedPnl,
-      cmp,
+      cmp: derivedCmp,
       remark: text("remark") || null,
       closed,
     });
@@ -413,40 +491,115 @@ export function lotsFromSheet(
 const round4 = (value: number): number => Math.round(value * 10000) / 10000;
 const ISIN_RE = /^[A-Z]{2}[A-Z0-9]{9}[0-9]$/;
 
+const sectionOf = (lots: StatementLot[]): BlockSection => {
+  const closed = lots.filter((lot) => lot.closed).length;
+  if (closed === 0) return "unrealised";
+  if (closed === lots.length) return "realised";
+  return "mixed";
+};
 
-/** Parses every sheet that carries a detectable statement header. */
+/**
+ * Broker identity from column structure and the filename, never from values:
+ * Groww reports a stock name/ISIN, Zerodha's P&L export reports a symbol.
+ */
+export function detectStatementBroker(
+  blocks: Array<{ fields: CanonicalField[]; lots: StatementLot[] }>,
+  fileName?: string,
+): { broker: DetectedBroker; evidence: string[] } {
+  const evidence: string[] = [];
+  let groww = 0;
+  let zerodha = 0;
+
+  for (const block of blocks) {
+    const fields = new Set(block.fields);
+    if (fields.has("symbol") && !fields.has("name")) {
+      zerodha += 2;
+      evidence.push("a header with a symbol/ticker column and no stock-name column");
+    } else if ((fields.has("name") || fields.has("isin")) && !fields.has("symbol")) {
+      groww += 2;
+      evidence.push("a header with stock name/ISIN and no symbol column");
+    }
+    for (const lot of block.lots) {
+      if (lot.ticker && !lot.stockName) zerodha += 1;
+      else if (!lot.ticker && (lot.stockName || lot.isin)) groww += 1;
+    }
+  }
+
+  if (fileName && /groww/i.test(fileName)) {
+    groww += 3;
+    evidence.push("the file name mentions Groww");
+  }
+  if (fileName && /(zerodha|kite)/i.test(fileName)) {
+    zerodha += 3;
+    evidence.push("the file name mentions Zerodha");
+  }
+
+  const broker: DetectedBroker =
+    groww > zerodha ? "groww" : zerodha > groww ? "zerodha" : "unknown";
+  if (broker === "unknown" && evidence.length === 0) {
+    evidence.push("the column layout matches neither Groww nor Zerodha");
+  }
+  return { broker, evidence };
+}
+
+/** Parses every independent header block in every sheet. */
 export function parseStatementSheets(
   sheets: Array<{ name: string; matrix: unknown[][] }>,
+  options: { fileName?: string } = {},
 ): StatementParseResult {
   const reports: SheetReport[] = [];
   const errors: string[] = [];
+  let headersFound = 0;
 
   sheets.forEach((sheet, sheetIndex) => {
-    const header = detectHeaderRow(sheet.matrix);
-    if (!header) return;
-    const warnings: string[] = [];
-    const lots = lotsFromSheet(sheet.matrix, header, warnings);
-    if (lots.length === 0) return;
+    const headers = detectHeaderRows(sheet.matrix);
+    headersFound += headers.length;
+    const blocks: SheetBlockReport[] = [];
+
+    headers.forEach((header, index) => {
+      const next = headers[index + 1];
+      const endRow = next ? next.rowIndex : undefined;
+      const warnings: string[] = [];
+      const exclusions: StatementExclusion[] = [];
+      const lots = lotsFromSheet(sheet.matrix, header, warnings, {
+        endRow,
+        exclusions,
+      });
+      if (lots.length === 0 && exclusions.length === 0) return;
+      blocks.push({
+        headerRowNumber: header.rowIndex + 1,
+        endRowNumber: next ? next.rowIndex : null,
+        fields: [...header.fields],
+        section: sectionOf(lots),
+        lots,
+        exclusions,
+        warnings,
+      });
+    });
+
+    if (blocks.length === 0) return;
     reports.push({
       sheetName: sheet.name,
       sheetIndex,
-      headerRowNumber: header.rowIndex + 1,
-      fields: [...header.fields],
-      lots,
-      warnings,
+      headerRowNumber: blocks[0].headerRowNumber,
+      fields: [...new Set(blocks.flatMap((block) => block.fields))],
+      blocks,
+      lots: blocks.flatMap((block) => block.lots),
+      exclusions: blocks.flatMap((block) => block.exclusions),
+      warnings: blocks.flatMap((block) => block.warnings),
     });
   });
 
   if (reports.length === 0) {
-    const headerFound = sheets.some((sheet) => detectHeaderRow(sheet.matrix) !== null);
     errors.push(
-      headerFound
+      headersFound > 0
         ? "Statement header found but no usable data rows — check that rows contain quantity and price values."
         : "No statement header found in any sheet. Expected broker P&L columns such as Symbol/Stock name, ISIN, Quantity, Buy price, Sell price.",
     );
   }
 
   const lots = reports.flatMap((report) => report.lots);
+  const exclusions = reports.flatMap((report) => report.exclusions);
   const warnings = reports.flatMap((report) =>
     report.warnings.map((warning) => `${report.sheetName}: ${warning}`),
   );
@@ -458,7 +611,20 @@ export function parseStatementSheets(
     );
   }
 
-  return { sheets: reports, lots, warnings, errors };
+  const detection = detectStatementBroker(
+    reports.flatMap((report) => report.blocks),
+    options.fileName,
+  );
+
+  return {
+    sheets: reports,
+    lots,
+    exclusions,
+    broker: detection.broker,
+    brokerEvidence: detection.evidence,
+    warnings,
+    errors,
+  };
 }
 
 // ── Identity resolution ──────────────────────────────────────────────────────
@@ -558,43 +724,103 @@ const MAX_TEXT_CHARS = 200;
 const MAX_TICKER_CHARS = 24;
 const clamp = (value: string, max: number): string => value.slice(0, max);
 
-export function toPortfolioStock(resolved: ResolvedLot): PortfolioStock | null {
+export interface MapLotOptions {
+  source: StatementBroker;
+  /** Stable identity of this row inside the broker's statements. */
+  fingerprint: string;
+}
+
+export function toPortfolioStock(
+  resolved: ResolvedLot,
+  options: MapLotOptions,
+): PortfolioStock | null {
   const { lot, symbol } = resolved;
-  if (!symbol) return null;
+  // A missing source or fingerprint would make broker replacement unsafe.
+  if (!symbol || !options?.source || !options.fingerprint) return null;
 
-  const entryPrice = lot.buyPrice ?? lot.cmp ?? 0;
-  if (entryPrice <= 0) return null;
-  const cmp = lot.cmp ?? entryPrice;
-  const status: PortfolioStock["status"] = !lot.closed
-    ? "Active"
-    : (lot.realizedPnl ?? (lot.sellPrice !== null && lot.buyPrice !== null ? lot.sellPrice - lot.buyPrice : 0)) >= 0
-      ? "Sold Profit"
-      : "Sold Loss";
+  // The statement's own buy price only. CMP is a market price, never a cost.
+  const entryPrice = lot.buyPrice !== null && lot.buyPrice > 0 ? lot.buyPrice : null;
+  // `0` is the stored "no market price" sentinel, not a ₹0 valuation.
+  const cmp = lot.cmp !== null && Number.isFinite(lot.cmp) && lot.cmp > 0 ? lot.cmp : 0;
+  const exitPrice =
+    lot.closed && lot.sellPrice !== null && lot.sellPrice > 0 ? lot.sellPrice : null;
 
-  return {
+  if (entryPrice === null && cmp === 0 && exitPrice === null) return null;
+
+  let status: PortfolioStock["status"];
+  if (!lot.closed) {
+    status = "Active";
+  } else if (exitPrice === null || entryPrice === null) {
+    // Closed with no usable exit price or no cost: P&L is unavailable, so the
+    // row must not be labelled as a profit or a loss.
+    status = "Sold";
+  } else {
+    const pnlPerShare =
+      lot.realizedPnl !== null ? lot.realizedPnl / lot.quantity : exitPrice - entryPrice;
+    status = pnlPerShare >= 0 ? "Sold Profit" : "Sold Loss";
+  }
+
+  const stock: PortfolioStock = {
     ticker: clamp(symbol, MAX_TICKER_CHARS),
     stockName: clamp(lot.stockName ?? symbol, MAX_TEXT_CHARS),
-    entryDate: clamp(lot.buyDate ?? todayStamp(), 40),
     entryPrice,
     cmp,
-    weekHigh52: cmp,
     quantity: lot.quantity,
-    ...(lot.closed && lot.sellPrice !== null ? { exitPrice: lot.sellPrice } : {}),
-    ...(lot.closed && lot.sellDate ? { exitDate: clamp(lot.sellDate, 40) } : {}),
     status,
+    source: options.source,
+    statementFingerprint: options.fingerprint,
   };
+  // No transaction date in the statement means the date is unknown; it is
+  // never replaced with the import date.
+  if (lot.buyDate) stock.entryDate = clamp(lot.buyDate, 40);
+  if (exitPrice !== null) stock.exitPrice = exitPrice;
+  if (lot.closed && lot.sellDate) stock.exitDate = clamp(lot.sellDate, 40);
+  return stock;
 }
 
 /**
- * Stable identity of a holding row, shared by statement imports and manual
- * entries, so re-importing the same statement never duplicates history.
+ * Stable, broker-scoped identities for one statement.
+ *
+ * Only attributes the statement actually carries are included: never the
+ * import date and never the current market price, so re-importing the same
+ * file produces the same fingerprints. A per-statement occurrence suffix
+ * keeps genuinely identical lots distinct instead of collapsing them.
  */
-export function statementKey(stock: Pick<PortfolioStock, "ticker" | "entryDate" | "entryPrice" | "quantity" | "exitDate">): string {
+export function assignFingerprints(lots: StatementLot[], source: StatementBroker): string[] {
+  const seen = new Map<string, number>();
+  return lots.map((lot) => {
+    const base = [
+      source,
+      lot.isin ?? "",
+      lot.ticker ?? "",
+      lot.stockName ? normalizeNameKey(lot.stockName) : "",
+      lot.buyDate ?? "",
+      lot.sellDate ?? "",
+      lot.quantity,
+      lot.buyValue ?? "",
+      lot.buyPrice ?? "",
+      lot.sellValue ?? "",
+      lot.sellPrice ?? "",
+      lot.realizedPnl ?? "",
+    ].join("|");
+    const occurrence = seen.get(base) ?? 0;
+    seen.set(base, occurrence + 1);
+    return `${base}#${occurrence}`;
+  });
+}
+
+/**
+ * Stable identity of a holding row, shared by the template CSV import and
+ * manual entries, so re-importing the same template never duplicates history.
+ */
+export function statementKey(
+  stock: Pick<PortfolioStock, "ticker" | "entryDate" | "entryPrice" | "quantity" | "exitDate">,
+): string {
   return [
     stock.ticker.trim().toUpperCase(),
-    stock.entryDate.trim(),
+    stock.entryDate?.trim() ?? "",
     stock.quantity,
-    stock.entryPrice,
+    stock.entryPrice ?? "",
     stock.exitDate?.trim() ?? "",
   ].join("|");
 }

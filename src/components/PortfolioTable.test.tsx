@@ -74,7 +74,7 @@ describe("PortfolioTable position identity", () => {
     const dialog = await screen.findByRole("dialog");
     // Labels follow the row's currency: a U.S. row must not read in rupees.
     expect(within(dialog).getByText("Edit Transaction — AAPL ($ USD)")).toBeInTheDocument();
-    expect(within(dialog).getByText("Entry Price ($) *")).toBeInTheDocument();
+    expect(within(dialog).getByText("Entry Price ($)")).toBeInTheDocument();
     expect(within(dialog).getByText("CMP ($) *")).toBeInTheDocument();
     expect(within(dialog).getByText("52W High ($)")).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole("button", { name: "Save Changes" }));
@@ -94,7 +94,7 @@ describe("PortfolioTable position identity", () => {
     const dialog = await screen.findByRole("dialog");
 
     expect(within(dialog).getByText("Edit Transaction — RELIANCE (₹ INR)")).toBeInTheDocument();
-    expect(within(dialog).getByText("Entry Price (₹) *")).toBeInTheDocument();
+    expect(within(dialog).getByText("Entry Price (₹)")).toBeInTheDocument();
     expect(within(dialog).getByText("CMP (₹) *")).toBeInTheDocument();
   });
 

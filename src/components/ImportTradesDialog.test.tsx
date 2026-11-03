@@ -1,7 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { PortfolioStock } from "@/data/sampleData";
+import type { BrokerImportOutcome, BrokerImportRequest } from "@/lib/portfolio/brokerImport";
 
-const xlsxState = vi.hoisted(() => ({ matrix: [] as unknown[][] }));
+const xlsxState = vi.hoisted(() => ({
+  matrix: [] as unknown[][],
+  records: [] as Record<string, string>[],
+}));
 const isinFixture = vi.hoisted(() => ({
   default: {
     equities: [
@@ -14,7 +19,9 @@ const isinFixture = vi.hoisted(() => ({
 vi.mock("xlsx", () => ({
   read: vi.fn(() => ({ SheetNames: ["Stocks"], Sheets: { Stocks: {} } })),
   utils: {
-    sheet_to_json: vi.fn(() => xlsxState.matrix),
+    sheet_to_json: vi.fn((_sheet: unknown, opts?: { header?: number }) =>
+      opts?.header === 1 ? xlsxState.matrix : xlsxState.records,
+    ),
   },
 }));
 
@@ -32,6 +39,20 @@ const GROWW_ROWS: unknown[][] = [
   ["Infosys", "INE009A01021", "20", "12-Dec-2025", "1,890", "37,800", "28-Feb-2026", "1,756.40", "35,128", "-2,672", ""],
 ];
 
+const okOutcome = (overrides: Partial<BrokerImportOutcome> = {}): BrokerImportOutcome => ({
+  ok: true,
+  added: 1,
+  replaced: 0,
+  retained: 0,
+  excluded: 0,
+  ...overrides,
+});
+
+const makeHandler = (overrides: Partial<BrokerImportOutcome> = {}) =>
+  vi.fn(
+    async (_request: BrokerImportRequest): Promise<BrokerImportOutcome> => okOutcome(overrides),
+  );
+
 /** A small file whose byte content is never read unless the component asks. */
 const makeFile = (name = "trades.csv", size?: number) => {
   const file = new File(["stub"], name, { type: "text/csv" });
@@ -41,8 +62,11 @@ const makeFile = (name = "trades.csv", size?: number) => {
   return { file, arrayBuffer };
 };
 
-const openDialog = async (onImport = vi.fn()) => {
-  render(<ImportTradesDialog onImport={onImport} />);
+const openDialog = async (
+  onImport = makeHandler(),
+  existingStocks: PortfolioStock[] = [],
+) => {
+  render(<ImportTradesDialog onImport={onImport} existingStocks={existingStocks} />);
   fireEvent.click(screen.getByRole("button", { name: /import csv\/xlsx/i }));
   const dialog = await screen.findByRole("dialog");
   const input = dialog.querySelector('input[type="file"]') as HTMLInputElement;
@@ -52,6 +76,7 @@ const openDialog = async (onImport = vi.fn()) => {
 
 beforeEach(() => {
   xlsxState.matrix = [];
+  xlsxState.records = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async () =>
@@ -96,8 +121,7 @@ describe("ImportTradesDialog file guards", () => {
 
 describe("ImportTradesDialog statement parsing", () => {
   it("parses a Groww-style report with the header 31 rows down and previews open and closed lots", async () => {
-    const onImport = vi.fn();
-    const input = await openDialog(onImport);
+    const input = await openDialog();
     xlsxState.matrix = GROWW_ROWS;
 
     fireEvent.change(input, { target: { files: [makeFile("pnl.xlsx").file] } });
@@ -106,13 +130,16 @@ describe("ImportTradesDialog statement parsing", () => {
     expect(await screen.findByText(/2 trades ready to import/i)).toBeInTheDocument();
     expect(screen.getByText("RELIANCE")).toBeInTheDocument();
     expect(screen.getByText("INFY")).toBeInTheDocument();
-    expect(screen.getByText("❌ Loss")).toBeInTheDocument();
-    expect(screen.getByText("🟢 Open")).toBeInTheDocument();
+    expect(screen.getByText("Loss")).toBeInTheDocument();
+    expect(screen.getByText("Open")).toBeInTheDocument();
     expect(screen.getByText(/1 open \/ 1 closed lots/)).toBeInTheDocument();
+    expect(screen.getByText(/Detected Groww/i)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Groww" })).toBeChecked();
+    expect(screen.getByText(/Groww statement · 2 added · 0 replaced · 0 retained · 0 excluded/i)).toBeInTheDocument();
   });
 
   it("resolves a name-only row through the search fallback and imports the chosen symbol", async () => {
-    const onImport = vi.fn();
+    const onImport = makeHandler();
     const input = await openDialog(onImport);
     xlsxState.matrix = [
       ["Stock name", "Quantity", "Buy price", "Buy value"],
@@ -139,7 +166,9 @@ describe("ImportTradesDialog statement parsing", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /import 1 trade/i }));
     await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
-    expect(onImport.mock.calls[0][0][0]).toMatchObject({
+    const request = onImport.mock.calls[0][0];
+    expect(request.source).toBe("groww");
+    expect(request.stocks[0]).toMatchObject({
       ticker: "RELIANCE",
       entryPrice: 2450.5,
       quantity: 15,
@@ -148,7 +177,7 @@ describe("ImportTradesDialog statement parsing", () => {
   });
 
   it("lets the user type a symbol for an unresolved row instead of importing it blind", async () => {
-    const onImport = vi.fn();
+    const onImport = makeHandler();
     const input = await openDialog(onImport);
     xlsxState.matrix = [
       ["Stock name", "Quantity", "Buy price", "Buy value"],
@@ -165,6 +194,112 @@ describe("ImportTradesDialog statement parsing", () => {
     expect(await screen.findByText(/1 trade ready to import/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /import 1 trade/i }));
     await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
-    expect(onImport.mock.calls[0][0][0].ticker).toBe("UNK");
+    expect(onImport.mock.calls[0][0].stocks[0].ticker).toBe("UNK");
+  });
+
+  it("requires confirmation before replacing this broker's existing rows", async () => {
+    const onImport = makeHandler({ added: 2, replaced: 1, retained: 0 });
+    const existing: PortfolioStock[] = [
+      {
+        ticker: "TCS",
+        stockName: "Tata Consultancy Services",
+        entryPrice: 3500,
+        cmp: 3700,
+        quantity: 5,
+        status: "Active",
+        source: "groww",
+        statementFingerprint: "groww|TCS|#0",
+      },
+    ];
+    const input = await openDialog(onImport, existing);
+    xlsxState.matrix = GROWW_ROWS;
+
+    fireEvent.change(input, { target: { files: [makeFile("pnl.xlsx").file] } });
+
+    expect(await screen.findByText(/will be compared against this statement/i)).toBeInTheDocument();
+    const importButton = screen.getByRole("button", { name: /import 2 trades/i });
+    expect(importButton).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /confirm replacing/i }));
+    await waitFor(() => expect(importButton).toBeEnabled());
+
+    fireEvent.click(importButton);
+    await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+    const request = onImport.mock.calls[0][0];
+    expect(request.source).toBe("groww");
+    expect(request.stocks).toHaveLength(2);
+  });
+
+  it("shows unknown cost and missing dates instead of inventing them", async () => {
+    const onImport = makeHandler();
+    const input = await openDialog(onImport);
+    xlsxState.matrix = [
+      ["Stock name", "ISIN", "Quantity", "Market Value"],
+      ["Infosys", "INE009A01021", "10", "17,564"],
+    ];
+
+    fireEvent.change(input, { target: { files: [makeFile().file] } });
+
+    expect(await screen.findByText(/1 trade ready to import/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 row has no purchase price/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 row has no transaction date/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Unknown")).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: /import 1 trade/i }));
+    await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+    const imported = onImport.mock.calls[0][0].stocks[0];
+    expect(imported).toMatchObject({ ticker: "INFY", entryPrice: null, cmp: 1756.4, status: "Active" });
+    expect(imported.entryDate).toBeUndefined();
+    expect(imported.weekHigh52).toBeUndefined();
+  });
+
+  it("reports excluded statement rows and passes the exclusion count to the import", async () => {
+    const onImport = makeHandler();
+    const input = await openDialog(onImport);
+    xlsxState.matrix = [
+      ["Stock name", "ISIN", "Quantity", "Buy price"],
+      ["Reliance Industries", "INE002A01018", "15", "2,450.50"],
+      ["Infosys", "INE009A01021", "abc", "1,890"],
+    ];
+
+    fireEvent.change(input, { target: { files: [makeFile().file] } });
+
+    expect(await screen.findByText(/1 row in the statement cannot be imported/i)).toBeInTheDocument();
+    expect(screen.getByText(/Row 3 · invalid quantity/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /import 1 trade/i }));
+    await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+    expect(onImport.mock.calls[0][0].excluded).toBe(1);
+  });
+
+  it("imports a template CSV as an append-only manual import", async () => {
+    const onImport = makeHandler();
+    const input = await openDialog(onImport);
+    xlsxState.records = [
+      {
+        Ticker: "RELIANCE",
+        "Stock Name": "Reliance Industries",
+        "Entry Date": "10-Jan-2026",
+        "Entry Price": "2450",
+        CMP: "2612.35",
+        "52W High": "2856.15",
+        Quantity: "15",
+        "Exit Price": "",
+        "Exit Date": "",
+        Status: "Active",
+      },
+    ];
+
+    fireEvent.change(input, { target: { files: [makeFile("trade_template.csv").file] } });
+
+    expect(await screen.findByText(/Template CSV — rows are added to your portfolio/i)).toBeInTheDocument();
+    expect(screen.queryByText(/No statement header found/i)).not.toBeInTheDocument();
+    expect(await screen.findByText(/1 trade ready to import/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /import 1 trade/i }));
+    await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+    const request = onImport.mock.calls[0][0];
+    expect(request.source).toBeUndefined();
+    expect(request.stocks[0]).toMatchObject({ ticker: "RELIANCE", entryPrice: 2450, quantity: 15, source: "manual" });
   });
 });

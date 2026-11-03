@@ -17,13 +17,18 @@ const RiskAnalysis = ({ stocks, trades, onEditTrade }: RiskAnalysisProps) => {
   const [editingTrade, setEditingTrade] = useState<TradeStrategy | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>({});
 
-  const totalPortfolioValue = stocks.reduce((sum, s) => sum + calcInvestedValue(s), 0);
+  const totalPortfolioValue = stocks.reduce((sum, s) => sum + (calcInvestedValue(s) ?? 0), 0);
 
   const riskData = useMemo(() => {
     return trades.map((t) => {
       const stock = stocks.find((s) => s.ticker === t.ticker);
+      // A synced statement row can lack a cost basis; its position weight is
+      // unknown, not zero and not the market value.
       const positionValue = stock ? calcInvestedValue(stock) : t.entryPrice * 10;
-      const positionPct = totalPortfolioValue > 0 ? (positionValue / totalPortfolioValue) * 100 : 0;
+      const positionPct =
+        positionValue === null || totalPortfolioValue <= 0
+          ? null
+          : (positionValue / totalPortfolioValue) * 100;
       const riskToSL = t.entryPrice - t.stopLoss;
       const rewardToT3 = t.target3 - t.entryPrice;
       const rrRatio = riskToSL > 0 ? rewardToT3 / riskToSL : 0;
@@ -96,7 +101,13 @@ const RiskAnalysis = ({ stocks, trades, onEditTrade }: RiskAnalysisProps) => {
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Position Size</span>
-                  <span className="font-mono">{r.positionPct.toFixed(1)}%</span>
+                  <span className="font-mono">
+                    {r.positionPct === null ? (
+                      <span className="text-muted-foreground" title="The statement had no cost basis for this position">—</span>
+                    ) : (
+                      `${r.positionPct.toFixed(1)}%`
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Risk to SL</span>

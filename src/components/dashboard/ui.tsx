@@ -3,6 +3,7 @@ import { ArrowDownRight, ArrowUpRight, Minus, Plus, Upload, type LucideIcon } fr
 import AddTransactionDialog from "@/components/AddTransactionDialog";
 import ImportTradesDialog from "@/components/ImportTradesDialog";
 import type { PortfolioStock } from "@/data/sampleData";
+import type { BrokerImportHandler } from "@/lib/portfolio/brokerImport";
 import type { Tone } from "@/lib/dashboard/format";
 
 /** Placeholder with the final size of the value it stands in for (no layout shift). */
@@ -49,10 +50,13 @@ export function AddTradeButton({ onAdd, variant = "primary" }: { onAdd: (stock: 
   );
 }
 
-export function ImportButton({ onImport, variant = "outline" }: { onImport: (stocks: PortfolioStock[]) => void; variant?: "primary" | "outline" }) {
+export function ImportButton({
+  onImport, existingStocks = [], variant = "outline",
+}: { onImport: BrokerImportHandler; existingStocks?: PortfolioStock[]; variant?: "primary" | "outline" }) {
   return (
     <ImportTradesDialog
       onImport={onImport}
+      existingStocks={existingStocks}
       trigger={
         <button type="button" className={`zf-btn zf-btn-${variant}`}>
           <Upload aria-hidden="true" /> Import

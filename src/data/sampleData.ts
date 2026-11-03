@@ -4,8 +4,18 @@ export interface PortfolioStock {
   ticker: string;
   stockName: string;
   sector?: string;
-  entryDate: string;
-  entryPrice: number;
+  /**
+   * Absent when the source statement did not state a purchase date (Zerodha's
+   * P&L export has no transaction dates). Never defaulted to the import date.
+   */
+  entryDate?: string;
+  /**
+   * Cost per unit, or `null` when the source statement only reported a market
+   * value. `null` is a real state, not zero: P&L and invested value stay
+   * unavailable until a cost is supplied.
+   */
+  entryPrice: number | null;
+  /** Stored last-known price; `0` means "no market price", never "free". */
   cmp: number;
   /** Absent until a quote refresh supplies it; `cmp` is the documented sentinel. */
   weekHigh52?: number;
@@ -14,7 +24,8 @@ export interface PortfolioStock {
   quantity: number;
   exitPrice?: number;
   exitDate?: string;
-  status: "Active" | "Sold Profit" | "Sold Loss";
+  /** `Sold` is a closed lot whose P&L cannot be derived (unknown cost). */
+  status: "Active" | "Sold Profit" | "Sold Loss" | "Sold";
   notes?: TradeJournalEntry;
   /** Listing market. Absent on legacy rows; `parseSnapshot` defaults it to NSE. */
   market?: "NSE" | "US";
@@ -23,7 +34,13 @@ export interface PortfolioStock {
   /** USD→INR rate when the lot was opened. Absent means FX P&L is unavailable. */
   fxAtCost?: number;
   /** Who owns the row for sync. Manual rows are never modified by a sync. */
-  source?: "manual" | "indmoney";
+  source?: "manual" | "indmoney" | "groww" | "zerodha";
+  /**
+   * Deterministic identity of this row within its broker statement. Broker
+   * re-imports compare fingerprints to report retained vs replaced rows, and
+   * unlike `entryDate` it never depends on the day the file was imported.
+   */
+  statementFingerprint?: string;
   /** Broker symbol/exchange as returned, e.g. "NSE:RELIANCE". */
   brokerRef?: string;
   /** Present only on rows imported from a broker connection. */
@@ -130,12 +147,32 @@ export const watchlistData: WatchlistStock[] = [
 ];
 
 // Calculation helpers
-export function calcInvestedValue(stock: PortfolioStock): number {
-  return stock.entryPrice * stock.quantity;
+
+/**
+ * True only when a real, positive cost per unit is recorded. Every P&L and
+ * invested-value derivation must gate on this rather than treating a missing
+ * cost as zero.
+ */
+export function hasKnownCost(
+  stock: Pick<PortfolioStock, "entryPrice">,
+): stock is Pick<PortfolioStock, "entryPrice"> & { entryPrice: number } {
+  return typeof stock.entryPrice === "number" && Number.isFinite(stock.entryPrice) && stock.entryPrice > 0;
 }
 
-export function calcProfitLoss(stock: PortfolioStock): number {
-  if (stock.status !== "Active" && stock.exitPrice) {
+/** `null` when cost is unknown — never zero, which would imply a 100% gain. */
+export function calcInvestedValue(stock: PortfolioStock): number | null {
+  return hasKnownCost(stock) ? stock.entryPrice * stock.quantity : null;
+}
+
+/** `null` when cost is unknown, or when a closed lot has no exit price. */
+export function calcProfitLoss(stock: PortfolioStock): number | null {
+  if (!hasKnownCost(stock)) return null;
+  if (stock.status !== "Active") {
+    // A closed lot without an exit price has no realised result. Falling back
+    // to CMP would report an unrealised mark as a realised gain or loss.
+    if (stock.exitPrice === undefined || !Number.isFinite(stock.exitPrice) || stock.exitPrice <= 0) {
+      return null;
+    }
     return (stock.exitPrice - stock.entryPrice) * stock.quantity;
   }
   return (stock.cmp - stock.entryPrice) * stock.quantity;
@@ -148,8 +185,15 @@ export function calcFinalValue(stock: PortfolioStock): number {
   return stock.cmp * stock.quantity;
 }
 
-export function calcWeeklyGainLoss(stock: PortfolioStock): number {
-  const price = stock.status !== "Active" && stock.exitPrice ? stock.exitPrice : stock.cmp;
+export function calcWeeklyGainLoss(stock: PortfolioStock): number | null {
+  if (!hasKnownCost(stock)) return null;
+  const price =
+    stock.status === "Active"
+      ? stock.cmp
+      : stock.exitPrice !== undefined && stock.exitPrice > 0
+        ? stock.exitPrice
+        : null;
+  if (price === null) return null;
   return ((price - stock.entryPrice) / stock.entryPrice) * 100;
 }
 
@@ -184,7 +228,9 @@ export function getWatchlistStatus(stock: WatchlistStock): { label: string; emoj
   return { label: "Watching", emoji: "👀", level: "neutral" };
 }
 
-export function calcHoldingDays(entryDate: string, exitDate?: string): number {
+/** `null` when the entry date is unknown: holding period is unavailable, not 0. */
+export function calcHoldingDays(entryDate: string | undefined, exitDate?: string): number | null {
+  if (!entryDate) return null;
   const parseDate = (d: string): Date => {
     if (!d) return new Date();
     // Format 1: YYYY-MM-DD (from HTML date input)
@@ -214,17 +260,24 @@ export function calcHoldingDays(entryDate: string, exitDate?: string): number {
 
 export function getTradeAnalytics(stocks: PortfolioStock[]) {
   const closedTrades = stocks.filter(s => s.status !== "Active");
-  const winners = closedTrades.filter(s => calcProfitLoss(s) > 0);
-  const losers = closedTrades.filter(s => calcProfitLoss(s) <= 0);
-  
-  const winRate = closedTrades.length > 0 ? (winners.length / closedTrades.length) * 100 : 0;
-  const avgProfit = winners.length > 0 ? winners.reduce((s, w) => s + calcProfitLoss(w), 0) / winners.length : 0;
-  const avgLoss = losers.length > 0 ? Math.abs(losers.reduce((s, l) => s + calcProfitLoss(l), 0) / losers.length) : 0;
+  // Unknown-cost lots have no outcome to score; they affect no average here.
+  const scored = closedTrades
+    .map((stock) => ({ stock, pnl: calcProfitLoss(stock) }))
+    .filter((row): row is { stock: PortfolioStock; pnl: number } => row.pnl !== null);
+  const winners = scored.filter(r => r.pnl > 0).map(r => r.pnl);
+  const losers = scored.filter(r => r.pnl <= 0).map(r => r.pnl);
+
+  const winRate = scored.length > 0 ? (winners.length / scored.length) * 100 : 0;
+  const avgProfit = winners.length > 0 ? winners.reduce((s, value) => s + value, 0) / winners.length : 0;
+  const avgLoss = losers.length > 0 ? Math.abs(losers.reduce((s, value) => s + value, 0) / losers.length) : 0;
   const riskRewardRatio = avgLoss > 0 ? avgProfit / avgLoss : 0;
   const totalTrades = stocks.length;
-  const avgHoldingDays = closedTrades.length > 0 ? closedTrades.reduce((s, t) => s + calcHoldingDays(t.entryDate, t.exitDate), 0) / closedTrades.length : 0;
-  const largestWin = winners.length > 0 ? Math.max(...winners.map(w => calcProfitLoss(w))) : 0;
-  const largestLoss = losers.length > 0 ? Math.min(...losers.map(l => calcProfitLoss(l))) : 0;
+  const holdingDays = closedTrades
+    .map((t) => calcHoldingDays(t.entryDate, t.exitDate))
+    .filter((days): days is number => days !== null);
+  const avgHoldingDays = holdingDays.length > 0 ? holdingDays.reduce((s, days) => s + days, 0) / holdingDays.length : 0;
+  const largestWin = winners.length > 0 ? Math.max(...winners) : 0;
+  const largestLoss = losers.length > 0 ? Math.min(...losers) : 0;
 
   return { winRate, avgProfit, avgLoss, riskRewardRatio, totalTrades, closedTrades: closedTrades.length, avgHoldingDays, largestWin, largestLoss };
 }
@@ -233,17 +286,24 @@ export function getSectorAllocation(stocks: PortfolioStock[]): { sector: string;
   const sectorMap = new Map<string, number>();
   const activeStocks = stocks.filter(s => s.status === "Active");
   
+  // Unknown-cost rows still have a known market value; weight them by that
+  // rather than inventing a cost or dropping the position from the chart.
+  const weightOf = (s: PortfolioStock): number =>
+    calcInvestedValue(s) ?? (s.cmp > 0 && Number.isFinite(s.cmp) ? s.cmp * s.quantity : 0);
+
   activeStocks.forEach(s => {
     const sector = s.sector || SECTOR_MAP[s.ticker] || "Other";
-    sectorMap.set(sector, (sectorMap.get(sector) || 0) + calcInvestedValue(s));
+    sectorMap.set(sector, (sectorMap.get(sector) || 0) + weightOf(s));
   });
-  
-  const total = activeStocks.reduce((s, st) => s + calcInvestedValue(st), 0);
-  return Array.from(sectorMap.entries()).map(([sector, value]) => ({
-    sector,
-    value,
-    percentage: total > 0 ? (value / total) * 100 : 0,
-  })).sort((a, b) => b.value - a.value);
+
+  const total = activeStocks.reduce((s, st) => s + weightOf(st), 0);
+  return Array.from(sectorMap.entries())
+    .filter(([, value]) => value > 0)
+    .map(([sector, value]) => ({
+      sector,
+      value,
+      percentage: total > 0 ? (value / total) * 100 : 0,
+    })).sort((a, b) => b.value - a.value);
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

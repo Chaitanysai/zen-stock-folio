@@ -19,7 +19,7 @@
  * Freshness travels with the total so a stale figure cannot carry a live label.
  */
 
-import type { PortfolioStock } from "../../data/sampleData.ts";
+import { hasKnownCost, type PortfolioStock } from "../../data/sampleData.ts";
 import type { DataMode, QuoteEnvelope } from "../market-data/types.ts";
 
 export interface ValuationPosition {
@@ -211,6 +211,7 @@ export function pricePnlInr(
   price: number,
   usdInr: number | null,
 ): number | null {
+  if (!hasKnownCost(stock)) return null;
   const fx = rateFor(stock, usdInr);
   return fx === null ? null : (price - stock.entryPrice) * stock.quantity * fx;
 }
@@ -219,6 +220,7 @@ export function fxPnlInr(stock: PortfolioStock, usdInr: number | null): number |
   // `null` can arrive from a document even though the field is typed optional,
   // and a non-finite rate would silently fabricate a full-notional FX result.
   if (
+    !hasKnownCost(stock) ||
     currencyOf(stock) !== "USD" ||
     usdInr === null ||
     stock.fxAtCost == null ||
@@ -246,10 +248,16 @@ export interface PortfolioTotals {
   fxPnlInr: number | null;
   /** True when at least one USD lot lacks `fxAtCost`, so the total is partial. */
   fxEstimated: boolean;
-  /** Rows that contributed to value, cost and P&L. */
+  /** Priced rows whose value is included in the totals. */
   pricedCount: number;
   /** Rows skipped because `cmp` was not a finite positive price. */
   unpricedCount: number;
+  /**
+   * Priced rows with no recorded cost. Their market value is included, but
+   * they contribute to neither `investedInr` nor the P&L, which would
+   * otherwise treat an unknown cost as zero.
+   */
+  unknownCostCount: number;
   /**
    * USD market value converted at the current rate. `0` when the portfolio has
    * no USD rows; `null` when USD rows exist but `usdInr` is unknown **or** a
@@ -277,6 +285,7 @@ export function portfolioTotals(rows: TotalsRow[], usdInr: number | null): Portf
   let incomplete = false;
   let pricedCount = 0;
   let unpricedCount = 0;
+  let unknownCostCount = 0;
   let usdUnpriced = false;
 
   for (const { stock, cmp } of rows) {
@@ -293,9 +302,15 @@ export function portfolioTotals(rows: TotalsRow[], usdInr: number | null): Portf
       continue;
     }
     pricedCount += 1;
-    investedInr += stock.entryPrice * stock.quantity * fx;
     valueInrTotal += cmp * stock.quantity * fx;
-    pricePnlTotal += (cmp - stock.entryPrice) * stock.quantity * fx;
+    // A missing cost is unknown, not zero: the position still has a market
+    // value, but it cannot contribute to invested or price P&L.
+    if (!hasKnownCost(stock)) {
+      unknownCostCount += 1;
+    } else {
+      investedInr += stock.entryPrice * stock.quantity * fx;
+      pricePnlTotal += (cmp - stock.entryPrice) * stock.quantity * fx;
+    }
     if (isUsd) {
       usdExposure += cmp * stock.quantity;
       const fxPnl = fxPnlInr(stock, usdInr);
@@ -316,19 +331,26 @@ export function portfolioTotals(rows: TotalsRow[], usdInr: number | null): Portf
     fxEstimated,
     pricedCount,
     unpricedCount,
+    unknownCostCount,
     usdExposureInr:
       usdRows === 0 ? 0 : usdInr === null || usdUnpriced ? null : usdExposure * usdInr,
     incomplete,
   };
 }
 
-/** Realised P&L in INR for a closed row. `null` when its rate is unavailable. */
+/**
+ * Realised P&L in INR for a closed row.
+ *
+ * `null` when the rate, the cost, or (for a closed lot) the exit price is
+ * unavailable. A closed lot is never valued at its stored mark: that would
+ * report an unrealised move as a realised one.
+ */
 export function realisedPnlInr(stock: PortfolioStock, usdInr: number | null): number | null {
+  if (!hasKnownCost(stock)) return null;
   const fx = rateFor(stock, usdInr);
   if (fx === null) return null;
-  // Documents can hold an explicit null even though the field is optional, so
-  // treat null like absent and fall back to the mark instead of doing maths on it.
-  const exit = stock.status !== "Active" && stock.exitPrice != null ? stock.exitPrice : stock.cmp;
+  const exit = stock.status === "Active" ? stock.cmp : stock.exitPrice;
+  if (!isValidPrice(exit)) return null;
   return (exit - stock.entryPrice) * stock.quantity * fx;
 }
 
@@ -363,7 +385,7 @@ export function toInrStocks(stocks: PortfolioStock[], usdInr: number | null): Po
     const converted: PortfolioStock = { ...stock, currency: "INR" };
     // Only convert fields the row actually carries: an absent (or explicitly
     // null) value must stay unknown, never become a converted zero.
-    if (Number.isFinite(stock.entryPrice)) converted.entryPrice = stock.entryPrice * fx;
+    if (hasKnownCost(stock)) converted.entryPrice = stock.entryPrice * fx;
     if (Number.isFinite(stock.cmp)) converted.cmp = stock.cmp * fx;
     if (Number.isFinite(stock.weekHigh52)) converted.weekHigh52 = stock.weekHigh52 * fx;
     if (Number.isFinite(stock.weekLow52)) converted.weekLow52 = stock.weekLow52 * fx;

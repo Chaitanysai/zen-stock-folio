@@ -162,7 +162,7 @@ describe("PortfolioCharts controls", () => {
     await waitForChart();
 
     expect(
-      screen.getByText("1 position without a market price is excluded from this chart."),
+      screen.getByText("1 position without a market price or cost basis is excluded from this chart."),
     ).toBeInTheDocument();
   });
 });

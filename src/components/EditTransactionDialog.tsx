@@ -40,8 +40,8 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
       setForm({
         ticker: stock.ticker,
         stockName: stock.stockName,
-        entryDate: stock.entryDate,
-        entryPrice: stock.entryPrice.toString(),
+        entryDate: stock.entryDate ?? "",
+        entryPrice: stock.entryPrice?.toString() ?? "",
         cmp: stock.cmp.toString(),
         weekHigh52: stock.weekHigh52?.toString() ?? "",
         quantity: stock.quantity.toString(),
@@ -54,7 +54,7 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.ticker || !form.stockName || !form.entryPrice || !form.quantity || !form.cmp) {
+    if (!form.ticker || !form.stockName || !form.quantity || !form.cmp) {
       toast({ title: "Missing fields", description: "Please fill all required fields", variant: "destructive" });
       return;
     }
@@ -67,14 +67,19 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
       ...stock,
       ticker: form.ticker.toUpperCase(),
       stockName: form.stockName,
-      entryDate: form.entryDate,
-      entryPrice: parseFloat(form.entryPrice),
+      // A blank cost stays unknown; it is never replaced with CMP or zero.
+      entryPrice: form.entryPrice ? parseFloat(form.entryPrice) : null,
       cmp: parseFloat(form.cmp),
       // Blank means "unknown", not "equal to CMP".
       weekHigh52: parseFloat(form.weekHigh52) || null,
       quantity: parseInt(form.quantity),
       status: form.status,
     };
+
+    // A blank date is removed rather than stored as "": the row has no known
+    // entry date, and an empty string would otherwise read as a real value.
+    if (form.entryDate) updated.entryDate = form.entryDate;
+    else delete updated.entryDate;
 
     // A blank exit is *removed*, not set to `undefined`: setting `undefined`
     // would leave the key on the row, and the whole snapshot is written to
@@ -113,8 +118,8 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label className="text-xs text-muted-foreground">Entry Price ({symbol}) *</Label>
-              <Input type="number" step="0.01" value={form.entryPrice} onChange={(e) => updateField("entryPrice", e.target.value)} className="bg-secondary border-border text-sm font-mono" />
+              <Label className="text-xs text-muted-foreground">Entry Price ({symbol})</Label>
+              <Input type="number" step="0.01" value={form.entryPrice} onChange={(e) => updateField("entryPrice", e.target.value)} placeholder="Unknown" className="bg-secondary border-border text-sm font-mono" />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">CMP ({symbol}) *</Label>
@@ -144,6 +149,7 @@ const EditTransactionDialog = ({ stock, open, onOpenChange, onSave }: EditTransa
                   <SelectItem value="Active">🟢 Active (Open)</SelectItem>
                   <SelectItem value="Sold Profit">✅ Closed (Profit)</SelectItem>
                   <SelectItem value="Sold Loss">❌ Closed (Loss)</SelectItem>
+                  <SelectItem value="Sold">Closed (P&amp;L unavailable)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

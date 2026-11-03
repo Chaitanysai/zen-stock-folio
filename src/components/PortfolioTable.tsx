@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   PortfolioStock,
   calcInvestedValue,
+  hasKnownCost,
 } from "@/data/sampleData";
 import {
   Table, TableBody, TableCell, TableHead,
@@ -24,6 +25,7 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useLivePrices } from "@/hooks/useLivePrices";
+import type { BrokerImportHandler } from "@/lib/portfolio/brokerImport";
 import { quoteFor, positionKey, currencyOf, isValidPrice, valueInr } from "@/lib/portfolio/valuation";
 import { formatInr, formatNative, marketCode } from "@/lib/portfolio/display";
 import type { Instrument } from "@/lib/market-data/types";
@@ -31,7 +33,7 @@ import type { Instrument } from "@/lib/market-data/types";
 interface PortfolioTableProps {
   stocks: PortfolioStock[];
   onAdd: (stock: PortfolioStock) => void;
-  onImport: (stocks: PortfolioStock[]) => void;
+  onImport: BrokerImportHandler;
   onEdit: (key: string, updated: PortfolioStock) => void;
   onDelete: (key: string) => void;
   /** Current USD→INR rate. `null` means a USD row's INR value is unavailable. */
@@ -55,6 +57,16 @@ const StatusBadge = ({ status }: { status: string }) => {
         className="border-profit/30 text-profit bg-profit/8 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full"
       >
         Closed ↑
+      </Badge>
+    );
+  if (status === "Sold")
+    return (
+      <Badge
+        variant="outline"
+        className="border-border text-muted-foreground bg-muted/40 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full"
+        title="Closed, but the statement had no cost or realised P&L"
+      >
+        Closed
       </Badge>
     );
   return (
@@ -146,7 +158,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete, usdInr = nu
                 Delete {selected.size}
               </Button>
             )}
-            <ImportTradesDialog onImport={onImport} />
+            <ImportTradesDialog onImport={onImport} existingStocks={stocks} />
             <AddTransactionDialog onAdd={onAdd} />
           </div>
         </div>
@@ -198,10 +210,11 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete, usdInr = nu
                 const currency = currencyOf(stock);
                 const inrValue = valueInr(stock, cmp, usdInr);
                 const changePct = live?.changePercent ?? null;
-                const invested = stock.entryPrice * stock.quantity;
+                const knownCost = hasKnownCost(stock);
+                const invested = knownCost ? stock.entryPrice * stock.quantity : null;
                 const currentValue = cmp * stock.quantity;
-                const pl = currentValue - invested;
-                const isPos = pl >= 0;
+                const pl = invested === null ? null : currentValue - invested;
+                const isPos = pl !== null && pl >= 0;
 
                 return (
                   <TableRow
@@ -252,12 +265,16 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete, usdInr = nu
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-[11px] text-muted-foreground font-mono">
-                        {stock.entryDate}
+                      <span className="text-[11px] text-muted-foreground font-mono" title={stock.entryDate ? undefined : "Purchase date not in the statement"}>
+                        {stock.entryDate ?? "—"}
                       </span>
                     </TableCell>
                     <TableCell className="text-right font-mono text-[12px] text-foreground">
-                      {formatNative(stock.entryPrice, currency, 2)}
+                      {knownCost ? (
+                        formatNative(stock.entryPrice, currency, 2)
+                      ) : (
+                        <span className="text-muted-foreground" title="Purchase price not in the statement">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-mono text-[12px] font-medium text-foreground">
                       {priced ? formatNative(cmp, currency, 2) : "—"}
@@ -269,7 +286,11 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete, usdInr = nu
                       {stock.quantity}
                     </TableCell>
                     <TableCell className="text-right font-mono text-[12px] text-foreground">
-                      {formatNative(invested, currency, 0)}
+                      {invested === null ? (
+                        <span className="text-muted-foreground" title="Cost basis is unknown">—</span>
+                      ) : (
+                        formatNative(invested, currency, 0)
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       {changePct === null ? (
@@ -291,8 +312,13 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete, usdInr = nu
                       <StatusBadge status={stock.status} />
                     </TableCell>
                     <TableCell className="text-right">
-                      {!priced ? (
-                        <div className="text-right font-mono text-[12px] text-muted-foreground">—</div>
+                      {!priced || pl === null ? (
+                        <div
+                          className="text-right font-mono text-[12px] text-muted-foreground"
+                          title={priced ? "P&L unavailable because cost basis is unknown" : "P&L unavailable without a market price"}
+                        >
+                          —
+                        </div>
                       ) : (
                         <div className={`font-mono text-[12px] font-semibold ${isPos ? "text-profit" : "text-loss"}`}>
                           {isPos ? "+" : "−"}{formatNative(Math.abs(pl), currency, 0)}

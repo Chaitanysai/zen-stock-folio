@@ -12,7 +12,7 @@
  *  - an invented "momentum score" / "breakout zone" asserted as fact
  */
 
-import type { PortfolioStock } from "@/data/sampleData";
+import { hasKnownCost, type PortfolioStock } from "@/data/sampleData";
 
 /** `₹1,234*` for a stored value, `—` when nothing was stored. Never `₹0`. */
 export function formatStoredPrice(cmp: number | null | undefined): string {
@@ -73,7 +73,7 @@ export function describeAiTeaser(
 /** Best performer by unrealised return on entry price, or null when pointless. */
 export function bestPerformer(stocks: PortfolioStock[]): { ticker: string; pct: number } | null {
   const scored = stocks
-    .filter((stock) => stock.status === "Active" && stock.entryPrice > 0 && Number.isFinite(stock.cmp))
+    .filter((stock) => stock.status === "Active" && hasKnownCost(stock) && Number.isFinite(stock.cmp) && stock.cmp > 0)
     .map((stock) => ({ ticker: stock.ticker, pct: ((stock.cmp - stock.entryPrice) / stock.entryPrice) * 100 }));
   if (scored.length === 0) return null;
   return scored.reduce((best, item) => (item.pct > best.pct ? item : best));

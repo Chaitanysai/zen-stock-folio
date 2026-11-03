@@ -55,12 +55,20 @@ describe("firestorePortfolioStore.loadSnapshot", () => {
     const result = await firestorePortfolioStore.loadSnapshot("user-a");
 
     // Reads apply parseSnapshot's documented defaults: legacy rows gain
-    // market/currency/source and a missing execution ledger becomes [].
+    // market/currency/source and a missing cost normalizes to null, never a
+    // fabricated price. A missing execution ledger becomes [].
     expect(result).toEqual({
       status: "ok",
       snapshot: {
         ...snapshotShape,
-        stocks: [{ ticker: "RELIANCE", status: "Active", market: "NSE", currency: "INR", source: "manual" }],
+        stocks: [{
+          ticker: "RELIANCE",
+          status: "Active",
+          market: "NSE",
+          currency: "INR",
+          source: "manual",
+          entryPrice: null,
+        }],
         executions: [],
       },
     });
