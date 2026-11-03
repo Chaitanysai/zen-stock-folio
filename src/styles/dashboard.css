@@ -1271,7 +1271,22 @@
 .zf-field { display: flex; flex-direction: column; gap: 4px; flex: 1 1 132px; min-width: 0; }
 .zf-field-search { flex: 2 1 220px; }
 .zf-field-label { font: 600 10px var(--ff-mono); text-transform: uppercase; letter-spacing: .07em; color: hsl(var(--muted-foreground)); }
-.zf-filters .zf-input { min-height: 34px; height: 34px; padding: 0 10px; border-radius: 10px; }
+/* Filters share the pill language of the holdings toolbar, not a legacy form. */
+.zf-filters .zf-input,
+.zf-filters .zf-select {
+  width: 100%; min-height: 36px; height: 36px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid hsl(var(--input) / .55); background: hsl(var(--surface-2));
+  color: hsl(var(--foreground)); font: 500 12.5px var(--ff-body);
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+.zf-filters .zf-input:hover,
+.zf-filters .zf-select:hover { border-color: hsl(var(--input)); }
+.zf-filters .zf-input:focus-visible,
+.zf-filters .zf-select:focus-visible {
+  outline: none; border-color: hsl(var(--ring)); box-shadow: 0 0 0 3px hsl(var(--brand) / .18);
+}
+.zf-filters .zf-select { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.zf-filters .zf-select svg { width: 14px; height: 14px; flex-shrink: 0; opacity: .55; }
 .zf-filters .zf-link { align-self: center; }
 .zf-search-wrap { position: relative; display: block; }
 .zf-search-wrap svg { position: absolute; left: 10px; top: 50%; width: 14px; height: 14px; transform: translateY(-50%); color: hsl(var(--muted-foreground)); pointer-events: none; }
@@ -1310,7 +1325,8 @@
   .zf-pchart:last-child { grid-column: auto; }
 }
 @media (max-width: 768px), (pointer: coarse) {
-  .zf-filters .zf-input { min-height: 44px; height: 44px; }
+  .zf-filters .zf-input,
+  .zf-filters .zf-select { min-height: 44px; height: 44px; }
 }
 @media (max-width: 600px) {
   .zf-portfolio { padding: 10px; }

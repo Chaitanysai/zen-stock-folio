@@ -18,6 +18,7 @@ import { signedInr } from "@/lib/dashboard/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -246,19 +247,33 @@ export default function PositionTable({
               />
             </span>
           </label>
-          <label className="zf-field">
+          <div className="zf-field">
             <span className="zf-field-label">Status</span>
-            <select className="zf-input h-8 text-xs" value={filter} onChange={(event) => setFilter(event.target.value as PositionFilter)}>
-              {FILTERS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </label>
-          <label className="zf-field">
+            <Select value={filter} onValueChange={(value) => setFilter(value as PositionFilter)}>
+              <SelectTrigger className="zf-select" aria-label="Status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="w-52">
+                {FILTERS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="zf-field">
             <span className="zf-field-label">Broker / source</span>
-            <select className="zf-input h-8 text-xs" value={broker} onChange={(event) => setBroker(event.target.value)}>
-              <option value="all">All sources</option>
-              {brokers.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          </label>
+            <Select value={broker} onValueChange={setBroker}>
+              <SelectTrigger className="zf-select" aria-label="Broker / source">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="w-52">
+                <SelectItem value="all">All sources</SelectItem>
+                {brokers.map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <label className="zf-field">
             <span className="zf-field-label">From</span>
             <input type="date" className="zf-input h-8 text-xs" value={from} onChange={(event) => setFrom(event.target.value)} />
@@ -445,7 +460,7 @@ function PositionRow({
         <TableCell>
           <div className="flex items-center gap-1.5">
             <span className="font-medium text-foreground">{position.ticker}</span>
-            <span className="rounded border border-border px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
+            <span className="shrink-0 whitespace-nowrap rounded border border-border px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
               {position.market} · {position.currency}
             </span>
           </div>
