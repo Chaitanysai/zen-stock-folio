@@ -2,7 +2,7 @@ import { lazy, Suspense, type ReactNode } from "react";
 import { BarChart3, Eye, Layers, Wallet, TrendingUp, Zap } from "lucide-react";
 import type { PortfolioStock } from "@/data/sampleData";
 import type { BrokerImportHandler } from "@/lib/portfolio/brokerImport";
-import type { DayMover, DayMovers, OverviewMetrics } from "@/lib/dashboard/overview";
+import type { DayChange, DayMover, DayMovers, OverviewMetrics } from "@/lib/dashboard/overview";
 import type { UnrealisedHolding } from "@/lib/portfolio/positions";
 import { compact, inr, signedInr, signedPct, stagger, toneOf } from "@/lib/dashboard/format";
 import { AddTradeButton, DeltaPill, EmptyState, ImportButton } from "./ui";
@@ -154,6 +154,44 @@ function Stat({ label, icon: Icon, value, loading, pill, cap, highlight, index, 
   );
 }
 
+function HoldingsDayCard({ loading, changes, index }: { loading: boolean; changes: DayChange[]; index: number }) {
+  return (
+    <article className="zf-card zf-stat zf-in" style={stagger(index)} aria-label="Active holdings">
+      <div className="zf-stat-top">
+        <span className="zf-label">Active holdings</span>
+        <span className="zf-chip-ico" aria-hidden="true"><Layers /></span>
+      </div>
+      {loading ? (
+        <div className="zf-daylist" aria-busy="true">
+          <Skeleton width={44} height={28} radius={6} />
+          <Skeleton width="100%" height={14} radius={4} />
+          <Skeleton width="100%" height={14} radius={4} />
+        </div>
+      ) : (
+        <>
+          <p className="zf-stat-val">{changes.length}</p>
+          {changes.length === 0 ? (
+            <p className="zf-stat-cap">No open holdings</p>
+          ) : (
+            <ul className="zf-daylist">
+              {changes.map((row) => (
+                <li
+                  key={row.key}
+                  className="zf-dayrow"
+                  data-tone={row.dayPct === null ? "flat" : toneOf(row.dayPct)}
+                >
+                  <span className="zf-dayrow-ticker" title={row.ticker}>{row.ticker}</span>
+                  <span className="zf-dayrow-pct">{row.dayPct === null ? "—" : signedPct(row.dayPct)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </article>
+  );
+}
+
 function MoverLine({ label, mover, tone }: { label: string; mover: DayMover | null; tone: "up" | "down" }) {
   if (!mover) {
     return (
@@ -209,7 +247,7 @@ export function StatGrid({
       </Stat>
       <Stat
         index={2} label="Total invested" icon={Wallet} loading={loading} value={inr(m.invested)}
-        cap={`${m.active.length + m.fnoOpen.length} open position${m.active.length + m.fnoOpen.length === 1 ? "" : "s"}${m.fxIncomplete ? " · USD excluded" : ""}`}
+        cap={`${m.active.length} active holding${m.active.length === 1 ? "" : "s"} · ${m.fnoOpen.length} open F&O${m.fxIncomplete ? " · USD excluded" : ""}`}
       />
       <Stat
         index={3} label="Unrealised P&L" icon={TrendingUp} loading={loading}
@@ -219,11 +257,7 @@ export function StatGrid({
           ? `open positions only${exclusions ? ` · ${exclusions}` : ""}`
           : (m.active.length > 0 ? "No priced position with a known cost" : "No open positions yet")}
       />
-      <Stat
-        index={4} label="Active positions" icon={Layers} loading={loading}
-        value={`${m.active.length}`}
-        cap={`equity holding${m.active.length === 1 ? "" : "s"} · ${m.fnoOpen.length} open F&O · closed rows stay in Portfolio`}
-      />
+      <HoldingsDayCard index={4} loading={loading} changes={movers.rows} />
     </section>
   );
 }

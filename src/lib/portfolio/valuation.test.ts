@@ -277,6 +277,16 @@ describe("market valuation", () => {
     expect(valueInr(unlabelled, 120, 85)).not.toBe(1_200); // 10 × 120 at fx 1
   });
 
+  it("keeps an explicit INR currency on a US-market row", () => {
+    // `toInrStocks` converts a U.S. row and marks it INR. Treating that row as
+    // USD again would convert its INR prices a second time.
+    const converted = usStock({ currency: "INR" });
+
+    expect(currencyOf(converted)).toBe("INR");
+    expect(valueInr(converted, 120, 85)).toBe(1_200);
+    expect(pricePnlInr(converted, 120, 85)).toBe(200);
+  });
+
   it("separates FX P&L from price P&L", () => {
     expect(fxPnlInr(usStock(), 85)).toBe(5_000); // 10 × 100 × (85 − 80)
   });

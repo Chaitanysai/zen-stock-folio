@@ -43,16 +43,56 @@ describe("StatGrid", () => {
     expect(within(unrealised).queryByText(/₹500/)).not.toBeInTheDocument();
   });
 
-  it("counts open positions only and keeps closed rows out of Home", () => {
+  it("keeps the active holding count inside the invested tile", () => {
     const rows = [
       stock({ cmp: 110, quantity: 10 }),
       stock({ ticker: "SOLD", status: "Sold Profit", entryPrice: 50, exitPrice: 100, quantity: 10 }),
     ];
     renderGrid(rows, {});
 
-    const active = screen.getByLabelText("Active positions");
-    expect(within(active).getByText("1", { selector: ".zf-stat-val" })).toBeInTheDocument();
-    expect(within(active).getByText(/closed rows stay in Portfolio/)).toBeInTheDocument();
+    const invested = screen.getByLabelText("Total invested");
+    expect(within(invested).getByText("₹1,000", { selector: ".zf-stat-val" })).toBeInTheDocument();
+    expect(within(invested).getByText(/1 active holding · 0 open F&O/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Active positions")).not.toBeInTheDocument();
+  });
+
+  it("lists each active holding's ticker and day percentage, strongest first", () => {
+    const rows = [
+      stock({ ticker: "DOWN", cmp: 90 }),
+      stock({ ticker: "UP", cmp: 110 }),
+      stock({ ticker: "QUIET" }),
+      stock({ ticker: "SOLD", status: "Sold Profit", entryPrice: 50, exitPrice: 100, quantity: 10 }),
+    ];
+    renderGrid(rows, {
+      "NSE:UP": { change: 10, changePercent: 2.5 },
+      "NSE:DOWN": { change: -5, changePercent: -1.2 },
+    });
+
+    const list = screen.getByLabelText("Active holdings");
+    const items = within(list).getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent("UP");
+    expect(items[0]).toHaveTextContent("+2.5%");
+    expect(items[0]).toHaveAttribute("data-tone", "up");
+    expect(items[1]).toHaveTextContent("DOWN");
+    expect(items[1]).toHaveTextContent("−1.2%");
+    expect(items[1]).toHaveAttribute("data-tone", "down");
+    expect(items[2]).toHaveTextContent("QUIET");
+    expect(items[2]).toHaveTextContent("—");
+    expect(within(list).queryByText("SOLD")).not.toBeInTheDocument();
+  });
+
+  it("shows the active holdings count as a large figure on the list tile", () => {
+    const rows = [
+      stock({ ticker: "AAA" }),
+      stock({ ticker: "BBB" }),
+      stock({ ticker: "SOLD", status: "Sold Profit", entryPrice: 50, exitPrice: 100, quantity: 10 }),
+    ];
+    renderGrid(rows, {});
+
+    const card = screen.getByLabelText("Active holdings");
+    expect(within(card).getByText("2", { selector: ".zf-stat-val" })).toBeInTheDocument();
+    expect(within(card).queryByText("3", { selector: ".zf-stat-val" })).not.toBeInTheDocument();
   });
 
   it("shows no mover rows until quotes carry a day change", () => {

@@ -182,12 +182,15 @@ export const marketOf = (stock: Pick<PortfolioStock, "market">): "NSE" | "US" =>
 export type CurrencySource = Pick<PortfolioStock, "currency" | "market">;
 
 /**
- * Default from the market when the row carries no currency, so a U.S. listing
- * can never be priced as INR at an implied rate of 1. Task 12 normalizes the
- * stored field, but parsing can pass a `{ market: "US" }` row through first.
+ * An explicit currency always wins: `toInrStocks` converts a U.S. row's prices
+ * and marks it INR, so re-deriving USD from the market would convert it twice.
+ * Only an unlabelled row falls back to the market, so a U.S. listing can never
+ * be priced as INR at an implied rate of 1.
  */
 export const currencyOf = (stock: CurrencySource): "INR" | "USD" =>
-  stock.currency === "USD" ? "USD" : stock.market === "US" ? "USD" : "INR";
+  stock.currency === "USD" ? "USD"
+    : stock.currency === "INR" ? "INR"
+    : stock.market === "US" ? "USD" : "INR";
 
 /** Read a quote map that is keyed by `market:ticker`. */
 export function quoteFor<T>(prices: Record<string, T>, stock: PositionKeySource): T | undefined {

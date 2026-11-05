@@ -477,6 +477,21 @@
 .zf-stat-mover-none { grid-column: 1 / -1; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .zf-stat-hl .zf-stat-mover, .zf-stat-hl .zf-stat-mover-none { color: hsl(var(--on-brand)); }
 
+/* Compact per-holding day change: ticker and percentage only. */
+.zf-daylist {
+  list-style: none; margin: 12px 0 0; padding: 10px 0 0;
+  border-top: 1px solid hsl(var(--border) / .9);
+  display: grid; gap: 7px;
+}
+.zf-dayrow {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: 12.5px; line-height: 1.3; font-variant-numeric: tabular-nums;
+}
+.zf-dayrow-ticker { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zf-dayrow-pct { font-weight: 650; white-space: nowrap; color: hsl(var(--muted-foreground)); }
+.zf-dayrow[data-tone="up"] .zf-dayrow-pct { color: hsl(var(--profit)); }
+.zf-dayrow[data-tone="down"] .zf-dayrow-pct { color: hsl(var(--loss)); }
+
 /* The one highlight card: warm orange, white text */
 .zf-stat-hl {
   border-color: transparent; color: hsl(var(--on-brand));

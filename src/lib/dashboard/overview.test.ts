@@ -139,6 +139,26 @@ describe("dailyMovers", () => {
     expect(eligible).toBe(1);
     expect(gainer?.ticker).toBe("OPEN");
   });
+
+  it("lists active holdings by day percentage with unknown quotes last", () => {
+    const rows = [
+      stock({ ticker: "DOWN", cmp: 90 }),
+      stock({ ticker: "UP", cmp: 110 }),
+      stock({ ticker: "QUIET" }),
+      stock({ ticker: "CLOSED", status: "Sold Profit", exitPrice: 500 }),
+    ];
+    const { rows: changes } = dailyMovers(rows, {
+      "NSE:UP": { change: 10, changePercent: 5 },
+      "NSE:DOWN": { change: -5, changePercent: -3 },
+      "NSE:CLOSED": { change: 50, changePercent: 12 },
+    }, null);
+
+    expect(changes.map((row) => [row.ticker, row.dayPct])).toEqual([
+      ["UP", 5],
+      ["DOWN", -3],
+      ["QUIET", null],
+    ]);
+  });
 });
 
 describe("realisedByMonth", () => {

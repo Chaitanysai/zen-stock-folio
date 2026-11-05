@@ -211,9 +211,19 @@ export interface DayMover {
   dayPct: number | null;
 }
 
+export interface DayChange {
+  /** `market:ticker`, matching the holdings row it came from. */
+  key: string;
+  ticker: string;
+  /** The quote's native daily percentage, or `null` when no quote arrived. */
+  dayPct: number | null;
+}
+
 export interface DayMovers {
   gainer: DayMover | null;
   loser: DayMover | null;
+  /** Every active row's day percentage, strongest first; unknown quotes last. */
+  rows: DayChange[];
   /** Active rows whose quote and FX rate produced a day P&L. */
   eligible: number;
   /** Active rows skipped: no quote, no change, or no USD→INR rate. */
@@ -238,10 +248,18 @@ export function dailyMovers(
   let loser: DayMover | null = null;
   let eligible = 0;
   let excluded = 0;
+  const changes: DayChange[] = [];
 
   for (const stock of live) {
     if (stock.status !== "Active") continue;
     const quote = quoteFor(prices, stock);
+    const dayPct =
+      typeof quote?.changePercent === "number" && Number.isFinite(quote.changePercent)
+        ? quote.changePercent
+        : null;
+    const key = positionKey(stock);
+    changes.push({ key, ticker: stock.ticker, dayPct });
+
     const dayPnl = dayPnlInr(stock, quote?.change ?? null, usdInr);
     if (dayPnl === null || !Number.isFinite(dayPnl)) {
       excluded += 1;
@@ -249,15 +267,12 @@ export function dailyMovers(
     }
     eligible += 1;
     const mover: DayMover = {
-      key: positionKey(stock),
+      key,
       market: stock.market ?? "NSE",
       ticker: stock.ticker,
       name: stock.stockName || stock.ticker,
       dayPnl,
-      dayPct:
-        typeof quote?.changePercent === "number" && Number.isFinite(quote.changePercent)
-          ? quote.changePercent
-          : null,
+      dayPct,
     };
     // Equal moves keep the first row in stable position-key order.
     if (dayPnl > 0 && (gainer === null || dayPnl > gainer.dayPnl || (dayPnl === gainer.dayPnl && mover.key < gainer.key))) {
@@ -268,7 +283,14 @@ export function dailyMovers(
     }
   }
 
-  return { gainer, loser, eligible, excluded };
+  changes.sort((a, b) => {
+    if (a.dayPct === null && b.dayPct === null) return a.key.localeCompare(b.key);
+    if (a.dayPct === null) return 1;
+    if (b.dayPct === null) return -1;
+    return b.dayPct - a.dayPct || a.key.localeCompare(b.key);
+  });
+
+  return { gainer, loser, rows: changes, eligible, excluded };
 }
 
 // ─── Realised P&L by month ────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ let snapshot: PortfolioSnapshot;
 const load = () => Promise.resolve({ status: "ready", snapshot });
 const sync = { load, save };
 const livePrices = { prices: {}, dataMode: "realtime", refresh: vi.fn(), error: null };
+const fxRate = { rate: 90, asOf: null, stale: false, loading: false, error: null, refresh: vi.fn() };
 const market = { isOpen: true, label: "Open", description: "NSE open", istTime: "10:15" };
 const auth = { user: { id: "u1", email: "asha@example.com" }, signOut: vi.fn(), loading: false };
 
@@ -23,6 +24,7 @@ vi.mock("@/hooks/usePortfolioSync", () => ({
   displayNameKeyFor: (id?: string) => `name:${id ?? "anon"}`,
 }));
 vi.mock("@/hooks/useLivePrices", () => ({ useLivePrices: () => livePrices }));
+vi.mock("@/hooks/useFxRate", () => ({ useFxRate: () => fxRate }));
 vi.mock("@/hooks/useMarketStatus", () => ({ useMarketStatus: () => market }));
 // Chart library and its OHLC fetch are not under test here.
 vi.mock("lightweight-charts", () => ({
@@ -76,6 +78,20 @@ describe("Index dashboard", () => {
     // 10×120 + 5×180 = 2100; unrealised P&L 2100 − 2000 = +100 (+5.0%)
     expect(within(card).getByText("₹2,100")).toBeInTheDocument();
     expect(within(card).getByText(/Unrealised \+₹100 \(\+5\.0%\) on ₹2,000 invested/)).toBeInTheDocument();
+  });
+
+  it("reports a U.S. holding's unrealised P&L once in both the table and the chart", async () => {
+    snapshot = {
+      stocks: [{ ...stock("EWZS", 18, 12, 6), market: "US", currency: "USD" }],
+      trades: [], watchlist: [], alerts: [], fnoTrades: [],
+    };
+    await renderIndex();
+
+    // (12 − 18) × 6 shares × ₹90 = −₹3,240. The chart must not convert again.
+    const holdings = screen.getByRole("table", { name: /open holdings/i });
+    expect(within(holdings).getByText("−₹3,240")).toBeInTheDocument();
+    const chart = screen.getByRole("table", { name: /unrealised profit and loss by holding/i });
+    expect(within(chart).getByText("−₹3,240")).toBeInTheDocument();
   });
 
   it("exposes the rail as buttons with aria-current and switches pages", async () => {
@@ -172,8 +188,9 @@ describe("Index dashboard", () => {
     expect(screen.getAllByRole("button", { name: /add trade/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("button", { name: /import/i }).length).toBeGreaterThan(0);
     // Home counts active holdings only, so an empty account reports zero.
-    const active = screen.getByRole("article", { name: "Active positions" });
-    expect(within(active).getByText("0")).toBeInTheDocument();
+    const invested = screen.getByRole("article", { name: "Total invested" });
+    expect(within(invested).getByText("0 active holdings · 0 open F&O")).toBeInTheDocument();
+    expect(screen.getByRole("article", { name: "Active holdings" })).toHaveTextContent("No open holdings");
   });
 
   it("plots realised P&L by month only from closed trades", async () => {

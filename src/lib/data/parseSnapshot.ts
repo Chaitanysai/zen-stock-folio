@@ -11,10 +11,10 @@ import type { Execution, PortfolioSnapshot } from "./snapshotTypes.ts";
 const asMarket = (value: unknown): "NSE" | "US" => (value === "US" ? "US" : "NSE");
 
 /**
- * The market decides the currency, matching `currencyOf`: a US row is always
- * USD and every other row INR. A contradicting stored currency is corrected
- * here rather than preserved, because valuation ignores it and the preserved
- * value would be inert and misleading downstream.
+ * A stored row's prices are in its market's native currency, so the market
+ * decides it: a US row is always USD and every other row INR. A contradicting
+ * stored currency is corrected here rather than preserved; only in-memory
+ * conversions (`toInrStocks`) may relabel a U.S. row as INR.
  */
 const asCurrency = (market: "NSE" | "US"): "INR" | "USD" => (market === "US" ? "USD" : "INR");
 
