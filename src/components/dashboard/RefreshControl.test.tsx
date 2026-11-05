@@ -29,6 +29,14 @@ describe("RefreshControl", () => {
     expect(control).toHaveFocus();
   });
 
+  it("shows only the sweeping glare, with no glyph inside the disc", () => {
+    renderControl();
+    const control = screen.getByRole("button", { name: "Refresh dashboard" });
+
+    expect(control.querySelector("svg")).toBeNull();
+    expect(control.textContent).toBe("");
+  });
+
   it("reports the running state without issuing requests on its own", () => {
     const onRefresh = renderControl(true);
     const control = screen.getByRole("button", { name: "Refresh dashboard" });

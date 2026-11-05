@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import {
-  Bell, ChevronDown, HelpCircle, Info, LogOut, Menu, Moon, Pencil, RefreshCw, Search, Sun,
+  Bell, ChevronDown, HelpCircle, Info, LogOut, Menu, Moon, Pencil, Search, Sun,
 } from "lucide-react";
 import LogoMark from "@/components/LogoMark";
 import AccentPicker from "@/components/AccentPicker";
@@ -183,10 +183,11 @@ interface TopBarProps {
 }
 
 /**
- * Top-right refresh control: a circular glass button whose luminous glare
+ * Top-right refresh control: a bare circular glass disc whose luminous glare
  * sweeps the perimeter. The glare is a conic gradient masked to a ring and
- * rotated in CSS, so the icon never spins and no JavaScript drives the motion.
- * The callback and busy semantics are exactly those of the legacy icon button.
+ * rotated in CSS, so it is the only thing on the control and no JavaScript
+ * drives the motion. The action and busy semantics are those of the legacy
+ * icon button; the accessible name still says what the control does.
  */
 export function RefreshControl({ busy = false, onRefresh }: { busy?: boolean; onRefresh: () => void }) {
   return (
@@ -197,9 +198,7 @@ export function RefreshControl({ busy = false, onRefresh }: { busy?: boolean; on
         aria-label="Refresh dashboard"
         aria-busy={busy}
         onClick={onRefresh}
-      >
-        <RefreshCw aria-hidden="true" />
-      </button>
+      />
     </Tip>
   );
 }

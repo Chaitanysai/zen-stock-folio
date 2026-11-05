@@ -230,9 +230,9 @@
 .zf-iconbtn svg { width: 18px; height: 18px; }
 .zf-iconbtn:hover, .zf-iconbtn[aria-expanded="true"] { background: hsl(var(--surface-3)); color: hsl(var(--foreground)); }
 
-/* Refresh control: circular glass disc with a luminous glare that sweeps the
-   rim. The glare is a conic gradient masked to a ring, so it is always clipped
-   inside the circle and never washes over the centred refresh icon. */
+/* Refresh control: a bare circular glass disc with a luminous glare that sweeps
+   the rim and nothing else inside it. The glare is a conic gradient masked to a
+   ring, so it is always clipped inside the circle and the disc stays empty. */
 .zf-refresh {
   position: relative; width: 40px; height: 40px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -248,7 +248,6 @@
   transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease,
               background-color var(--dur-fast) ease, box-shadow var(--dur) var(--ease-out);
 }
-.zf-refresh svg { position: relative; z-index: 1; width: 17px; height: 17px; transition: opacity var(--dur) ease; }
 .zf-refresh::before {
   content: ''; position: absolute; inset: 0; border-radius: 50%;
   background: conic-gradient(from 0deg,
@@ -257,8 +256,8 @@
     hsl(0 0% 100% / .92) 334deg,
     hsl(var(--brand) / .55) 350deg,
     transparent 360deg);
-  -webkit-mask-image: radial-gradient(circle closest-side, transparent 72%, #000 79%);
-          mask-image: radial-gradient(circle closest-side, transparent 72%, #000 79%);
+  -webkit-mask-image: radial-gradient(circle closest-side, transparent 68%, #000 76%);
+          mask-image: radial-gradient(circle closest-side, transparent 68%, #000 76%);
   animation: zf-refresh-sweep 4.4s linear infinite;
   pointer-events: none;
 }
@@ -273,10 +272,8 @@
 .zf-refresh:hover::after { opacity: .75; }
 .zf-refresh:active { transform: scale(.96); }
 .zf-refresh:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-/* Running: the sweep quickens and the icon dims. One animation only, so the
-   loading state never fights a spinner for the reader's attention. */
-.zf-refresh[aria-busy="true"] { cursor: progress; color: hsl(var(--foreground)); }
-.zf-refresh[aria-busy="true"] svg { opacity: .45; }
+/* Running: the sweep quickens, which is the only motion on the control. */
+.zf-refresh[aria-busy="true"] { cursor: progress; }
 .zf-refresh[aria-busy="true"]::before { animation-duration: 1.7s; }
 @media (prefers-reduced-motion: reduce) {
   .zf-refresh::before { animation: none; transform: rotate(148deg); }
