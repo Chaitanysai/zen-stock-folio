@@ -423,7 +423,10 @@
 .zf-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* ════════ OVERVIEW GRID ════════ */
-.zf-row1 { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.1fr) minmax(0, 1.25fr); gap: var(--gap); align-items: stretch; }
+/* The balance card is the hero, but at 1.05fr it stretched well past its content
+   and squeezed the stat tiles. A little narrower keeps it dominant while the
+   four figures and the P&L chart get the reclaimed width. */
+.zf-row1 { display: grid; grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr) minmax(0, 1.28fr); gap: var(--gap); align-items: stretch; }
 .zf-row2 { display: grid; grid-template-columns: minmax(250px, .72fr) minmax(0, 2fr); gap: var(--gap); align-items: stretch; }
 .zf-row3 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--gap); align-items: stretch; }
 /* Chart over Watchlist; insight + F&O sit above Market pulse, which shares the Watchlist row. */
