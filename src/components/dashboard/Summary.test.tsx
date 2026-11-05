@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { PortfolioStock } from "@/data/sampleData";
 import { computeMetrics, dailyMovers } from "@/lib/dashboard/overview";
@@ -16,17 +16,74 @@ function renderGrid(rows: PortfolioStock[], prices: Record<string, { change: num
 }
 
 describe("StatGrid", () => {
-  it("shows today's P&L with the strongest gainer and no invented loser", () => {
+  it("shows today's P&L with the strongest gainer and no invented loser", async () => {
     renderGrid([stock({ cmp: 110, quantity: 10 })], { "NSE:AAA": { change: 2, changePercent: 1.9 } });
 
     const today = screen.getByLabelText("Today's P&L");
     expect(today).toBeInTheDocument();
-    expect(within(today).getByText("+₹20", { selector: ".zf-stat-val" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(today.querySelector(".zf-stat-val")).toHaveTextContent("+₹20"),
+    );
     expect(within(today).getByText("Top gainer")).toBeInTheDocument();
     expect(within(today).getByText("AAA")).toBeInTheDocument();
     expect(within(today).getByText("+1.9%", { selector: ".zf-stat-mover em" })).toBeInTheDocument();
     expect(within(today).getByText("No loser today")).toBeInTheDocument();
     expect(within(today).getByText("Today · Live")).toBeInTheDocument();
+  });
+
+  it("rolls today's P&L from zero to the first resolved figure", async () => {
+    const { container } = renderGrid([stock({ cmp: 110, quantity: 10 })], { "NSE:AAA": { change: 2 } });
+    const figure = container.querySelector(".zf-stat-hl .zf-count");
+
+    expect(figure).toHaveTextContent("₹0");
+    await waitFor(() => expect(figure).toHaveTextContent("+₹20"));
+  });
+
+  it("rolls a losing day down from zero to a signed loss", async () => {
+    const { container } = renderGrid([stock({ cmp: 100, quantity: 10 })], { "NSE:AAA": { change: -3 } });
+    const figure = container.querySelector(".zf-stat-hl .zf-count");
+
+    expect(figure).toHaveTextContent("₹0");
+    await waitFor(() => expect(figure).toHaveTextContent("−₹30"));
+  });
+
+  it("keeps a flat day at a plain zero", async () => {
+    const { container } = renderGrid([stock({ cmp: 110, quantity: 10 })], { "NSE:AAA": { change: 0 } });
+    const figure = container.querySelector(".zf-stat-hl .zf-count");
+
+    expect(figure).toHaveTextContent("₹0");
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(figure).toHaveTextContent("₹0");
+  });
+
+  it("rests at zero while quotes are pending instead of showing a blank value", async () => {
+    const rows = [stock({ cmp: 110, quantity: 10 })];
+    const { container, rerender } = render(
+      <StatGrid loading={false} m={computeMetrics(rows, [], {}, new Date(), null)} movers={dailyMovers(rows, {}, null)} quotesPending />,
+    );
+    const figure = () => container.querySelector(".zf-stat-hl .zf-count");
+
+    expect(figure()).toHaveTextContent("₹0");
+
+    rerender(
+      <StatGrid
+        loading={false}
+        m={computeMetrics(rows, [], { "NSE:AAA": { change: 2 } }, new Date(), null)}
+        movers={dailyMovers(rows, { "NSE:AAA": { change: 2 } }, null)}
+        quotesPending={false}
+      />,
+    );
+    await waitFor(() => expect(figure()).toHaveTextContent("+₹20"));
+  });
+
+  it("stays unavailable when no quote ever arrives", () => {
+    const rows = [stock({ cmp: 110, quantity: 10 })];
+    const { container } = render(
+      <StatGrid loading={false} m={computeMetrics(rows, [], {}, new Date(), null)} movers={dailyMovers(rows, {}, null)} />,
+    );
+
+    expect(container.querySelector(".zf-stat-hl .zf-count")).toBeNull();
+    expect(screen.getByText("—", { selector: ".zf-stat-val" })).toBeInTheDocument();
   });
 
   it("reports unrealised P&L from open positions only", () => {

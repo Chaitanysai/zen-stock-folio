@@ -6,6 +6,7 @@ import type { DayChange, DayMover, DayMovers, OverviewMetrics } from "@/lib/dash
 import type { UnrealisedHolding } from "@/lib/portfolio/positions";
 import { compact, inr, signedInr, signedPct, stagger, toneOf } from "@/lib/dashboard/format";
 import { AddTradeButton, DeltaPill, EmptyState, ImportButton } from "./ui";
+import { AnimatedCurrency } from "./AnimatedNumber";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ActiveTab } from "./nav";
 
@@ -126,7 +127,7 @@ export function BalanceCard({
 interface StatProps {
   label: string;
   icon: typeof Zap;
-  value: string;
+  value: ReactNode;
   loading: boolean;
   pill?: { tone: "up" | "down" | "flat"; text: string } | null;
   cap: string;
@@ -214,15 +215,26 @@ function MoverLine({ label, mover, tone }: { label: string; mover: DayMover | nu
 }
 
 export function StatGrid({
-  loading, m, movers, dayLabel = "Today", priceMode = "",
+  loading, m, movers, dayLabel = "Today", priceMode = "", quotesPending = false,
 }: {
   loading: boolean;
   m: OverviewMetrics;
   movers: DayMovers;
   dayLabel?: string;
   priceMode?: string;
+  /** True while the first quote request is still in flight (or a retry is). */
+  quotesPending?: boolean;
 }) {
-  const todayValue = m.hasDayData ? signedInr(m.dayMove) : "—";
+  // A missing quote is unknown, not zero. While the first response is still on
+  // its way the tile rests at zero so the real figure can roll in from it — the
+  // gap that used to show "—" and then snap to a number. Once the request has
+  // settled, an unresolved figure is genuinely unavailable and if it failed
+  // it stays the existing unavailable state rather than an invented ₹0.
+  const todayValue = m.hasDayData
+    ? <AnimatedCurrency value={m.dayMove} />
+    : !m.hasDayData && quotesPending
+      ? <AnimatedCurrency value={0} />
+      : "—";
   const exclusions = [
     m.unpricedCount > 0 ? `${m.unpricedCount} unpriced` : null,
     m.unknownCostCount > 0 ? `${m.unknownCostCount} unknown cost` : null,

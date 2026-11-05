@@ -229,7 +229,58 @@
 }
 .zf-iconbtn svg { width: 18px; height: 18px; }
 .zf-iconbtn:hover, .zf-iconbtn[aria-expanded="true"] { background: hsl(var(--surface-3)); color: hsl(var(--foreground)); }
-.zf-iconbtn[aria-busy="true"] svg { animation: zf-spin 1s linear infinite; }
+
+/* Refresh control: circular glass disc with a luminous glare that sweeps the
+   rim. The glare is a conic gradient masked to a ring, so it is always clipped
+   inside the circle and never washes over the centred refresh icon. */
+.zf-refresh {
+  position: relative; width: 40px; height: 40px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; isolation: isolate;
+  border: 1px solid hsl(var(--glass-border));
+  background: hsl(var(--glass));
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: var(--glass-highlight), var(--shadow-1);
+  -webkit-backdrop-filter: blur(var(--blur-sm)) saturate(150%);
+          backdrop-filter: blur(var(--blur-sm)) saturate(150%);
+  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease,
+              background-color var(--dur-fast) ease, box-shadow var(--dur) var(--ease-out);
+}
+.zf-refresh svg { position: relative; z-index: 1; width: 17px; height: 17px; transition: opacity var(--dur) ease; }
+.zf-refresh::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 0deg,
+    transparent 0deg 200deg,
+    hsl(var(--brand) / .30) 286deg,
+    hsl(0 0% 100% / .92) 334deg,
+    hsl(var(--brand) / .55) 350deg,
+    transparent 360deg);
+  -webkit-mask-image: radial-gradient(circle closest-side, transparent 72%, #000 79%);
+          mask-image: radial-gradient(circle closest-side, transparent 72%, #000 79%);
+  animation: zf-refresh-sweep 4.4s linear infinite;
+  pointer-events: none;
+}
+/* Restrained inner sheen: the glass highlight, not a second moving effect. */
+.zf-refresh::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(120% 85% at 32% 2%, hsl(0 0% 100% / .55), transparent 58%);
+  opacity: .45; transition: opacity var(--dur) ease;
+}
+@keyframes zf-refresh-sweep { to { transform: rotate(1turn); } }
+.zf-refresh:hover { color: hsl(var(--foreground)); border-color: hsl(var(--glass-border-strong)); box-shadow: var(--shadow-2); }
+.zf-refresh:hover::after { opacity: .75; }
+.zf-refresh:active { transform: scale(.96); }
+.zf-refresh:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* Running: the sweep quickens and the icon dims. One animation only, so the
+   loading state never fights a spinner for the reader's attention. */
+.zf-refresh[aria-busy="true"] { cursor: progress; color: hsl(var(--foreground)); }
+.zf-refresh[aria-busy="true"] svg { opacity: .45; }
+.zf-refresh[aria-busy="true"]::before { animation-duration: 1.7s; }
+@media (prefers-reduced-motion: reduce) {
+  .zf-refresh::before { animation: none; transform: rotate(148deg); }
+}
 .zf-dot {
   position: absolute; top: 9px; right: 10px; width: 9px; height: 9px; border-radius: 50%;
   background: hsl(var(--brand)); box-shadow: 0 0 0 2px hsl(var(--card));
@@ -447,6 +498,12 @@
 .zf-stat-val {
   margin: 0; font: 600 clamp(22px, 2.1vw, 30px)/1.05 var(--ff-num); letter-spacing: -.03em; font-variant-numeric: tabular-nums;
   min-height: 1.05em; overflow-wrap: anywhere;
+}
+/* The counting figure. Equal-width digits plus a reserved minimum keep the tile
+   from reflowing while it rolls, and a currency figure never breaks mid-number. */
+.zf-count {
+  display: inline-block; min-width: 7ch; white-space: nowrap;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
 .zf-stat-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-top: 10px; min-height: 24px; }
 .zf-stat-cap { font-size: 12px; color: hsl(var(--muted-foreground)); }
@@ -891,7 +948,7 @@
   .zf-top-right { grid-column: 2; gap: 6px; }
   .zf-user, .zf-hide-mobile { display: none; }
   .zf-menu-btn { display: inline-flex; }
-  .zf-iconbtn { width: 44px; height: 44px; }
+  .zf-iconbtn, .zf-refresh { width: 44px; height: 44px; }
   .zf-market span.zf-mono { display: none; }
   .zf-top > .zf-nav {
     grid-column: 1 / -1; grid-row: 2; justify-self: stretch; display: flex; -webkit-overflow-scrolling: touch;
@@ -932,7 +989,7 @@
   .zf-wl-rm { width: 44px; height: 44px; top: 2px; right: 2px; }
   .zf-skip { min-height: 44px; display: inline-flex; align-items: center; }
   .zf-sheet-item { min-height: 48px; }
-  .zf-rbtn, .zf-iconbtn { min-width: 44px; min-height: 44px; }
+  .zf-rbtn, .zf-iconbtn, .zf-refresh { min-width: 44px; min-height: 44px; }
   .zf-tile { min-height: 44px; }
 }
 @media (max-width: 420px) {

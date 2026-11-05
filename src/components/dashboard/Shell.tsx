@@ -182,6 +182,28 @@ interface TopBarProps {
   onSignOut: () => void;
 }
 
+/**
+ * Top-right refresh control: a circular glass button whose luminous glare
+ * sweeps the perimeter. The glare is a conic gradient masked to a ring and
+ * rotated in CSS, so the icon never spins and no JavaScript drives the motion.
+ * The callback and busy semantics are exactly those of the legacy icon button.
+ */
+export function RefreshControl({ busy = false, onRefresh }: { busy?: boolean; onRefresh: () => void }) {
+  return (
+    <Tip label="Refresh dashboard">
+      <button
+        type="button"
+        className="zf-refresh"
+        aria-label="Refresh dashboard"
+        aria-busy={busy}
+        onClick={onRefresh}
+      >
+        <RefreshCw aria-hidden="true" />
+      </button>
+    </Tip>
+  );
+}
+
 export function TopBar(props: TopBarProps) {
   const { tab, onSelect, market, triggeredAlerts } = props;
   const [bellOpen, setBellOpen] = useState(false);
@@ -310,11 +332,7 @@ export function TopBar(props: TopBarProps) {
             <span className="zf-mono zf-market-time">{market.istTime} IST</span>
           </div>
 
-          <Tip label="Refresh prices">
-            <button type="button" className="zf-iconbtn" aria-label="Refresh prices" aria-busy={props.refreshing} onClick={props.onRefresh}>
-              <RefreshCw aria-hidden="true" />
-            </button>
-          </Tip>
+          <RefreshControl busy={props.refreshing} onRefresh={props.onRefresh} />
           <span className="zf-sr-only" role="status" aria-live="polite">{props.refreshStatus}</span>
 
           <Tip label="Search symbols">

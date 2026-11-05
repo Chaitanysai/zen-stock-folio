@@ -735,6 +735,7 @@ export default function Index() {
                   <StatGrid
                     loading={loading} m={m} movers={movers}
                     dayLabel={dayLabel} priceMode={sourceLabel}
+                    quotesPending={Boolean(pricesLoading) && !priceError}
                   />
                   <UnrealisedCard
                     loading={loading} holdings={homeUnrealised.holdings} excluded={homeUnrealised.excluded}
