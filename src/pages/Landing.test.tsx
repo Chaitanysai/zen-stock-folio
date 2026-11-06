@@ -33,10 +33,12 @@ describe("Landing page", () => {
     expect(within(nav).getByRole("link", { name: /^sign in$/i })).toHaveAttribute("href", "/login");
   });
 
-  it("labels the dashboard preview as sample data", () => {
-    renderLanding();
+  it("uses a portfolio-growth illustration and labels preview data as sample data", () => {
+    const { container } = renderLanding();
     const preview = screen.getByRole("figure", { name: /illustrative preview with sample data/i });
     expect(within(preview).getByText("Sample data")).toBeInTheDocument();
+    expect(container.querySelector(".zl-growth-chart")).toBeInTheDocument();
+    expect(container.querySelector(".zl-scene-candle")).toBeNull();
   });
 
   it("opens and closes the mobile menu from the keyboard", () => {

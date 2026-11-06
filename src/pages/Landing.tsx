@@ -21,7 +21,6 @@ import LogoMark from "@/components/LogoMark";
 import LandingNav, { SECTIONS } from "@/components/landing/LandingNav";
 import DashboardPreview from "@/components/landing/DashboardPreview";
 import HeroScene from "@/components/landing/HeroScene";
-import Preloader from "@/components/landing/Preloader";
 import ScrollStory from "@/components/landing/ScrollStory";
 import { useReveal } from "@/components/landing/useReveal";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
@@ -114,7 +113,6 @@ const Landing = () => {
 
   return (
     <div ref={rootRef} className="zl">
-      <Preloader />
       <a href="#zl-main" className="zl-skip">Skip to content</a>
       <div className="zl-atmos" aria-hidden="true" />
 

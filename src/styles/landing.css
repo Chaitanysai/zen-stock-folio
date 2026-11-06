@@ -6,6 +6,11 @@
    ════════════════════════════════════════════════════════════════════════════ */
 
 .zl {
+  /* Public-site palette stays local: cool teal authority, one orange milestone. */
+  --brand:        177 62% 34%;
+  --brand-strong: 177 66% 27%;
+  --brand-ink:    179 70% 22%;
+  --grad-brand: linear-gradient(135deg, hsl(177 66% 32%), hsl(185 62% 25%));
   --zl-glass:     hsl(var(--card) / .58);
   --zl-glass-hi:  hsl(var(--card) / .82);
   --zl-bd:        hsl(var(--glass-border));
@@ -41,6 +46,10 @@
 }
 
 .dark .zl {
+  --brand:        177 66% 52%;
+  --brand-strong: 177 64% 42%;
+  --brand-ink:    177 72% 70%;
+  --grad-brand: linear-gradient(135deg, hsl(177 62% 39%), hsl(186 58% 29%));
   --zl-glass:     hsl(var(--card) / .52);
   --zl-glass-hi:  hsl(var(--card) / .76);
   --zl-glow:      hsl(var(--brand) / .38);
@@ -283,33 +292,29 @@
 .zl-hero-meta li { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: hsl(var(--muted-foreground)); }
 .zl-hero-meta svg { width: 14px; height: 14px; color: hsl(var(--brand-ink)); }
 
-/* Hero field: the copy's right column holds only floating glass — no panel. */
+/* Hero field: one readable portfolio-growth curve, not a trading-terminal chart. */
 .zl-hero-visual {
   position: relative; min-width: 0;
   min-height: clamp(400px, calc(100svh - var(--zl-nav-h) - 40px), 660px);
 }
-.zl-scene { position: absolute; inset: 0; z-index: 0; }
-.zl-scene-canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; opacity: 0; transition: opacity 900ms var(--zl-ease); }
-.zl-scene[data-mode="live"] .zl-scene-canvas { opacity: 1; }
-.zl-scene[data-mode="live"] .zl-scene-fallback { opacity: 0; }
-.zl-scene-fallback {
-  position: absolute; inset: 0; overflow: hidden;
-  background:
-    radial-gradient(64% 66% at 78% 66%, hsl(var(--brand) / .20), transparent 68%),
-    radial-gradient(80% 70% at 16% 100%, hsl(36 90% 66% / .08), transparent 66%);
-  transition: opacity 900ms var(--zl-ease);
+.zl-scene { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.zl-growth-chart {
+  position: absolute; right: -6%; bottom: 1%; width: min(100%, 860px); height: auto;
+  color: hsl(var(--brand)); opacity: .94;
 }
-.zl-scene-chart {
-  position: absolute; right: -4%; bottom: 3%;
-  width: min(76%, 1040px); height: auto; opacity: .9;
+.zl-growth-grid line { stroke: hsl(var(--foreground) / .075); stroke-width: 1; stroke-dasharray: 3 7; }
+.zl-growth-perspective line { stroke: hsl(var(--foreground) / .055); stroke-width: 1; }
+.zl-growth-area { fill: url(#zl-growth-area); }
+.zl-growth-line {
+  fill: none; stroke: url(#zl-growth-line); stroke-width: 4; stroke-linecap: round;
+  filter: drop-shadow(0 8px 10px hsl(var(--brand) / .18));
+  animation: zl-growth-draw 1100ms 160ms var(--zl-ease) both;
 }
-.zl-scene-grid line { stroke: hsl(var(--foreground) / .07); stroke-width: 1; stroke-dasharray: 3 6; }
-.zl-scene-trend { fill: none; stroke: hsl(var(--brand)); stroke-width: 2; stroke-linecap: round; opacity: .5; }
-.zl-scene-wick { stroke: hsl(var(--foreground) / .32); stroke-width: 1.6; }
-.zl-scene-candle[data-up="1"] { fill: hsl(var(--brand)); }
-.zl-scene-candle[data-up="0"] { fill: hsl(var(--foreground) / .22); }
-.zl-scene-marker { fill: hsl(var(--brand)); filter: drop-shadow(0 0 8px hsl(var(--brand) / .85)); }
-.zl-scene-marker-ring { fill: none; stroke: hsl(var(--brand) / .45); stroke-width: 1.5; }
+.zl-growth-milestones circle { fill: hsl(var(--brand)); stroke: hsl(var(--background)); stroke-width: 3; }
+.zl-growth-milestones .zl-growth-last-ring { fill: none; stroke: hsl(var(--brand) / .35); stroke-width: 2; }
+.zl-growth-milestones .zl-growth-last { fill: #e68a3d; stroke: hsl(var(--background)); stroke-width: 3; }
+.zl-growth-labels text { fill: hsl(var(--muted-foreground)); font: 600 10px/1 'Geist Mono', monospace; letter-spacing: .08em; }
+@keyframes zl-growth-draw { from { stroke-dasharray: 1; stroke-dashoffset: 1; } to { stroke-dasharray: 1; stroke-dashoffset: 0; } }
 
 .zl-hud {
   position: absolute; z-index: 3;
@@ -399,6 +404,10 @@
 .zl-in-3 { animation-delay: 210ms; }
 .zl-in-4 { animation-delay: 280ms; }
 .zl-in-preview { animation: zl-float-in 1000ms 160ms var(--zl-ease) backwards; }
+@media (prefers-reduced-motion: no-preference) {
+  .zl-hud { animation: zl-card-drift 6s 1100ms ease-in-out infinite alternate; }
+}
+@keyframes zl-card-drift { from { transform: translateY(0); } to { transform: translateY(-7px); } }
 
 /* ── Pinned story ────────────────────────────────────────────────────────── */
 .zl-story { position: relative; height: 280vh; }
@@ -849,7 +858,7 @@
   .zl-hero-grid { grid-template-columns: minmax(0, 1fr); gap: clamp(26px, 4vw, 40px); }
   .zl-hero-copy { max-width: 44rem; }
   .zl-hero-visual { min-height: clamp(380px, 52vh, 520px); }
-  .zl-scene-chart { right: -8%; bottom: 5%; width: min(108%, 760px); }
+  .zl-growth-chart { right: -8%; bottom: 5%; width: min(108%, 760px); }
   .zl-scroll-cue { display: none; }
   .zl-product-grid { grid-template-columns: minmax(0, 1fr); }
   .zl-trust { grid-template-columns: minmax(0, 1fr); }
@@ -923,7 +932,8 @@
 /* ── Reduced motion / transparency ──────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .zl-in, .zl-in-preview, .zl-mobile, .zl-preloader, .zl-preloader-inner > *,
-  .zl-preloader-word span, .zl-preloader-sheen, .zl-preloader-line::after { animation: none !important; }
+  .zl-preloader-word span, .zl-preloader-sheen, .zl-preloader-line::after,
+  .zl-growth-line, .zl-hud { animation: none !important; }
   .zl-pulse::after, .zl-scroll-cue svg { animation: none !important; }
   .zl-card:hover, .zl-btn:hover { transform: none !important; }
   .zl-chapter { transition: none !important; }
