@@ -652,7 +652,7 @@ export default function Index() {
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="zf">
+      <div className={`zf${renderedTab === "overview" ? " zf-home" : ""}`}>
         <a className="zf-skip" href="#zf-main">Skip to content</a>
 
         <HomeAtmosphere />
@@ -674,7 +674,6 @@ export default function Index() {
             market={{ isOpen: market.isOpen, label: market.label, description: market.description, istTime: market.istTime }}
             onRefresh={refresh}
             refreshing={Boolean(pricesLoading)}
-            refreshFailed={Boolean(priceError)}
             refreshStatus={refreshStatus}
             onSearch={() => setSearchOpen(true)}
             triggeredAlerts={triggeredAlerts}

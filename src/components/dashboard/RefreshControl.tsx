@@ -1,90 +1,122 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
  * Refresh control.
  *
+ * The visual is one thin circular arc — the HeroUI v3 Spinner shape, drawn here
+ * rather than pulled in with the whole library for a single icon. There is no
+ * disc, bezel, track, glyph or tick: the arc is the entire control.
+ *
+ * The arc is a ~270° stroke whose tail fades out through a gradient, which is
+ * how the official component reads: a leading edge you can follow and a tail
+ * that dissolves instead of stopping dead. Rotation is 0.75s linear, matching
+ * HeroUI's `--animate-spin-fast`.
+ *
  * The motion is driven by the real price request, never by a timer of its own:
- * a click starts the spin, the spin ends when the parent's `busy` flag falls,
- * and the outcome is read from the same `failed` flag the rest of the dashboard
- * reports. That keeps the badge from claiming success before the request has
- * actually finished, and from ever showing a tick after a failure.
+ * a click starts the rotation, it stops when the parent's request settles, and
+ * the outcome is read from the same result the rest of the dashboard reports.
+ * Success is deliberately silent — the arc simply returns to rest — so the
+ * control can never claim an update that did not happen. Failure recolours the
+ * same arc instead of swapping in a different mark.
  *
  * A click is ignored while a request is running, so a double click cannot
  * produce two requests (the data hook also collapses duplicates).
  */
 
-export type RefreshPhase = "idle" | "spinning" | "success" | "error";
+export type RefreshPhase = "idle" | "spinning" | "error";
+/** The caller owns the request and reports its actual terminal outcome. */
+export type RefreshOutcome = "success" | "error" | "skipped";
 
-/** How long the outcome stays on screen before the control returns to idle. */
-const SUCCESS_HOLD_MS = 1400;
+/** A failed request gets a restrained, same-shape error indication before idling. */
 const ERROR_HOLD_MS = 2200;
-/** A request that resolves without ever flipping `busy` (cached reply) still ends. */
-const GUARD_MS = 400;
+
+/** r=9 → circumference 56.55. A 42.4 dash is a ~270° arc; the rest is the gap. */
+const ARC_LENGTH = 42.4;
+const CIRCUMFERENCE = 56.55;
 
 interface RefreshControlProps {
   /** True while the underlying price request is in flight. */
   busy?: boolean;
-  /** True when the last request reported an error. */
-  failed?: boolean;
-  onRefresh: () => void;
+  /**
+   * Resolves only when this click's request has reached a real terminal state.
+   * `skipped` means no request was made (for example a deliberately coalesced
+   * poll) and must never be presented as either success or failure.
+   */
+  onRefresh: () => Promise<RefreshOutcome>;
 }
 
-export function RefreshControl({ busy = false, failed = false, onRefresh }: RefreshControlProps) {
+export function RefreshControl({ busy = false, onRefresh }: RefreshControlProps) {
   const [phase, setPhase] = useState<RefreshPhase>("idle");
-  const requested = useRef(false);
-  const sawBusy = useRef(false);
   // Set synchronously on click: React state is not committed yet when a second
   // click lands in the same tick, so a state-only guard still lets it through.
   const inFlight = useRef(false);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const guardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestId = useRef(0);
+  const mounted = useRef(true);
+  // Gradient ids must be unique: two controls on one page would collide.
+  const gradientId = `zf-refresh-fade-${useId().replace(/:/g, "")}`;
 
-  const clearTimers = () => {
+  const clearHoldTimer = () => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
-    if (guardTimer.current) clearTimeout(guardTimer.current);
     holdTimer.current = null;
-    guardTimer.current = null;
   };
 
-  const settle = useCallback((error: boolean) => {
-    requested.current = false;
-    sawBusy.current = false;
+  const settle = useCallback((id: number, outcome: Exclude<RefreshOutcome, "skipped">) => {
+    // A request completion is only meaningful to the click that started it.
+    // This also makes a timer left by an earlier outcome harmless.
+    if (id !== requestId.current || !mounted.current) return;
     inFlight.current = false;
-    setPhase(error ? "error" : "success");
-    if (holdTimer.current) clearTimeout(holdTimer.current);
+    clearHoldTimer();
+
+    // Success deliberately has no confirmation state: the arc simply becomes the
+    // quiet idle affordance again. Error keeps the same shape, recoloured briefly.
+    if (outcome === "success") {
+      setPhase("idle");
+      return;
+    }
+
+    setPhase("error");
     holdTimer.current = setTimeout(() => {
+      if (id !== requestId.current || !mounted.current) return;
       holdTimer.current = null;
       setPhase("idle");
-    }, error ? ERROR_HOLD_MS : SUCCESS_HOLD_MS);
+    }, ERROR_HOLD_MS);
   }, []);
 
   useEffect(() => {
-    if (busy) {
-      sawBusy.current = true;
-      return;
-    }
-    // Only a click we started can finish the animation; background polls that
-    // end on their own must not flash a tick in the header.
-    if (!requested.current || !sawBusy.current) return;
-    settle(failed);
-  }, [busy, failed, settle]);
-
-  useEffect(() => clearTimers, []);
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      clearHoldTimer();
+    };
+  }, []);
 
   const handleClick = () => {
     if (busy || inFlight.current || phase === "spinning") return;
-    clearTimers();
+    clearHoldTimer();
+    const id = requestId.current + 1;
+    requestId.current = id;
     inFlight.current = true;
-    requested.current = true;
-    sawBusy.current = false;
     setPhase("spinning");
-    onRefresh();
-    // A cached or instantly-failing reply may never raise `busy`.
-    guardTimer.current = setTimeout(() => {
-      guardTimer.current = null;
-      if (requested.current && !sawBusy.current) settle(failed);
-    }, GUARD_MS);
+    let request: Promise<RefreshOutcome>;
+    try {
+      request = onRefresh();
+    } catch {
+      settle(id, "error");
+      return;
+    }
+    void request
+      .then((outcome) => {
+        if (id !== requestId.current || !mounted.current) return;
+        if (outcome === "skipped") {
+          inFlight.current = false;
+          setPhase("idle");
+          return;
+        }
+        settle(id, outcome);
+      })
+      .catch(() => settle(id, "error"));
   };
 
   const running = phase === "spinning";
@@ -100,24 +132,28 @@ export function RefreshControl({ busy = false, failed = false, onRefresh }: Refr
           aria-busy={busy || running}
           onClick={handleClick}
         >
-          <span className="zf-refresh-orbit" aria-hidden="true" />
-          <span className="zf-refresh-comet" aria-hidden="true" />
-          <span className="zf-refresh-core">
-            <svg className="zf-refresh-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            {/* Two arcs chasing each other, with arrowheads on the leading tips. */}
-            <path d="M20 12a8 8 0 0 1-13.1 6.1" />
-            <path d="M17.4 6.6 20.8 4.9l.7 3.7" />
-            <path d="M4 12a8 8 0 0 1 13.1-6.1" />
-            <path d="M6.6 17.4 3.2 19.1l-.7-3.7" />
+          <svg className="zf-refresh-spinner" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <defs>
+              {/* Full strength at the head, dissolving at the tail. */}
+              <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="currentColor" stopOpacity="1" />
+                <stop offset="55%" stopColor="currentColor" stopOpacity=".82" />
+                <stop offset="100%" stopColor="currentColor" stopOpacity=".15" />
+              </linearGradient>
+            </defs>
+            <circle
+              className="zf-refresh-arc"
+              cx="12"
+              cy="12"
+              r="9"
+              stroke={`url(#${gradientId})`}
+              strokeDasharray={`${ARC_LENGTH} ${CIRCUMFERENCE}`}
+            />
           </svg>
-          <svg className="zf-refresh-tick" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M5.2 12.6 9.6 17l9.2-10" pathLength={1} />
-            </svg>
-          </span>
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
-        {phase === "error" ? "Refresh failed, try again" : phase === "success" ? "Updated" : "Refresh dashboard"}
+        {phase === "error" ? "Refresh failed, try again" : "Refresh dashboard"}
       </TooltipContent>
     </Tooltip>
   );

@@ -231,96 +231,64 @@
 .zf-iconbtn:hover, .zf-iconbtn[aria-expanded="true"] { background: hsl(var(--surface-3)); color: hsl(var(--foreground)); }
 
 /* ── Refresh control ─────────────────────────────────────────────────────────
-   Compact glass core inside a delineated orbit. One bright head travels the
-   rim at rest, races while the real request runs, and the ring turns mint with
-   a drawn tick on success or red on failure. The comet is clipped by the round
-   button, so the glare can never spill outside the control. */
+   One thin circular arc and nothing else. No disc, no bezel, no track, no
+   glyph, no tick: the arc *is* the control. It reproduces the HeroUI v3 Spinner
+   (a ~270° stroke whose tail fades through a gradient, rotating at 0.75s
+   linear) drawn locally, because pulling in the whole component library for a
+   single icon is not a trade worth making.
+
+   At rest the arc sits at a fixed angle in a muted blue, so it reads as an
+   affordance rather than a loader that never finishes. A real request starts
+   the rotation and lifts the arc to full accent. Success is deliberately
+   silent — the arc simply settles back — and failure recolours the same arc
+   instead of swapping in a different mark, so the shape never changes. */
 .zf-refresh {
+  /* Cool blue in every theme: this is chrome, not brand accent. */
+  --arc: 207 92% 56%;
   position: relative; width: 40px; height: 40px; flex-shrink: 0;
-  display: inline-grid; place-items: center; isolation: isolate;
-  border-radius: 50%; overflow: hidden; cursor: pointer;
-  border: 1px solid hsl(var(--glass-border-strong));
-  background:
-    radial-gradient(120% 120% at 30% 16%, hsl(0 0% 100% / .38), transparent 58%),
-    hsl(var(--glass));
-  box-shadow: var(--glass-highlight), 0 10px 24px -16px hsl(220 60% 12% / .6);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-          backdrop-filter: blur(14px) saturate(160%);
-  transition: transform var(--dur-fast) var(--ease-out),
-              border-color var(--dur) ease, box-shadow var(--dur) var(--ease-out);
+  display: inline-grid; place-items: center;
+  padding: 0; border: 0; border-radius: 10px;
+  background: transparent; cursor: pointer;
+  color: hsl(var(--arc));
+  transition: background-color var(--dur-fast) ease, color var(--dur) ease;
 }
-.zf-refresh:hover { border-color: hsl(var(--glass-border-strong)); box-shadow: var(--glass-highlight), var(--shadow-2); }
-.zf-refresh:active { transform: scale(.955); }
+/* The wash is neutral, not accent-tinted: on the error phase an accent wash
+   would bloom pink behind a red arc and read as a second, louder state. */
+.zf-refresh:hover { background: hsl(var(--foreground) / .055); }
+.zf-refresh:active { background: hsl(var(--foreground) / .09); }
 .zf-refresh:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .zf-refresh[data-phase="spinning"] { cursor: progress; }
 
-.zf-refresh-orbit {
-  position: absolute; inset: 2px; border-radius: 50%;
-  border: 1px solid hsl(var(--brand) / .26);
-  box-shadow: inset 0 0 10px hsl(var(--brand) / .12);
-  pointer-events: none;
+.zf-refresh-spinner {
+  width: 20px; height: 20px; display: block;
+  transform-origin: 50% 50%;
 }
-.zf-refresh-comet {
-  position: absolute; inset: 2px; border-radius: 50%;
-  animation: zf-orbit 9s linear infinite;
-  pointer-events: none;
+.zf-refresh-arc {
+  fill: none;
+  /* Stroke colour comes from the SVG gradient so the tail can dissolve. */
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  opacity: .45;
+  transition: opacity var(--dur) ease;
 }
-.zf-refresh-comet::before {
-  content: ''; position: absolute; top: -2.5px; left: 50%;
-  width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%;
-  background: hsl(0 0% 100% / .95);
-  box-shadow: 0 0 8px 2px hsl(var(--brand) / .5), 0 0 16px 4px hsl(var(--brand) / .2);
-}
-@keyframes zf-orbit { to { transform: rotate(1turn); } }
+.zf-refresh:hover .zf-refresh-arc { opacity: .75; }
 
-.zf-refresh-core {
-  position: relative; z-index: 1; width: 26px; height: 26px; border-radius: 50%;
-  display: grid; place-items: center;
-  background: radial-gradient(120% 120% at 32% 20%, hsl(0 0% 100% / .28), transparent 62%);
+/* Running: request-driven only. Full accent, continuous rotation. */
+.zf-refresh[data-phase="spinning"] .zf-refresh-arc { opacity: 1; }
+.zf-refresh[data-phase="spinning"] .zf-refresh-spinner {
+  animation: zf-refresh-spin .75s linear infinite;
 }
-.zf-refresh-glyph {
-  width: 17px; height: 17px; fill: none; stroke: currentColor;
-  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
-  color: hsl(var(--foreground));
-  transition: opacity 200ms ease, transform var(--dur) var(--ease-out);
-}
-.zf-refresh-tick {
-  position: absolute; width: 17px; height: 17px; fill: none;
-  stroke: hsl(var(--profit)); stroke-width: 2.4;
-  stroke-linecap: round; stroke-linejoin: round;
-  stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0;
-}
-.zf-refresh-halo { display: none; }
+@keyframes zf-refresh-spin { to { transform: rotate(1turn); } }
 
-/* Running: the head races the rim and the glyph turns with the request. */
-.zf-refresh[data-phase="spinning"] .zf-refresh-comet { animation-duration: 1.05s; }
-.zf-refresh[data-phase="spinning"] .zf-refresh-comet::before {
-  width: 7px; height: 7px; margin-left: -3.5px;
-  box-shadow: 0 0 10px 3px hsl(var(--brand) / .8), 0 0 22px 7px hsl(var(--brand) / .3);
-}
-.zf-refresh[data-phase="spinning"] .zf-refresh-orbit { border-color: hsl(var(--brand) / .5); }
-.zf-refresh[data-phase="spinning"] .zf-refresh-glyph { animation: zf-refresh-turn 1.3s cubic-bezier(.45, .05, .55, .95) infinite; }
-@keyframes zf-refresh-turn { 0% { transform: rotate(0deg); } 60% { transform: rotate(300deg); } 100% { transform: rotate(360deg); } }
-
-/* Done: mint ring and a tick drawn along its stroke. */
-.zf-refresh[data-phase="success"] { border-color: hsl(var(--profit) / .45); }
-.zf-refresh[data-phase="success"] .zf-refresh-orbit { border-color: hsl(var(--profit) / .55); box-shadow: inset 0 0 12px hsl(var(--profit) / .18); }
-.zf-refresh[data-phase="success"] .zf-refresh-comet { animation-duration: 3.4s; }
-.zf-refresh[data-phase="success"] .zf-refresh-comet::before { background: hsl(var(--profit)); box-shadow: 0 0 10px 3px hsl(var(--profit) / .5); }
-.zf-refresh[data-phase="success"] .zf-refresh-glyph { opacity: 0; transform: scale(.6); }
-.zf-refresh[data-phase="success"] .zf-refresh-tick { animation: zf-tick-draw 320ms var(--ease-out) forwards; }
-@keyframes zf-tick-draw { to { stroke-dashoffset: 0; opacity: 1; } }
-
-/* Failed: the head stops, the ring goes red, and no tick is ever shown. */
-.zf-refresh[data-phase="error"] { border-color: hsl(var(--loss) / .5); }
-.zf-refresh[data-phase="error"] .zf-refresh-orbit { border-color: hsl(var(--loss) / .5); }
-.zf-refresh[data-phase="error"] .zf-refresh-comet { animation-play-state: paused; }
-.zf-refresh[data-phase="error"] .zf-refresh-comet::before { background: hsl(var(--loss)); box-shadow: 0 0 10px 3px hsl(var(--loss) / .45); }
+/* Failed: same arc, recoloured, stopped. A red hairline alone would be
+   invisible at 20px, so failure also holds full opacity. */
+.zf-refresh[data-phase="error"] { --arc: var(--loss); }
+.zf-refresh[data-phase="error"] .zf-refresh-arc { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  .zf-refresh-comet { animation: none; }
-  .zf-refresh[data-phase="spinning"] .zf-refresh-glyph { animation: none; opacity: .55; }
-  .zf-refresh[data-phase="success"] .zf-refresh-tick { animation: none; stroke-dashoffset: 0; opacity: 1; }
+  /* No rotation at all. Activity is carried by opacity and aria-busy. */
+  .zf-refresh[data-phase="spinning"] .zf-refresh-spinner { animation: none; }
+  .zf-refresh[data-phase="spinning"] .zf-refresh-arc { opacity: 1; }
 }
 /* ── Odometer figure ─────────────────────────────────────────────────────────
    Each digit is a one-character window onto a vertical strip; a new value slides
@@ -332,14 +300,25 @@
 .zf-odo-fixed { font-variant-numeric: tabular-nums; }
 .zf-odo {
   position: relative; display: inline-block; width: 1ch; height: 1em; overflow: hidden;
-  vertical-align: -0.08em; font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums;
+}
+/* The strip is absolutely positioned, so without an in-flow line the column's
+   baseline is its bottom edge and the digits ride high against ₹ and the
+   separators. A hidden zero in the same font gives the box a real baseline. */
+.zf-odo::before {
+  content: "0"; display: block; height: 1em; line-height: 1em; visibility: hidden;
 }
 .zf-odo-track {
   position: absolute; left: 0; top: 0;
-  transform: translateY(calc((var(--slot) + 9) * -1em));
+  /* The rendered strip begins at −19, leaving headroom for a full final roll
+     before the component silently rebases to an identical copy of the digit. */
+  transform: translateY(calc((var(--slot) + 19) * -1em));
   transition: transform 620ms cubic-bezier(.22, .9, .28, 1.06);
   will-change: transform;
 }
+/* Rebase only after a roll has settled. The visible character is identical, so
+   suppressing this one transition prevents long-running positions from drifting. */
+.zf-odo-track[data-rebased] { transition-duration: 0ms; transition-delay: 0ms !important; }
 .zf-odo-track > span { display: block; height: 1em; line-height: 1em; text-align: center; }
 @media (prefers-reduced-motion: reduce) { .zf-odo-track { transition: none; } }
 
@@ -533,7 +512,9 @@
 
 .zf-inset {
   margin-top: 18px; padding: 14px; border-radius: 16px; background: hsl(var(--surface-2)); border: 1px solid hsl(var(--border));
-  flex: 1; display: flex; flex-direction: column; gap: 12px;
+  /* Content height, not fill: stretching the box only inflates the empty area
+     under the tiles when the row is tall. */
+  flex: 0 0 auto; display: flex; flex-direction: column; gap: 12px;
 }
 .zf-inset-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
 .zf-inset-head b { font-weight: 650; }
@@ -558,12 +539,15 @@
 .zf-status[data-state="off"] { color: hsl(var(--muted-foreground)); }
 .zf-status[data-state="off"] i { background: hsl(var(--border-strong)); }
 
-/* 2×2 stats */
+/* 2×2 stats. The grid stretches to the row height, so the tiles distribute that
+   height instead of padding it: label at the top, figure directly under it, foot
+   pinned to the bottom. The old `space-between` floated the figure into the
+   middle and left 80–120px of nothing on a short tile. */
 .zf-stats { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: var(--gap); }
-.zf-stat { padding: 18px; justify-content: space-between; gap: 14px; min-height: 150px; overflow: hidden; }
+.zf-stat { padding: 18px; justify-content: flex-start; gap: 10px; min-height: 0; overflow: hidden; }
 .zf-stat-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .zf-stat-val {
-  margin: 0; font: 600 clamp(22px, 2.1vw, 30px)/1.05 var(--ff-num); letter-spacing: -.03em; font-variant-numeric: tabular-nums;
+  margin: 0; font: 600 clamp(23px, 2.3vw, 33px)/1.05 var(--ff-num); letter-spacing: -.03em; font-variant-numeric: tabular-nums;
   min-height: 1.05em; overflow-wrap: anywhere;
 }
 /* The counting figure. Equal-width digits plus a reserved minimum keep the tile
@@ -573,6 +557,11 @@
   font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
 }
 .zf-stat-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-top: 10px; min-height: 24px; }
+/* The stat body owns the tile's leftover height. Only the unclassed wrapper gets
+   this — `HoldingsDayCard` puts a `.zf-daylist` grid there and must keep its own
+   layout. Content stays top-anchored: pinning the caption to the bottom edge left
+   a floating orphan line with 130px of nothing above it on a tall tile. */
+.zf-stat > div:last-child:not([class]) { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .zf-stat-cap { font-size: 12px; color: hsl(var(--muted-foreground)); }
 
 /* Today's top mover and laggard, inside the highlighted card. */
@@ -583,7 +572,7 @@
      two-column rows would otherwise stretch to the card's full length. */
   max-width: 26rem;
 }
-.zf-stat-hl .zf-stat-movers { border-top-color: hsl(0 0% 100% / .22); }
+.zf-stat-hl .zf-stat-movers { border-top-color: hsl(var(--on-night) / .18); }
 /* Two rows per mover: label and amount, then instrument and percentage. The
    narrow stat tile leaves the ticker no room beside the figure on one line. */
 .zf-stat-mover {
@@ -599,13 +588,16 @@
 .zf-stat-mover b { grid-column: 2; text-align: right; font-weight: 650; white-space: nowrap; }
 .zf-stat-mover em { font-style: normal; opacity: .82; white-space: nowrap; margin-left: auto; }
 .zf-stat-mover-none { grid-column: 1 / -1; opacity: .8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.zf-stat-hl .zf-stat-mover, .zf-stat-hl .zf-stat-mover-none { color: hsl(var(--on-brand)); }
+.zf-stat-hl .zf-stat-mover, .zf-stat-hl .zf-stat-mover-none { color: hsl(var(--on-night)); }
 
-/* Compact per-holding day change: ticker and percentage only. */
+/* Compact per-holding day change: ticker and percentage only. Bounded and
+   scrollable: a book can hold more rows than any tile can show, and the tile
+   clips rather than grows, so the list owns its own overflow instead of pushing
+   the last row under the card edge. */
 .zf-daylist {
-  list-style: none; margin: 12px 0 0; padding: 10px 0 0;
+  list-style: none; margin: 8px 0 0; padding: 8px 0 0;
   border-top: 1px solid hsl(var(--border) / .9);
-  display: grid; gap: 7px;
+  display: grid; gap: 6px; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
 }
 .zf-dayrow {
   display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
@@ -616,22 +608,15 @@
 .zf-dayrow[data-tone="up"] .zf-dayrow-pct { color: hsl(var(--profit)); }
 .zf-dayrow[data-tone="down"] .zf-dayrow-pct { color: hsl(var(--loss)); }
 
-/* The one highlight card: warm orange, white text */
-.zf-stat-hl {
-  border-color: transparent; color: hsl(var(--on-brand));
-  background: var(--grad-brand); box-shadow: var(--shadow-brand);
-}
-.zf-stat-hl::before {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background:
-    radial-gradient(14rem 9rem at 100% 0%, hsl(0 0% 100% / .20), transparent 62%),
-    repeating-linear-gradient(135deg, hsl(0 0% 100% / .06) 0 2px, transparent 2px 10px);
-}
+/* The hero's surface lives with the other glass recipes further down, after the
+   `.zf-card` base, so it can override the card fill it shares specificity with.
+   This block keeps only what the hero says about its own contents. */
+.zf-stat-hl { color: hsl(var(--on-night)); }
 .zf-stat-hl > * { position: relative; }
-.zf-stat-hl .zf-label, .zf-stat-hl .zf-stat-cap { color: hsl(0 0% 100% / .94); }
-.zf-stat-hl .zf-chip-ico { background: hsl(0 0% 0% / .22); color: hsl(var(--on-brand)); }
-.zf-stat-hl .zf-delta { background: hsl(0 0% 0% / .24); color: hsl(var(--on-brand)); }
-.zf-stat-hl:hover { border-color: transparent; }
+.zf-stat-hl .zf-label,
+.zf-stat-hl .zf-stat-cap { color: hsl(var(--on-night-dim)); }
+.zf-stat-hl .zf-chip-ico { background: hsl(var(--on-night) / .10); color: hsl(var(--on-night)); }
+.zf-stat-hl .zf-delta { background: hsl(var(--on-night) / .12); color: hsl(var(--on-night)); }
 
 /* P&L chart card */
 .zf-pnl { padding: var(--card-pad); gap: 14px; }
@@ -959,9 +944,376 @@
   .zf-tab-panel .overflow-x-auto { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 }
 
+/* ════════════════════════════════════════════════════════════════════════════
+   HOME ATMOSPHERE, GLASS AND REVEAL
+
+   The Home page is the only surface with an opening sequence, so its night
+   palette, glass recipe and typographic scale are scoped to `.zf` instead of
+   being pushed into the global tokens. Nothing here reaches the landing page or
+   the portfolio tabs except through tokens that are already cool.
+
+   The sequence is time-driven, not gesture-driven: night holds while the page
+   chrome fades in, then the sky resolves to daylight and the cards arrive as it
+   does. Reduced motion never enters night at all.
+   ════════════════════════════════════════════════════════════════════════════ */
+.zf {
+  --night-ink:   224 64% 5%;
+  --night-deep:  223 58% 9%;
+  --night-lift:  214 62% 17%;
+  --lucid-blue:  208 100% 63%;
+  --lucid-mist:  205 64% 74%;
+  --ease-lucid:  cubic-bezier(.16, .84, .24, 1);
+}
+
+/* ── Atmosphere stack: sky → aurora → mist → veil ───────────────────────────
+   Four layers, each with one job. The sky owns depth, the aurora owns slow
+   movement, the mist owns blending, and the veil owns the dissolve.
+
+   `night` is the lit state and `dawn` is the transition — dawn's targets are the
+   final daylight values, so the fade *is* the reveal. A partial dawn (sky held
+   at 64%, say) would leave a dark page with fully lit cards sitting on it, which
+   is the defect this whole sequence exists to avoid. `day` needs no rules of its
+   own: the component unmounts these layers when it settles, so dawn is the last
+   frame any of them is ever painted in. */
+.zf-atmos {
+  position: fixed; inset: 0; z-index: 0;
+  pointer-events: none; overflow: hidden;
+}
+
+/* A low light source below the horizon, a band of horizon glow, and a star field
+   that goes out before dawn — so night reads as a place, not a tinted rectangle. */
+.zf-atmos-sky {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(64% 42% at 50% 114%, hsl(203 92% 66% / .52), transparent 62%),
+    radial-gradient(126% 62% at 50% 102%, hsl(206 84% 54% / .34), transparent 68%),
+    radial-gradient(80% 58% at 84% -8%, hsl(var(--lucid-blue) / .16), transparent 60%),
+    radial-gradient(70% 50% at 6% 6%, hsl(222 70% 40% / .24), transparent 62%),
+    linear-gradient(180deg, hsl(var(--night-ink)) 0%, hsl(var(--night-deep)) 52%, hsl(var(--night-lift)) 100%);
+  transition: opacity 300ms var(--ease-lucid);
+}
+.zf-atmos-sky::before {
+  content: ''; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1.8px 1.8px at 14% 16%, hsl(210 90% 97% / .9), transparent 100%),
+    radial-gradient(1.5px 1.5px at 31% 9%,  hsl(210 90% 97% / .7), transparent 100%),
+    radial-gradient(2.1px 2.1px at 47% 22%, hsl(210 90% 97% / .6), transparent 100%),
+    radial-gradient(1.5px 1.5px at 63% 11%, hsl(210 90% 97% / .8), transparent 100%),
+    radial-gradient(1.9px 1.9px at 78% 26%, hsl(210 90% 97% / .55), transparent 100%),
+    radial-gradient(1.5px 1.5px at 89% 8%,  hsl(210 90% 97% / .65), transparent 100%);
+  opacity: .75;
+  transition: opacity 220ms var(--ease-lucid);
+}
+/* Stars go out first: they are the most "night" cue, so clearing them early is
+   what makes the sky read as lifting rather than merely thinning. */
+.zf-atmos[data-phase="dawn"] .zf-atmos-sky { opacity: 0; }
+.zf-atmos[data-phase="dawn"] .zf-atmos-sky::before { opacity: 0; }
+
+.zf-atmos-aurora {
+  position: absolute; inset: -10% -20%;
+  background:
+    radial-gradient(38% 26% at 28% 26%, hsl(var(--lucid-blue) / .18), transparent 70%),
+    radial-gradient(30% 22% at 72% 38%, hsl(var(--lucid-mist) / .12), transparent 72%);
+  filter: blur(28px) saturate(120%);
+  opacity: .9;
+  animation: zf-drift 26s ease-in-out infinite alternate;
+  transition: opacity 300ms var(--ease-lucid);
+}
+.zf-atmos[data-phase="dawn"] .zf-atmos-aurora { opacity: 0; }
+@keyframes zf-drift {
+  from { transform: translate3d(-2%, 0, 0) scale(1); }
+  to   { transform: translate3d(2%, -1.5%, 0) scale(1.05); }
+}
+
+.zf-atmos-mist {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(70% 50% at 50% 8%, hsl(var(--lucid-mist) / .12), transparent 70%),
+    radial-gradient(50% 40% at 10% 60%, hsl(var(--on-night) / .05), transparent 70%);
+  mix-blend-mode: screen;
+  transition: opacity 300ms var(--ease-lucid);
+}
+.zf-atmos[data-phase="dawn"] .zf-atmos-mist { opacity: 0; }
+
+/* Tile dissolve: 24 soft cells clearing in a diagonal wave, so the page lightens
+   from one corner instead of switching. The radial is deliberately wider than its
+   cell so neighbouring tiles overlap: at full night that makes one even field,
+   where a tighter gradient left each cell visible as a blob. */
+.zf-atmos-veil {
+  position: absolute; inset: 0;
+  display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(4, 1fr);
+  filter: blur(10px);
+}
+.zf-atmos-veil i {
+  display: block;
+  background: radial-gradient(160% 160% at 50% 50%, hsl(var(--night-deep) / .95) 58%, transparent 100%);
+  opacity: 1;
+  transition: opacity 260ms var(--ease-lucid);
+  transition-delay: calc((var(--t) * 12ms) + (var(--r) * 16ms));
+}
+.zf-atmos[data-phase="dawn"] .zf-atmos-veil i { opacity: 0; }
+
+@media (max-width: 768px) {
+  .zf-atmos-veil { filter: blur(6px); }
+  .zf-atmos-aurora { filter: blur(18px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zf-atmos-aurora { animation: none; }
+  .zf-atmos-sky,
+  .zf-atmos-sky::before,
+  .zf-atmos-aurora,
+  .zf-atmos-mist,
+  .zf-atmos-veil i { transition: none; }
+}
+
+/* ── Reveal: the sky first, then the cards ───────────────────────────────────
+   During night the page is chrome only — brand, heading, sub-line, in cool
+   on-night ink. The cards are gated on the phase rather than delayed, so they
+   start animating the instant the sky begins to lift and can never be a lit
+   rectangle sitting on a dark page. The gate disappears with the phase, so a
+   later section change runs the same entrance at normal speed. */
+.zf:has(.zf-atmos[data-phase="night"]) .zf-in { animation: none; opacity: 0; }
+/* Dawn is the handover. The sky clears inside 300ms and the first card starts at
+   320ms — so the numbers always arrive on daylight, never through it. The last
+   card finishes at 320 + 11×28 + 600 = 1228ms, inside the 1250ms dawn, which
+   means the flip to `day` never cuts an animation short. */
+.zf:has(.zf-atmos[data-phase="dawn"]) .zf-in {
+  animation: zf-card-in 600ms var(--ease-lucid) both;
+  animation-delay: calc(320ms + min(var(--i, 0), 11) * 28ms);
+}
+.zf:has(.zf-atmos[data-phase="night"]) .zf-h1,
+.zf:has(.zf-atmos[data-phase="night"]) .zf-sub,
+.zf:has(.zf-atmos[data-phase="night"]) .zf-brand,
+.zf:has(.zf-atmos[data-phase="night"]) .zf-brand-name { color: hsl(var(--on-night)); }
+.zf:has(.zf-atmos[data-phase="night"]) .zf-sub strong { color: hsl(var(--on-night)); }
+.zf:has(.zf-atmos[data-phase="night"]) .zf-page-head {
+  animation: zf-chrome-in 650ms var(--ease-lucid) both;
+}
+/* Chips are opaque by default, which makes them the brightest thing on a night
+   sky. They dim with the chrome and come back as the light does. */
+.zf .zf-chip {
+  transition: background-color 400ms var(--ease-lucid), color 400ms var(--ease-lucid);
+}
+.zf:has(.zf-atmos[data-phase="night"]) .zf-chip {
+  background: hsl(var(--on-night) / .10);
+  color: hsl(var(--on-night));
+}
+
+/* The rest of the chrome. The nav indicator is a near-black pill in daylight, so
+   at night it reverses into on-night glass; the market chip, icon buttons and
+   refresh instrument drop their light fills for the same reason. Everything here
+   is bounded by the night phase, so the page is back to its normal furniture the
+   moment dawn starts. The nav items and icon buttons keep their own fast
+   interaction transitions — slowing them here would make hover feel sticky. */
+.zf .zf-market { transition: background-color 400ms var(--ease-lucid), color 400ms var(--ease-lucid); }
+.zf:has(.zf-atmos[data-phase="night"]) .zf-nav-indicator {
+  background: hsl(var(--on-night) / .13);
+  box-shadow: inset 0 0 0 1px hsl(var(--on-night) / .16);
+}
+.zf:has(.zf-atmos[data-phase="night"]) .zf-nav-item { color: hsl(var(--on-night) / .60); }
+.zf:has(.zf-atmos[data-phase="night"]) .zf-nav-item:hover {
+  color: hsl(var(--on-night)); background: hsl(var(--on-night) / .08);
+}
+.zf:has(.zf-atmos[data-phase="night"]) .zf-nav-item[aria-current="page"],
+.zf:has(.zf-atmos[data-phase="night"]) .zf-nav-item[aria-current="page"]:hover {
+  color: hsl(var(--on-night)); background: transparent;
+}
+.zf:has(.zf-atmos[data-phase="night"]) .zf-market {
+  background: hsl(var(--on-night) / .09);
+  color: hsl(var(--on-night));
+}
+.zf:has(.zf-atmos[data-phase="night"]) .zf-market .zf-mono { color: hsl(var(--on-night-dim)); }
+.zf:has(.zf-atmos[data-phase="night"]) .zf-iconbtn { color: hsl(var(--on-night-dim)); }
+.zf:has(.zf-atmos[data-phase="night"]) .zf-iconbtn:hover {
+  background: hsl(var(--on-night) / .10); color: hsl(var(--on-night));
+}
+/* The arc is chrome, so it keeps its blue on the night sky — a white arc there
+   would read as a second icon rather than the same control. Only the hover
+   wash needs lifting, because a blue tint on navy disappears. */
+.zf:has(.zf-atmos[data-phase="night"]) .zf-refresh:hover {
+  background: hsl(var(--on-night) / .10);
+}
+@keyframes zf-chrome-in {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Glass discipline ───────────────────────────────────────────────────────
+   Three recipes, three jobs: cards are near-opaque and still; the top bar and
+   rail are genuinely translucent and blurred; nested panels are flat insets and
+   never a second floating card. Every highlight is a token so dark mode gets a
+   cool hairline instead of a white rim. */
+.zf-card {
+  border-radius: 22px;
+  border-color: hsl(var(--border) / .85);
+  background: var(--card-sheen), hsl(var(--card) / .965);
+  box-shadow: var(--card-rim), var(--card-veil), var(--shadow-card);
+}
+
+/* The hero: Today's P&L. Deep night glass in both themes — the page's single
+   dominant figure, and the one surface where the atmosphere shows through. Not
+   a full-bleed orange slab: orange stays an accent while the surface belongs to
+   the cool ink family. Declared after `.zf-card` because it shares specificity
+   with it and must win. */
+.zf-card.zf-stat-hl {
+  border-color: hsl(var(--on-night) / .12);
+  color: hsl(var(--on-night));
+  background:
+    radial-gradient(118% 96% at 88% -12%, hsl(var(--lucid-blue) / .32), transparent 58%),
+    radial-gradient(96% 80% at 4% 112%, hsl(206 78% 46% / .24), transparent 62%),
+    linear-gradient(162deg, hsl(var(--night-deep)) 0%, hsl(var(--night-ink)) 100%);
+  box-shadow: var(--night-rim), 0 26px 54px -30px hsl(222 80% 6% / .85);
+}
+.zf-card.zf-stat-hl::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(16rem 10rem at 100% 0%, hsl(var(--on-night) / .10), transparent 64%);
+}
+.zf-card.zf-stat-hl:hover { border-color: hsl(var(--on-night) / .2); }
+.zf-top .zf-glass,
+.zf-rail {
+  background: hsl(var(--glass) / .88);
+  border-color: hsl(var(--glass-border-strong));
+  box-shadow: var(--glass-highlight), 0 12px 30px -22px hsl(222 50% 8% / .45);
+}
+.zf-pnl-panel,
+.zf-inset {
+  background: hsl(var(--surface-2) / .85);
+  box-shadow: inset 0 1px 0 hsl(var(--border) / .55);
+}
+
+/* ── Type scale: one dominant figure ────────────────────────────────────────
+   Today's P&L is the largest number on the page; portfolio value steps down so
+   the two stop competing at the same weight. */
+.zf-balance-val { font-size: clamp(30px, 2.9vw, 38px); }
+.zf-stat-hl .zf-stat-val {
+  font-size: clamp(34px, 3.3vw, 48px);
+  line-height: 1.04;
+  letter-spacing: -.035em;
+  font-weight: 600;
+}
+.zf-stat-val { letter-spacing: -.02em; }
+
+/* ── Home refinement: blue-white daylight, surfaces with specific jobs ──────
+   This stays on Overview only. Portfolio and the rest of the dashboard keep the
+   product-wide tokens, while the home screen carries the Lucid-inspired sky into
+   its chrome and data hierarchy without making the data itself translucent. */
+.zf-home {
+  --brand: 207 92% 56%;
+  --brand-strong: 208 78% 38%;
+  --brand-ink: 209 72% 30%;
+  --ring: 207 88% 46%;
+  --chart-1: 207 92% 56%;
+  --chart-ink: 214 28% 18%;
+  --shadow-brand: 0 22px 44px -24px hsl(207 78% 38% / .42);
+  --grad-brand: linear-gradient(135deg, hsl(207 92% 57%), hsl(213 72% 40%));
+}
+.zf-home .zf-h1 {
+  font-family: var(--ff-body);
+  font-size: clamp(27px, 2.7vw, 38px);
+  font-weight: 500;
+  letter-spacing: -.035em;
+  line-height: 1.1;
+}
+.zf-home .zf-h1 em {
+  color: hsl(var(--brand-ink));
+  font-family: var(--ff-display);
+  font-size: .91em;
+  font-weight: 400;
+}
+.zf-home .zf-sub { margin-top: 6px; font-size: 13.5px; }
+
+/* Information is available from the first frame. The automatic night-to-day
+   sequence remains behind it, while this persistent marker prevents card
+   entrances from re-running when dawn settles or the user changes sections. */
+.zf-home:has(.zf-atmos[data-intro]) .zf-in {
+  animation: none;
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+.zf-home:has(.zf-atmos[data-phase="night"]) .zf-card {
+  border-color: hsl(210 70% 96% / .24);
+  box-shadow: 0 18px 42px -30px hsl(222 70% 4% / .72), inset 0 1px 0 hsl(210 80% 100% / .18);
+}
+
+/* Portfolio value is the stable ledger surface: pale, substantial and quiet. */
+.zf-home .zf-balance {
+  border-radius: 24px;
+  background:
+    radial-gradient(110% 72% at 100% 0%, hsl(204 100% 88% / .46), transparent 58%),
+    linear-gradient(145deg, hsl(0 0% 100% / .98), hsl(207 55% 98% / .96));
+  border-color: hsl(209 38% 84% / .92);
+  box-shadow: 0 22px 46px -36px hsl(216 42% 21% / .34), inset 0 1px 0 hsl(0 0% 100% / .96);
+}
+/* Supporting metrics are deliberately flatter, so the P&L remains the one
+   dark, luminous surface rather than competing with four identical cards. */
+.zf-home .zf-stat:not(.zf-stat-hl) {
+  border-radius: 18px;
+  background: linear-gradient(160deg, hsl(0 0% 100% / .94), hsl(208 42% 97% / .92));
+  border-color: hsl(210 28% 87% / .9);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / .82), 0 14px 28px -28px hsl(218 38% 18% / .30);
+}
+.zf-home .zf-card.zf-stat-hl {
+  border-radius: 20px;
+  background:
+    radial-gradient(118% 96% at 88% -12%, hsl(202 100% 72% / .38), transparent 58%),
+    radial-gradient(96% 80% at 4% 112%, hsl(215 82% 52% / .28), transparent 62%),
+    linear-gradient(162deg, hsl(220 60% 11%) 0%, hsl(226 66% 6%) 100%);
+}
+/* The chart is a calibrated analysis field, not another floating white card. */
+.zf-home .zf-pnl {
+  border-radius: 24px;
+  background: linear-gradient(155deg, hsl(207 62% 98%), hsl(212 42% 96%));
+  border-color: hsl(210 36% 83% / .95);
+  box-shadow: 0 22px 46px -38px hsl(216 40% 20% / .28), inset 0 1px 0 hsl(0 0% 100% / .86);
+}
+.zf-home .zf-pnl-panel {
+  background: hsl(210 46% 99% / .78);
+  border-color: hsl(210 34% 85% / .95);
+  box-shadow: inset 0 1px 0 hsl(0 0% 100% / .90);
+}
+.zf-home .zf-pnl-chart .recharts-text { fill: hsl(215 18% 35%); }
+.zf-home .zf-pnl-panel .recharts-cartesian-grid line { stroke: hsl(212 28% 58% / .20); }
+/* Holdings is the quiet ledger: straight data edges and a restrained top light. */
+.zf-home .zf-holdings {
+  border-radius: 20px;
+  background: linear-gradient(180deg, hsl(0 0% 100% / .98), hsl(210 36% 98% / .94));
+  border-color: hsl(210 28% 86% / .94);
+  box-shadow: inset 0 3px 0 hsl(207 92% 56% / .54), 0 18px 38px -34px hsl(216 36% 18% / .26);
+}
+.zf-home .zf-price-clock { border-color: hsl(207 72% 46% / .20); background: hsl(207 88% 97% / .78); }
+
+.dark .zf-home {
+  --brand: 202 94% 68%;
+  --brand-strong: 204 76% 50%;
+  --brand-ink: 203 96% 77%;
+  --ring: 202 94% 68%;
+  --chart-1: 202 94% 68%;
+  --chart-ink: 208 32% 88%;
+}
+.dark .zf-home .zf-h1 em { color: hsl(var(--brand-ink)); }
+.dark .zf-home .zf-balance,
+.dark .zf-home .zf-stat:not(.zf-stat-hl),
+.dark .zf-home .zf-holdings {
+  background: linear-gradient(155deg, hsl(218 36% 14% / .98), hsl(222 33% 10% / .98));
+  border-color: hsl(207 48% 68% / .20);
+  box-shadow: inset 0 1px 0 hsl(208 70% 100% / .09), 0 22px 46px -34px hsl(222 70% 3% / .76);
+}
+.dark .zf-home .zf-pnl {
+  background: linear-gradient(155deg, hsl(216 38% 14%), hsl(222 36% 9%));
+  border-color: hsl(207 52% 70% / .24);
+}
+.dark .zf-home .zf-pnl-panel {
+  background: hsl(214 34% 12% / .88);
+  border-color: hsl(207 42% 72% / .24);
+}
+.dark .zf-home .zf-pnl-chart .recharts-text { fill: hsl(208 30% 82%); }
+.dark .zf-home .zf-pnl-panel .recharts-cartesian-grid line { stroke: hsl(207 36% 82% / .22); }
+.dark .zf-home .zf-price-clock { background: hsl(208 58% 20% / .45); border-color: hsl(204 88% 72% / .26); color: hsl(207 36% 92%); }
+
 /* ════════ MOTION ════════ */
 @keyframes zf-spin { to { transform: rotate(360deg); } }
-@keyframes zf-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @keyframes zf-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes zf-pulse { 50% { opacity: .55; } }
 /* Section swap: outgoing body drifts up while fading to a faint layer, then the
@@ -970,9 +1322,18 @@
    Timing is mirrored by SECTION_OUT_MS / SECTION_IN_MS in pages/Index.tsx. */
 @keyframes zf-section-out { to { opacity: .4; transform: translate3d(0, -6px, 0); } }
 @keyframes zf-section-in { from { opacity: .4; transform: translate3d(0, 10px, 0); } to { opacity: 1; transform: none; } }
-/* Entrance runs once, staggered in reading order (≤ 240ms total). */
+/* Entrance runs once, staggered in reading order (12 slots × 45ms; the first
+   screenful lands inside 240ms). Blur-up rather than a slide — the card resolves
+   into focus, which reads as depth instead of content arriving late. */
+@keyframes zf-card-in {
+  from { opacity: 0; transform: translate3d(0, 16px, 0) scale(.99); filter: blur(6px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
 @media (prefers-reduced-motion: no-preference) {
-  .zf-in { animation: zf-rise 420ms var(--ease-out) backwards; animation-delay: calc(var(--i, 0) * 45ms); }
+  .zf-in {
+    animation: zf-card-in 620ms var(--ease-lucid) both;
+    animation-delay: calc(min(var(--i, 0), 11) * 45ms);
+  }
   .zf-section-body[data-phase="leaving"] { animation: zf-section-out var(--dur-section-out) ease-in both; }
   .zf-section-body[data-phase="entering"] { animation: zf-section-in var(--dur-section-in) var(--ease-section) both; }
   .zf-empty-state { animation: zf-fade var(--dur-slow) ease both; }
@@ -1484,172 +1845,3 @@
   .zf-outcome-donut { max-width: 170px; margin: 0 auto; }
   .zf-filters { padding: 12px; }
 }
-
-/* Daylight luminance: the archive navy clears, but a cool veil stays so the
-   settled Home still reads as Lucid rather than a plain warm page. It sits above
-   the dot grid and below every card, so it can never wash out financial text. */
-.zf-atmos::after {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  background:
-    radial-gradient(58% 34% at 76% -8%, hsl(208 100% 63% / .13), transparent 62%),
-    radial-gradient(44% 30% at 8% -2%, hsl(214 90% 62% / .08), transparent 68%),
-    linear-gradient(180deg, hsl(210 60% 60% / .045), transparent 46%);
-  opacity: .95;
-  transition: opacity 1400ms var(--ease-lucid);
-}
-@media (prefers-reduced-motion: reduce) { .zf-atmos::after { transition: none; } }
-
-/* Layer order: the atmosphere must sit above .zf's own background (a negative
-   z-index child is painted behind it in Chromium), below the dot grid, and below
-   the scrolling stage so it can never cover a card. */
-.zf-atmos { z-index: 0; }
-.zf::before { z-index: 1; }
-
-/* The orbit border alone can lose the cascade against the base ring in some
-   engines; the inset glow guarantees the failure state reads red. */
-.zf-refresh[data-phase="error"] .zf-refresh-orbit {
-  box-shadow: inset 0 0 12px hsl(var(--loss) / .28), 0 0 0 1px hsl(var(--loss) / .18);
-}
-/* ════════════════════════════════════════════════════════════════════════════
-   LUCID LAYER — Home atmosphere, glass and reveal language
-   ════════════════════════════════════════════════════════════════════════════ */
-
-.zf {
-  --night-ink: 224 64% 4%;
-  --night-deep: 223 58% 8%;
-  --night-lift: 214 62% 16%;
-  --lucid-blue: 208 100% 63%;
-  --lucid-mist: 205 64% 74%;
-  --ease-lucid: cubic-bezier(.16, .84, .24, 1);
-}
-
-/* ── Atmosphere stack: sky → aurora → mist → veil ─────────────────────────── */
-.zf-atmos {
-  position: fixed; inset: 0; z-index: 0;
-  pointer-events: none; overflow: hidden;
-}
-.zf-atmos-sky {
-  position: absolute; inset: 0;
-  background:
-    radial-gradient(120% 90% at 50% 118%, hsl(206 78% 46% / .55), transparent 62%),
-    radial-gradient(80% 60% at 82% -8%, hsl(var(--lucid-blue) / .22), transparent 60%),
-    radial-gradient(70% 50% at 8% 8%, hsl(222 70% 42% / .18), transparent 62%),
-    linear-gradient(180deg, hsl(var(--night-ink)) 0%, hsl(var(--night-deep)) 54%, hsl(var(--night-lift)) 100%);
-  transition: opacity 1800ms var(--ease-lucid);
-}
-.zf-atmos[data-phase="dawn"] .zf-atmos-sky { opacity: .55; }
-.zf-atmos[data-phase="day"] .zf-atmos-sky { opacity: 0; }
-
-.zf-atmos-aurora {
-  position: absolute; inset: -10% -20%;
-  background:
-    radial-gradient(38% 26% at 28% 26%, hsl(var(--lucid-blue) / .18), transparent 70%),
-    radial-gradient(30% 22% at 72% 38%, hsl(var(--lucid-mist) / .12), transparent 72%);
-  filter: blur(28px) saturate(120%);
-  opacity: .9;
-  animation: zf-drift 26s ease-in-out infinite alternate;
-  transition: opacity 1600ms var(--ease-lucid);
-}
-.zf-atmos[data-phase="day"] .zf-atmos-aurora { opacity: 0; }
-@keyframes zf-drift {
-  from { transform: translate3d(-2%, 0, 0) scale(1); }
-  to   { transform: translate3d(2%, -1.5%, 0) scale(1.05); }
-}
-
-.zf-atmos-mist {
-  position: absolute; inset: 0;
-  background:
-    radial-gradient(70% 50% at 50% 8%, hsl(var(--lucid-mist) / .12), transparent 70%),
-    radial-gradient(50% 40% at 10% 60%, hsl(0 0% 100% / .05), transparent 70%);
-  mix-blend-mode: screen;
-  transition: opacity 1600ms var(--ease-lucid);
-}
-.zf-atmos[data-phase="day"] .zf-atmos-mist { opacity: 0; }
-
-/* Tile dissolve: 24 soft cells clearing in a gentle diagonal wave. */
-.zf-atmos-veil {
-  position: absolute; inset: 0;
-  display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(4, 1fr);
-  filter: blur(10px);
-}
-.zf-atmos-veil i {
-  display: block;
-  background: radial-gradient(120% 120% at 50% 50%, hsl(var(--night-deep) / .92) 42%, transparent 78%);
-  opacity: 1;
-  transition: opacity 900ms var(--ease-lucid);
-  transition-delay: calc((var(--t) * 40ms) + (var(--r) * 55ms));
-}
-.zf-atmos[data-phase="dawn"] .zf-atmos-veil i { opacity: .45; }
-.zf-atmos[data-phase="day"] .zf-atmos-veil i { opacity: 0; }
-.zf-atmos[data-phase="day"] .zf-atmos-veil { visibility: hidden; }
-
-@media (prefers-reduced-motion: reduce) {
-  .zf-atmos-aurora { animation: none; }
-  .zf-atmos-sky, .zf-atmos-aurora, .zf-atmos-mist, .zf-atmos-veil i { transition: none; }
-}
-
-/* ── Glass foundation ──────────────────────────────────────────────────────── */
-.zf-card {
-  border-radius: 22px;
-  border-color: hsl(var(--border) / .8);
-  background: linear-gradient(158deg, hsl(var(--card) / .97), hsl(var(--card) / .88));
-  box-shadow:
-    inset 0 1px 0 hsl(0 0% 100% / .6),
-    inset 0 0 0 1px hsl(0 0% 100% / .12),
-    0 20px 44px -32px hsl(220 45% 16% / .45);
-}
-.zf-top .zf-glass,
-.zf-rail {
-  background: hsl(var(--glass) / .92);
-  border-color: hsl(var(--glass-border-strong));
-  box-shadow: var(--glass-highlight), 0 12px 30px -22px hsl(220 50% 10% / .55);
-}
-.zf-stat-hl {
-  background:
-    radial-gradient(120% 90% at 88% -10%, hsl(0 0% 100% / .22), transparent 58%),
-    var(--grad-brand);
-  box-shadow: 0 22px 46px -26px hsl(var(--brand) / .55), inset 0 1px 0 hsl(0 0% 100% / .22);
-}
-
-/* ── Typography hierarchy ──────────────────────────────────────────────────── */
-.zf-balance-val,
-.zf-stat-hl .zf-stat-val {
-  font-size: clamp(40px, 3.7vw, 58px);
-  line-height: 1.02;
-  letter-spacing: -.035em;
-  font-weight: 600;
-}
-.zf-stat-hl .zf-label { letter-spacing: .06em; text-transform: uppercase; font-size: 11.5px; }
-.zf-stat-val { letter-spacing: -.02em; }
-.zf-card-title { letter-spacing: -.012em; }
-.zf-h1 { letter-spacing: -.025em; }
-
-/* ── Card reveal: blur-up, coordinated, once per mount ─────────────────────── */
-@keyframes zf-card-in {
-  from { opacity: 0; transform: translate3d(0, 18px, 0) scale(.988); filter: blur(7px); }
-  to   { opacity: 1; transform: none; filter: blur(0); }
-}
-.zf-in {
-  animation: zf-card-in 780ms var(--ease-lucid) both;
-  animation-delay: calc(min(var(--i, 0), 11) * 48ms);
-}
-@media (prefers-reduced-motion: reduce) {
-  .zf-in { animation: none; }
-}
-
-@media (max-width: 768px) {
-  .zf-atmos-veil { filter: blur(6px); }
-  .zf-atmos-aurora { filter: blur(18px); }
-}
-
-.zf-atmos { z-index: 0; }
-.zf::before { z-index: 1; }
-
-/* Intro legibility: while the sky is dark, the page chrome inverts to the
-   on-night ink so headings never sit dark-on-dark. Cards stay opaque, so only
-   the heading, sub-line and brand need this. */
-.zf:has(.zf-atmos[data-phase="night"]) .zf-h1,
-.zf:has(.zf-atmos[data-phase="night"]) .zf-sub,
-.zf:has(.zf-atmos[data-phase="night"]) .zf-brand,
-.zf:has(.zf-atmos[data-phase="night"]) .zf-brand-name { color: hsl(210 40% 98%); }
-.zf:has(.zf-atmos[data-phase="night"]) .zf-sub strong { color: hsl(0 0% 100%); }

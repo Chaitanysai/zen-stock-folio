@@ -60,7 +60,8 @@ export interface UseLivePricesResult {
   lastUpdated: string | null;
   error: string | null;
   marketOpen: boolean;
-  refresh: () => void;
+  /** Resolves to the terminal result of this specific fetch attempt. */
+  refresh: () => Promise<"success" | "error" | "skipped">;
 }
 
 const MODE_RANK: Record<DataMode, number> = { realtime: 0, delayed: 1, eod: 2, unknown: 3 };
@@ -123,12 +124,12 @@ export function useLivePrices(instruments: Instrument[]): UseLivePricesResult {
   const inFlightRef = useRef<AbortController | null>(null);
   const lastFetchRef = useRef<number>(0);
 
-  const fetchPrices = useCallback(async () => {
-    if (!instrumentKeyString) return;
+  const fetchPrices = useCallback(async (): Promise<"success" | "error" | "skipped"> => {
+    if (!instrumentKeyString) return "skipped";
 
     // Collapse duplicate triggers from several mounted consumers.
     const now = Date.now();
-    if (now - lastFetchRef.current < 800) return;
+    if (now - lastFetchRef.current < 800) return "skipped";
     lastFetchRef.current = now;
 
     inFlightRef.current?.abort();
@@ -154,13 +155,15 @@ export function useLivePrices(instruments: Instrument[]): UseLivePricesResult {
 
       const withQuote = Object.values(merged).some((envelope) => envelope.quote !== null);
       setError(withQuote ? null : notes[0] ?? "No price data returned for these symbols.");
+      return withQuote ? "success" : "error";
     } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") return;
+      if (caught instanceof DOMException && caught.name === "AbortError") return "skipped";
       setError(
         caught instanceof MarketDataApiError
           ? caught.message
           : "Live prices are temporarily unavailable. Please try again in a moment.",
       );
+      return "error";
     } finally {
       setLoading(false);
     }

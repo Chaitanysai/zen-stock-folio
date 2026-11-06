@@ -24,25 +24,25 @@
 @layer base {
   :root {
     /* ── Surfaces & text ── */
-    --background:           40 20% 95%;
-    --foreground:           24 14% 10%;
+    --background:           220 26% 96.5%;
+    --foreground:           222 32% 11%;
     --card:                 0 0% 100%;
-    --card-foreground:      24 14% 10%;
+    --card-foreground:      222 32% 11%;
     --popover:              0 0% 100%;
-    --popover-foreground:   24 14% 10%;
-    --surface-2:            40 22% 97%;
-    --surface-3:            38 16% 93%;
-    --secondary:            38 18% 94%;
-    --secondary-foreground: 24 10% 20%;
-    --muted:                38 16% 93%;
-    --muted-foreground:     28 8% 37%;     /* 6.4:1 on white, 5.5:1 on surface-3 */
-    --faint-foreground:     28 6% 41%;     /* placeholders / captions, ≥4.5:1 */
+    --popover-foreground:   222 32% 11%;
+    --surface-2:            220 30% 99%;
+    --surface-3:            220 20% 94.5%;
+    --secondary:            220 22% 95%;
+    --secondary-foreground: 222 20% 22%;
+    --muted:                220 20% 95%;
+    --muted-foreground:     220 12% 39%;   /* 6.6:1 on white, 5.6:1 on surface-3 */
+    --faint-foreground:     220 10% 44%;   /* placeholders / captions, ≥4.5:1 */
 
     /* ── Action colours ── near-black primary, orange accent */
     --primary:              24 14% 10%;
     --primary-foreground:   40 30% 97%;
-    --accent:               16 80% 95%;    /* hover tint (shadcn semantics) */
-    --accent-foreground:    14 78% 34%;
+    --accent:               214 40% 94%;    /* hover tint (shadcn semantics) */
+    --accent-foreground:    222 30% 16%;
     --brand:                16 88% 59%;    /* ≈ #F26B3A */
     --brand-strong:         15 82% 42%;    /* fill that carries white text (5:1) */
     --brand-ink:            14 78% 35%;    /* orange text on white / ivory (6+:1) */
@@ -52,9 +52,9 @@
     --destructive-foreground: 0 0% 100%;
 
     /* ── Borders & focus ── */
-    --border:               36 14% 88%;
-    --border-strong:        34 11% 78%;
-    --input:                30 8% 50%;     /* control boundary ≥3:1 on white + page */
+    --border:               220 20% 90%;
+    --border-strong:        220 15% 79%;
+    --input:                220 10% 52%;   /* control boundary ≥3:1 on white + page */
     --ring:                 16 82% 46%;
     --radius:               0.75rem;
     --radius-card:          1.25rem;
@@ -69,21 +69,32 @@
 
     /* ── Charts ── orange first; `--chart-ink` is the "dark bar" colour */
     --chart-1:              16 88% 59%;
-    --chart-2:              24 12% 14%;
+    --chart-2:              222 22% 16%;
     --chart-3:              38 92% 50%;
     --chart-4:              190 42% 36%;
-    --chart-5:              28 9% 52%;
-    --chart-ink:            24 14% 12%;
-    --chart-grid:           24 14% 10% / .07;
+    --chart-5:              220 10% 52%;
+    --chart-ink:            222 28% 14%;
+    --chart-grid:           222 30% 12% / .07;
 
     /* ── Glass (nav + toolbar groups; cards stay opaque) ── */
-    --glass:                0 0% 100% / .62;
-    --glass-surface:        0 0% 100% / .86;
-    --glass-elevated:       0 0% 100% / .94;
-    --glass-overlay:        0 0% 100% / .92;
-    --glass-border:         30 20% 30% / .14;
-    --glass-border-strong:  30 20% 30% / .22;
+    --glass:                212 60% 99% / .62;
+    --glass-surface:        212 60% 99% / .86;
+    --glass-elevated:       212 60% 99% / .94;
+    --glass-overlay:        212 60% 99% / .92;
+    --glass-border:         220 30% 30% / .13;
+    --glass-border-strong:  220 30% 30% / .20;
     --glass-highlight:      inset 0 1px 0 hsl(0 0% 100% / .8);
+    /* Card surfaces: near-opaque, cool, one hairline and one soft shadow. The
+       top rim comes from a token so dark mode never inherits a white edge. */
+    --card-rim:             inset 0 1px 0 hsl(0 0% 100% / .72);
+    --card-veil:            inset 0 0 0 1px hsl(0 0% 100% / .34);
+    --card-sheen:           linear-gradient(168deg, hsl(0 0% 100% / .55), hsl(210 60% 98% / 0) 46%);
+    --sheen-spot:           hsl(0 0% 100% / .45);
+    --shadow-card:          0 18px 40px -30px hsl(222 45% 16% / .42);
+    /* On-night ink for the hero card, which keeps its dark glass in both themes. */
+    --on-night:             210 40% 98%;
+    --on-night-dim:         210 28% 78%;
+    --night-rim:            inset 0 1px 0 hsl(210 70% 100% / .14);
     --blur-sm: 8px;
     --blur-md: 14px;
     --blur-lg: 16px;
@@ -96,28 +107,30 @@
     /* Sheen = the glass highlight layers above the fill: warm orange bloom top-left, soft white falloff.
        Edge = inner light that separates the panel from the page. Shared by menus, popovers, dialogs. */
     --glass-sheen:
-      radial-gradient(120% 90% at 0% 0%, hsl(var(--brand) / .20), transparent 60%),
-      linear-gradient(160deg, hsl(0 0% 100% / .65), hsl(36 80% 96% / 0) 55%);
+      radial-gradient(120% 90% at 0% 0%, hsl(var(--brand) / .14), transparent 60%),
+      linear-gradient(160deg, hsl(0 0% 100% / .65), hsl(214 60% 98% / 0) 55%);
     --glass-edge: inset 0 1px 0 hsl(0 0% 100% / .95), inset 0 0 0 1px hsl(0 0% 100% / .38);
-    --shadow-pop: 0 1px 2px hsl(24 30% 20% / .06), 0 10px 24px -8px hsl(24 30% 20% / .18), 0 28px 56px -20px hsl(24 30% 20% / .26);
+    --shadow-pop: 0 1px 2px hsl(222 40% 20% / .06), 0 10px 24px -8px hsl(222 40% 20% / .18), 0 28px 56px -20px hsl(222 40% 20% / .26);
 
     /* ── Elevation ── */
-    --shadow-1: 0 1px 2px hsl(24 30% 20% / .05), 0 1px 1px hsl(24 30% 20% / .03);
-    --shadow-2: 0 14px 32px -16px hsl(24 30% 20% / .20);
-    --shadow-3: 0 28px 60px -26px hsl(24 30% 20% / .30);
-    --shadow-brand: 0 22px 40px -22px hsl(15 82% 42% / .65);
-    --scrim: 24 20% 8%;
+    --shadow-1: 0 1px 2px hsl(222 40% 20% / .05), 0 1px 1px hsl(222 40% 20% / .03);
+    --shadow-2: 0 14px 32px -16px hsl(222 40% 20% / .20);
+    --shadow-3: 0 28px 60px -26px hsl(222 40% 20% / .30);
+    --shadow-brand: 0 22px 40px -22px hsl(15 82% 42% / .55);
+    --scrim: 222 30% 8%;
     --focus-ring: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
 
     /* ── Gradients & atmosphere ── */
-    --grad-primary:       linear-gradient(180deg, hsl(24 12% 17%) 0%, hsl(24 14% 9%) 100%);
-    --grad-primary-hover: linear-gradient(180deg, hsl(24 12% 23%) 0%, hsl(24 14% 13%) 100%);
+    --grad-primary:       linear-gradient(180deg, hsl(222 22% 18%) 0%, hsl(222 30% 10%) 100%);
+    --grad-primary-hover: linear-gradient(180deg, hsl(222 22% 24%) 0%, hsl(222 30% 14%) 100%);
     --grad-brand:         linear-gradient(135deg, hsl(17 82% 43%) 0%, hsl(12 80% 36%) 100%);
+    /* Cool page light. One faint warm bloom at the top right keeps the orange
+       accent anchored to the surface instead of floating above it. */
     --atmosphere:
-      radial-gradient(46rem 28rem at 88% -6%,  hsl(var(--brand) / .14), transparent 62%),
-      radial-gradient(40rem 26rem at -4% 4%,   hsl(36 95% 72% / .16), transparent 60%),
-      radial-gradient(36rem 24rem at 50% 112%, hsl(var(--brand) / .06), transparent 62%);
-    --dot: 24 14% 10% / .10;
+      radial-gradient(46rem 28rem at 88% -6%,  hsl(var(--brand) / .09), transparent 62%),
+      radial-gradient(44rem 28rem at -4% 4%,   hsl(210 92% 70% / .20), transparent 60%),
+      radial-gradient(38rem 26rem at 50% 112%, hsl(212 80% 64% / .12), transparent 62%);
+    --dot: 222 30% 12% / .09;
 
     /* ── Motion ── */
     --dur-fast: 120ms;
@@ -141,13 +154,13 @@
     --z-tip: 120;
 
     /* ── Sidebar (shadcn sidebar component) ── */
-    --sidebar-background: 40 20% 97%;
-    --sidebar-foreground: 24 10% 24%;
-    --sidebar-primary: 24 14% 10%;
-    --sidebar-primary-foreground: 40 30% 97%;
-    --sidebar-accent: 38 18% 93%;
-    --sidebar-accent-foreground: 24 14% 10%;
-    --sidebar-border: 36 14% 88%;
+    --sidebar-background: 220 30% 98%;
+    --sidebar-foreground: 222 16% 26%;
+    --sidebar-primary: 222 32% 11%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 220 22% 94%;
+    --sidebar-accent-foreground: 222 32% 11%;
+    --sidebar-border: 220 20% 90%;
     --sidebar-ring: 16 82% 46%;
 
     /* ── Colour-value aliases ──
@@ -195,33 +208,33 @@
   }
 
   .dark {
-    --background:           24 9% 7%;
-    --foreground:           36 22% 94%;
-    --card:                 24 8% 10.5%;
-    --card-foreground:      36 22% 94%;
-    --popover:              24 8% 12.5%;
-    --popover-foreground:   36 22% 94%;
-    --surface-2:            24 8% 13.5%;
-    --surface-3:            24 8% 17%;
-    --secondary:            24 8% 15%;
-    --secondary-foreground: 34 16% 82%;
-    --muted:                24 8% 15%;
-    --muted-foreground:     30 9% 66%;
-    --faint-foreground:     30 8% 60%;
+    --background:           222 30% 7%;
+    --foreground:           210 30% 95%;
+    --card:                 222 26% 10%;
+    --card-foreground:      210 30% 95%;
+    --popover:              222 26% 12.5%;
+    --popover-foreground:   210 30% 95%;
+    --surface-2:            222 24% 13.5%;
+    --surface-3:            222 22% 17%;
+    --secondary:            222 22% 15%;
+    --secondary-foreground: 214 20% 82%;
+    --muted:                222 22% 15%;
+    --muted-foreground:     216 14% 66%;
+    --faint-foreground:     216 12% 60%;
 
-    --primary:              36 22% 94%;
-    --primary-foreground:   24 12% 9%;
-    --accent:               16 28% 17%;
-    --accent-foreground:    18 92% 76%;
+    --primary:              210 30% 95%;
+    --primary-foreground:   222 30% 9%;
+    --accent:               216 30% 18%;
+    --accent-foreground:    210 30% 92%;
     --brand:                16 90% 60%;
     --brand-strong:         15 82% 42%;
     --brand-ink:            18 92% 74%;
     --destructive:          356 72% 63%;
     --destructive-foreground: 24 12% 9%;
 
-    --border:               28 6% 19%;
-    --border-strong:        28 6% 28%;
-    --input:                30 7% 46%;
+    --border:               220 16% 20%;
+    --border-strong:        220 15% 30%;
+    --input:                220 12% 48%;
     --ring:                 16 90% 62%;
 
     --profit:               152 62% 56%;
@@ -232,49 +245,58 @@
     --warning-foreground:   38 88% 94%;
 
     --chart-1:              16 90% 62%;
-    --chart-2:              36 18% 86%;
+    --chart-2:              210 20% 85%;
     --chart-3:              40 92% 60%;
     --chart-4:              190 45% 58%;
-    --chart-5:              30 10% 62%;
-    --chart-ink:            36 16% 84%;
-    --chart-grid:           36 20% 100% / .07;
+    --chart-5:              216 12% 62%;
+    --chart-ink:            210 18% 84%;
+    --chart-grid:           210 40% 100% / .07;
 
-    --glass:                24 8% 12% / .62;
-    --glass-surface:        24 8% 11% / .82;
-    --glass-elevated:       24 8% 12.5% / .94;
-    --glass-overlay:        24 8% 12.5% / .90;
-    --glass-border:         36 30% 100% / .09;
-    --glass-border-strong:  36 30% 100% / .15;
-    --glass-highlight:      inset 0 1px 0 hsl(0 0% 100% / .06);
-    --glass-pop:            24 8% 11% / .60;
-    --glass-pop-border:     36 30% 100% / .14;
+    --glass:                222 26% 11% / .62;
+    --glass-surface:        222 26% 10% / .82;
+    --glass-elevated:       222 26% 12% / .94;
+    --glass-overlay:        222 26% 12% / .90;
+    --glass-border:         210 40% 100% / .10;
+    --glass-border-strong:  210 40% 100% / .16;
+    --glass-highlight:      inset 0 1px 0 hsl(210 60% 100% / .07);
+    /* Dark cards are cool ink with a hairline, never a white rim. */
+    --card-rim:             inset 0 1px 0 hsl(210 60% 100% / .07);
+    --card-veil:            inset 0 0 0 1px hsl(210 60% 100% / .04);
+    --card-sheen:           linear-gradient(168deg, hsl(210 60% 100% / .06), hsl(210 60% 100% / 0) 46%);
+    --sheen-spot:           hsl(210 60% 100% / .06);
+    --shadow-card:          0 20px 44px -30px hsl(222 60% 2% / .75);
+    --on-night:             210 40% 98%;
+    --on-night-dim:         210 24% 76%;
+    --night-rim:            inset 0 1px 0 hsl(210 70% 100% / .12);
+    --glass-pop:            222 26% 10% / .60;
+    --glass-pop-border:     210 40% 100% / .14;
     --glass-sheen:
-      radial-gradient(120% 90% at 100% 0%, hsl(var(--brand) / .26), transparent 60%),
-      linear-gradient(160deg, hsl(36 40% 100% / .10), transparent 45%);
-    --glass-edge: inset 0 1px 0 hsl(30 100% 85% / .20), inset 0 0 0 1px hsl(36 30% 100% / .05);
-    --shadow-pop: 0 1px 2px hsl(0 0% 0% / .40), 0 10px 24px -8px hsl(0 0% 0% / .55), 0 28px 56px -20px hsl(0 0% 0% / .70);
+      radial-gradient(120% 90% at 100% 0%, hsl(205 90% 62% / .16), transparent 60%),
+      linear-gradient(160deg, hsl(210 60% 100% / .08), transparent 45%);
+    --glass-edge: inset 0 1px 0 hsl(210 60% 100% / .12), inset 0 0 0 1px hsl(210 40% 100% / .05);
+    --shadow-pop: 0 1px 2px hsl(222 60% 3% / .40), 0 10px 24px -8px hsl(222 60% 3% / .55), 0 28px 56px -20px hsl(222 60% 3% / .70);
 
-    --shadow-1: 0 1px 2px hsl(0 0% 0% / .35);
-    --shadow-2: 0 14px 32px -14px hsl(0 0% 0% / .60);
-    --shadow-3: 0 30px 64px -26px hsl(0 0% 0% / .72);
-    --shadow-brand: 0 24px 44px -22px hsl(15 82% 30% / .8);
-    --scrim: 24 20% 3%;
+    --shadow-1: 0 1px 2px hsl(222 60% 3% / .35);
+    --shadow-2: 0 14px 32px -14px hsl(222 60% 3% / .60);
+    --shadow-3: 0 30px 64px -26px hsl(222 60% 3% / .72);
+    --shadow-brand: 0 24px 44px -22px hsl(15 82% 30% / .7);
+    --scrim: 222 40% 3%;
 
-    --grad-primary:       linear-gradient(180deg, hsl(36 24% 97%) 0%, hsl(36 18% 88%) 100%);
-    --grad-primary-hover: linear-gradient(180deg, hsl(36 26% 100%) 0%, hsl(36 20% 92%) 100%);
+    --grad-primary:       linear-gradient(180deg, hsl(210 30% 97%) 0%, hsl(214 18% 88%) 100%);
+    --grad-primary-hover: linear-gradient(180deg, hsl(210 30% 100%) 0%, hsl(214 20% 92%) 100%);
     --atmosphere:
-      radial-gradient(46rem 28rem at 88% -8%,  hsl(var(--brand) / .15), transparent 62%),
-      radial-gradient(40rem 26rem at -4% 6%,   hsl(30 90% 50% / .07), transparent 60%),
-      radial-gradient(36rem 24rem at 50% 114%, hsl(var(--brand) / .08), transparent 62%);
-    --dot: 36 20% 100% / .08;
+      radial-gradient(46rem 28rem at 88% -8%,  hsl(var(--brand) / .10), transparent 62%),
+      radial-gradient(44rem 28rem at -4% 6%,   hsl(205 100% 62% / .11), transparent 60%),
+      radial-gradient(38rem 26rem at 50% 114%, hsl(208 90% 56% / .09), transparent 62%);
+    --dot: 210 40% 100% / .08;
 
-    --sidebar-background: 24 9% 8%;
-    --sidebar-foreground: 34 14% 78%;
-    --sidebar-primary: 36 22% 94%;
-    --sidebar-primary-foreground: 24 12% 9%;
-    --sidebar-accent: 24 8% 14%;
-    --sidebar-accent-foreground: 36 22% 94%;
-    --sidebar-border: 28 6% 16%;
+    --sidebar-background: 222 30% 8%;
+    --sidebar-foreground: 214 16% 78%;
+    --sidebar-primary: 210 30% 95%;
+    --sidebar-primary-foreground: 222 30% 9%;
+    --sidebar-accent: 222 24% 14%;
+    --sidebar-accent-foreground: 210 30% 95%;
+    --sidebar-border: 220 16% 16%;
     --sidebar-ring: 16 90% 62%;
   }
 }

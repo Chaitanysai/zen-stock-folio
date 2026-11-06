@@ -14,7 +14,7 @@ import type { PriceAlert } from "@/data/sampleData";
 import type { ThemeName } from "@/hooks/useThemeReveal";
 import { inr } from "@/lib/dashboard/format";
 import { NAV_GROUPS, PRIMARY_NAV, navItem, type ActiveTab } from "./nav";
-import { RefreshControl } from "./RefreshControl";
+import { RefreshControl, type RefreshOutcome } from "./RefreshControl";
 
 export type { ThemeName };
 
@@ -168,10 +168,8 @@ interface TopBarProps {
   onSelect: (id: ActiveTab) => void;
   onMenu: () => void;
   market: { isOpen: boolean; label: string; description: string; istTime: string };
-  onRefresh: () => void;
+  onRefresh: () => Promise<RefreshOutcome>;
   refreshing: boolean;
-  /** True when the last price request failed, so the control can show it. */
-  refreshFailed?: boolean;
   /** Spoken to assistive tech through a polite live region. */
   refreshStatus: string;
   onSearch: () => void;
@@ -313,7 +311,7 @@ export function TopBar(props: TopBarProps) {
             <span className="zf-mono zf-market-time">{market.istTime} IST</span>
           </div>
 
-          <RefreshControl busy={props.refreshing} failed={props.refreshFailed} onRefresh={props.onRefresh} />
+          <RefreshControl busy={props.refreshing} onRefresh={props.onRefresh} />
           <span className="zf-sr-only" role="status" aria-live="polite">{props.refreshStatus}</span>
 
           <Tip label="Search symbols">
