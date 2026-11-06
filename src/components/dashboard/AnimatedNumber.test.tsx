@@ -1,81 +1,107 @@
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AnimatedCurrency } from "./AnimatedNumber";
+import { OdometerInr } from "./AnimatedNumber";
 
-const text = (container: HTMLElement) => container.querySelector(".zf-count")?.textContent ?? "";
-
-function stubReducedMotion(matches: boolean) {
-  vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
-    matches: matches && query.includes("prefers-reduced-motion: reduce"),
-    media: query,
-    onchange: null,
-    addListener: () => {},
-    removeListener: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => false,
-  }) as MediaQueryList);
+/** Absolute strip positions of the visible digit columns, left to right. */
+function columns(container: HTMLElement): number[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(".zf-odo")).map((el) =>
+    Number(el.style.getPropertyValue("--slot")),
+  );
 }
 
-describe("AnimatedCurrency", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+/** The digit each strip position actually shows — the figure the reader sees. */
+function shown(container: HTMLElement): number[] {
+  return columns(container).map((pos) => ((pos % 10) + 10) % 10);
+}
+
+function amount(container: HTMLElement): string {
+  return container.querySelector(".zf-sr-only")?.textContent ?? "";
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe("OdometerInr", () => {
+  it("paints zero first and then rolls to the amount", async () => {
+    const { container } = render(<OdometerInr value={1250} />);
+
+    expect(columns(container)).toEqual([0, 0, 0, 0]);
+    await waitFor(() => expect(shown(container)).toEqual([1, 2, 5, 0]));
   });
 
-  it("counts from zero up to a positive figure", async () => {
-    const { container } = render(<AnimatedCurrency value={1250} />);
+  it("keeps the exact amount as accessible text, without the rolling digits", async () => {
+    const { container } = render(<OdometerInr value={1370} />);
 
-    expect(text(container)).toBe("₹0");
-    await waitFor(() => expect(text(container)).toBe("+₹1,250"));
+    await waitFor(() => expect(amount(container)).toBe("+₹1,370"));
+    expect(container.querySelector(".zf-odo-row")).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("counts to a negative figure with the loss sign", async () => {
-    const { container } = render(<AnimatedCurrency value={-480} />);
+  it("signs a loss without disturbing digit order", async () => {
+    const { container } = render(<OdometerInr value={-480} />);
 
-    expect(text(container)).toBe("₹0");
-    await waitFor(() => expect(text(container)).toBe("−₹480"));
+    await waitFor(() => expect(amount(container)).toBe("−₹480"));
+    await waitFor(() => expect(shown(container)).toEqual([4, 8, 0]));
   });
 
-  it("leaves a genuine zero at zero", async () => {
-    const { container } = render(<AnimatedCurrency value={0} />);
+  it("renders a genuine zero without a sign", async () => {
+    const { container } = render(<OdometerInr value={0} />);
 
-    expect(text(container)).toBe("₹0");
-    await new Promise((resolve) => setTimeout(resolve, 80));
-    expect(text(container)).toBe("₹0");
+    expect(amount(container)).toBe("₹0");
+    await waitFor(() => expect(shown(container)).toEqual([0]));
   });
 
-  it("continues from the previous figure on a refresh instead of resetting", async () => {
-    const { container, rerender } = render(<AnimatedCurrency value={1250} />);
-    await waitFor(() => expect(text(container)).toBe("+₹1,250"));
+  it("rolls down through the strip when the amount falls", async () => {
+    const { container, rerender } = render(<OdometerInr value={1250} />);
+    await waitFor(() => expect(shown(container)).toEqual([1, 2, 5, 0]));
 
-    rerender(<AnimatedCurrency value={480} />);
-    // The refresh starts where the reader left off, never back at zero.
-    expect(text(container)).toBe("+₹1,250");
-    await waitFor(() => expect(text(container)).toBe("+₹480"));
+    rerender(<OdometerInr value={480} />);
+
+    await waitFor(() => expect(shown(container)).toEqual([4, 8, 0]));
+    expect(amount(container)).toBe("+₹480");
   });
 
-  it("does not replay when re-rendered with the same figure", async () => {
-    const { container, rerender } = render(<AnimatedCurrency value={900} />);
-    await waitFor(() => expect(text(container)).toBe("+₹900"));
+  it("keeps every column on its own digit when the figure gains a leading digit", async () => {
+    const { container, rerender } = render(<OdometerInr value={1372} />);
+    await waitFor(() => expect(shown(container)).toEqual([1, 3, 7, 2]));
 
-    rerender(<AnimatedCurrency value={900} />);
-    expect(text(container)).toBe("+₹900");
+    rerender(<OdometerInr value={21695} />);
+
+    await waitFor(() => expect(shown(container)).toEqual([2, 1, 6, 9, 5]));
   });
 
-  it("shows the final figure immediately under reduced motion", () => {
-    stubReducedMotion(true);
-    const { container } = render(<AnimatedCurrency value={1250} />);
+  it("does not replay the roll when re-rendered with the same amount", async () => {
+    const { container, rerender } = render(<OdometerInr value={900} />);
+    await waitFor(() => expect(shown(container)).toEqual([9, 0, 0]));
 
-    expect(text(container)).toBe("+₹1,250");
+    const before = columns(container);
+    rerender(<OdometerInr value={900} />);
+    expect(columns(container)).toEqual(before);
   });
 
-  it("stops its animation frame when unmounted mid-count", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { container, unmount } = render(<AnimatedCurrency value={1250} />);
-    expect(text(container)).toBe("₹0");
+  it("leaves the currency symbol and separators static", () => {
+    const { container } = render(<OdometerInr value={1250} />);
+    const fixed = Array.from(container.querySelectorAll(".zf-odo-fixed")).map((el) => el.textContent);
 
-    unmount();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    expect(consoleError).not.toHaveBeenCalled();
+    expect(fixed).toEqual(["+", "₹", ","]);
+  });
+
+  it("lands on the amount immediately under reduced motion", () => {
+    vi.spyOn(window, "matchMedia").mockImplementation(
+      (query: string) =>
+        ({
+          matches: query.includes("prefers-reduced-motion"),
+          media: query,
+          onchange: null,
+          addListener: () => {},
+          removeListener: () => {},
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          dispatchEvent: () => false,
+        }) as MediaQueryList,
+    );
+
+    const { container } = render(<OdometerInr value={1250} />);
+    expect(shown(container)).toEqual([1, 2, 5, 0]);
   });
 });

@@ -14,6 +14,7 @@ import type { PriceAlert } from "@/data/sampleData";
 import type { ThemeName } from "@/hooks/useThemeReveal";
 import { inr } from "@/lib/dashboard/format";
 import { NAV_GROUPS, PRIMARY_NAV, navItem, type ActiveTab } from "./nav";
+import { RefreshControl } from "./RefreshControl";
 
 export type { ThemeName };
 
@@ -169,6 +170,8 @@ interface TopBarProps {
   market: { isOpen: boolean; label: string; description: string; istTime: string };
   onRefresh: () => void;
   refreshing: boolean;
+  /** True when the last price request failed, so the control can show it. */
+  refreshFailed?: boolean;
   /** Spoken to assistive tech through a polite live region. */
   refreshStatus: string;
   onSearch: () => void;
@@ -180,27 +183,6 @@ interface TopBarProps {
   userEmail: string;
   onDisplayName: () => void;
   onSignOut: () => void;
-}
-
-/**
- * Top-right refresh control: a bare circular glass disc whose luminous glare
- * sweeps the perimeter. The glare is a conic gradient masked to a ring and
- * rotated in CSS, so it is the only thing on the control and no JavaScript
- * drives the motion. The action and busy semantics are those of the legacy
- * icon button; the accessible name still says what the control does.
- */
-export function RefreshControl({ busy = false, onRefresh }: { busy?: boolean; onRefresh: () => void }) {
-  return (
-    <Tip label="Refresh dashboard">
-      <button
-        type="button"
-        className="zf-refresh"
-        aria-label="Refresh dashboard"
-        aria-busy={busy}
-        onClick={onRefresh}
-      />
-    </Tip>
-  );
 }
 
 export function TopBar(props: TopBarProps) {
@@ -331,7 +313,7 @@ export function TopBar(props: TopBarProps) {
             <span className="zf-mono zf-market-time">{market.istTime} IST</span>
           </div>
 
-          <RefreshControl busy={props.refreshing} onRefresh={props.onRefresh} />
+          <RefreshControl busy={props.refreshing} failed={props.refreshFailed} onRefresh={props.onRefresh} />
           <span className="zf-sr-only" role="status" aria-live="polite">{props.refreshStatus}</span>
 
           <Tip label="Search symbols">

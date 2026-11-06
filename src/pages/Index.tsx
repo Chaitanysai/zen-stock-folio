@@ -672,6 +672,7 @@ export default function Index() {
             market={{ isOpen: market.isOpen, label: market.label, description: market.description, istTime: market.istTime }}
             onRefresh={refresh}
             refreshing={Boolean(pricesLoading)}
+            refreshFailed={Boolean(priceError)}
             refreshStatus={refreshStatus}
             onSearch={() => setSearchOpen(true)}
             triggeredAlerts={triggeredAlerts}

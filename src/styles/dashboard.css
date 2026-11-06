@@ -230,54 +230,111 @@
 .zf-iconbtn svg { width: 18px; height: 18px; }
 .zf-iconbtn:hover, .zf-iconbtn[aria-expanded="true"] { background: hsl(var(--surface-3)); color: hsl(var(--foreground)); }
 
-/* Refresh control: a bare circular glass disc with a luminous glare that sweeps
-   the rim and nothing else inside it. The glare is a conic gradient masked to a
-   ring, so it is always clipped inside the circle and the disc stays empty. */
+/* ── Refresh control ─────────────────────────────────────────────────────────
+   A glass disc whose rim carries a masked conic halo. Nothing moves while the
+   dashboard is idle: the spin starts on the click and stops when the real price
+   request settles, then the rim turns mint with a drawn tick (success) or red
+   (failure) before returning to rest. Every state comes from `data-phase`,
+   which the component derives from the request — not from its own timer. */
 .zf-refresh {
   position: relative; width: 40px; height: 40px; flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center;
+  display: inline-grid; place-items: center;
   border-radius: 50%; isolation: isolate;
   border: 1px solid hsl(var(--glass-border));
   background: hsl(var(--glass));
   color: hsl(var(--muted-foreground));
   cursor: pointer;
-  overflow: hidden;
   box-shadow: var(--glass-highlight), var(--shadow-1);
   -webkit-backdrop-filter: blur(var(--blur-sm)) saturate(150%);
           backdrop-filter: blur(var(--blur-sm)) saturate(150%);
-  transition: color var(--dur-fast) ease, border-color var(--dur-fast) ease,
-              background-color var(--dur-fast) ease, box-shadow var(--dur) var(--ease-out);
+  transition: color var(--dur-fast) ease, border-color var(--dur) ease,
+              background-color var(--dur-fast) ease, box-shadow var(--dur) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
 }
-.zf-refresh::before {
-  content: ''; position: absolute; inset: 0; border-radius: 50%;
-  background: conic-gradient(from 0deg,
-    transparent 0deg 200deg,
-    hsl(var(--brand) / .30) 286deg,
-    hsl(0 0% 100% / .92) 334deg,
-    hsl(var(--brand) / .55) 350deg,
-    transparent 360deg);
-  -webkit-mask-image: radial-gradient(circle closest-side, transparent 68%, #000 76%);
-          mask-image: radial-gradient(circle closest-side, transparent 68%, #000 76%);
-  animation: zf-refresh-sweep 4.4s linear infinite;
-  pointer-events: none;
-}
-/* Restrained inner sheen: the glass highlight, not a second moving effect. */
-.zf-refresh::after {
-  content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
-  background: radial-gradient(120% 85% at 32% 2%, hsl(0 0% 100% / .55), transparent 58%);
-  opacity: .45; transition: opacity var(--dur) ease;
-}
-@keyframes zf-refresh-sweep { to { transform: rotate(1turn); } }
 .zf-refresh:hover { color: hsl(var(--foreground)); border-color: hsl(var(--glass-border-strong)); box-shadow: var(--shadow-2); }
-.zf-refresh:hover::after { opacity: .75; }
 .zf-refresh:active { transform: scale(.96); }
 .zf-refresh:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-/* Running: the sweep quickens, which is the only motion on the control. */
-.zf-refresh[aria-busy="true"] { cursor: progress; }
-.zf-refresh[aria-busy="true"]::before { animation-duration: 1.7s; }
-@media (prefers-reduced-motion: reduce) {
-  .zf-refresh::before { animation: none; transform: rotate(148deg); }
+.zf-refresh[data-phase="spinning"] { cursor: progress; }
+
+/* Rim only: the mask keeps the halo on the edge so it never washes over the glyph. */
+.zf-refresh-halo {
+  position: absolute; inset: -1px; border-radius: 50%; padding: 1.5px;
+  background: conic-gradient(from 120deg,
+    transparent 0deg 150deg,
+    hsl(var(--brand) / .55) 246deg,
+    hsl(0 0% 100% / .78) 292deg,
+    hsl(var(--brand) / .35) 318deg,
+    transparent 352deg 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: .5; pointer-events: none;
+  transition: opacity var(--dur) ease;
 }
+.zf-refresh-glyph {
+  position: relative; z-index: 1; width: 18px; height: 18px;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+  transition: opacity 200ms ease, transform var(--dur) var(--ease-out);
+}
+.zf-refresh-tick {
+  position: absolute; z-index: 2; width: 19px; height: 19px;
+  fill: none; stroke: hsl(var(--profit)); stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0;
+  pointer-events: none;
+}
+
+/* Running: halo and glyph turn together; both stop the instant `busy` drops. */
+.zf-refresh[data-phase="spinning"] .zf-refresh-halo { animation: zf-refresh-spin 1.15s linear infinite; opacity: .95; }
+.zf-refresh[data-phase="spinning"] .zf-refresh-glyph { animation: zf-refresh-spin .95s linear infinite; }
+@keyframes zf-refresh-spin { to { transform: rotate(1turn); } }
+
+/* Done: mint rim, tick drawn along the stroke, glyph hands over to it. */
+.zf-refresh[data-phase="success"] { border-color: hsl(var(--profit) / .45); color: hsl(var(--profit)); }
+.zf-refresh[data-phase="success"] .zf-refresh-halo {
+  background: conic-gradient(hsl(var(--profit) / .85), hsl(var(--profit) / .22) 72%, transparent 96%);
+  opacity: 1;
+}
+.zf-refresh[data-phase="success"] .zf-refresh-glyph { opacity: 0; transform: scale(.7); }
+.zf-refresh[data-phase="success"] .zf-refresh-tick { animation: zf-refresh-tick 320ms var(--ease-out) forwards; }
+@keyframes zf-refresh-tick { to { stroke-dashoffset: 0; opacity: 1; } }
+
+/* Failed: restrained red rim, static glyph, and never a tick. */
+.zf-refresh[data-phase="error"] { border-color: hsl(var(--loss) / .5); color: hsl(var(--loss)); }
+.zf-refresh[data-phase="error"] .zf-refresh-halo {
+  background: conic-gradient(hsl(var(--loss) / .7), hsl(var(--loss) / .18) 70%, transparent 96%);
+  opacity: .9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No rotation while running: the static halo carries the progress meaning. */
+  .zf-refresh[data-phase="spinning"] .zf-refresh-halo,
+  .zf-refresh[data-phase="spinning"] .zf-refresh-glyph { animation: none; }
+  .zf-refresh[data-phase="spinning"] .zf-refresh-glyph { opacity: .55; }
+  .zf-refresh[data-phase="success"] .zf-refresh-tick { animation: none; stroke-dashoffset: 0; opacity: 1; }
+}
+/* ── Odometer figure ─────────────────────────────────────────────────────────
+   Each digit is a one-character window onto a vertical strip; a new value slides
+   the strip, so the digits pass through the numbers between the old and the new
+   amount. Columns are one `ch` wide and the accessible amount is rendered
+   separately, so the roll can never reflow the card or confuse a screen reader. */
+.zf-odometer { display: inline-flex; align-items: baseline; }
+.zf-odo-row { display: inline-flex; align-items: baseline; }
+.zf-odo-fixed { font-variant-numeric: tabular-nums; }
+.zf-odo {
+  position: relative; display: inline-block; width: 1ch; height: 1em; overflow: hidden;
+  vertical-align: -0.08em; font-variant-numeric: tabular-nums;
+}
+.zf-odo-track {
+  position: absolute; left: 0; top: 0;
+  transform: translateY(calc((var(--slot) + 9) * -1em));
+  transition: transform 620ms cubic-bezier(.22, .9, .28, 1.06);
+  will-change: transform;
+}
+.zf-odo-track > span { display: block; height: 1em; line-height: 1em; text-align: center; }
+@media (prefers-reduced-motion: reduce) { .zf-odo-track { transition: none; } }
+
 .zf-dot {
   position: absolute; top: 9px; right: 10px; width: 9px; height: 9px; border-radius: 50%;
   background: hsl(var(--brand)); box-shadow: 0 0 0 2px hsl(var(--card));
@@ -423,10 +480,12 @@
 .zf-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* ════════ OVERVIEW GRID ════════ */
-/* The balance card is the hero, but at 1.05fr it stretched well past its content
-   and squeezed the stat tiles. A little narrower keeps it dominant while the
-   four figures and the P&L chart get the reclaimed width. */
-.zf-row1 { display: grid; grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr) minmax(0, 1.28fr); gap: var(--gap); align-items: stretch; }
+/* The balance card is the hero, but its content stops at roughly 340px: past
+   that the extra width is padding and dead space under the asset mix. Scaling
+   the first track with the viewport made it 450px+ on a wide desktop, so it is
+   pinned instead. The four figures and the P&L chart share whatever remains,
+   which keeps the card the same size from 1280 up. */
+.zf-row1 { display: grid; grid-template-columns: 340px minmax(0, 1.12fr) minmax(0, 1.28fr); gap: var(--gap); align-items: stretch; }
 .zf-row2 { display: grid; grid-template-columns: minmax(250px, .72fr) minmax(0, 2fr); gap: var(--gap); align-items: stretch; }
 .zf-row3 { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--gap); align-items: stretch; }
 /* Chart over Watchlist; insight + F&O sit above Market pulse, which shares the Watchlist row. */

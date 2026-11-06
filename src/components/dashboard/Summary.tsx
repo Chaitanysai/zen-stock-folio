@@ -6,7 +6,7 @@ import type { DayChange, DayMover, DayMovers, OverviewMetrics } from "@/lib/dash
 import type { UnrealisedHolding } from "@/lib/portfolio/positions";
 import { compact, inr, signedInr, signedPct, stagger, toneOf } from "@/lib/dashboard/format";
 import { AddTradeButton, DeltaPill, EmptyState, ImportButton } from "./ui";
-import { AnimatedCurrency } from "./AnimatedNumber";
+import { OdometerInr } from "./AnimatedNumber";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ActiveTab } from "./nav";
 
@@ -231,9 +231,9 @@ export function StatGrid({
   // settled, an unresolved figure is genuinely unavailable and if it failed
   // it stays the existing unavailable state rather than an invented ₹0.
   const todayValue = m.hasDayData
-    ? <AnimatedCurrency value={m.dayMove} />
+    ? <OdometerInr value={m.dayMove} />
     : !m.hasDayData && quotesPending
-      ? <AnimatedCurrency value={0} />
+      ? <OdometerInr value={0} />
       : "—";
   const exclusions = [
     m.unpricedCount > 0 ? `${m.unpricedCount} unpriced` : null,

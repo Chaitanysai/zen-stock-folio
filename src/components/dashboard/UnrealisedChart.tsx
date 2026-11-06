@@ -56,7 +56,15 @@ export default function UnrealisedChart({ holdings }: { holdings: UnrealisedHold
           />
           <ReferenceLine x={0} stroke="hsl(var(--border-strong))" />
           <Tooltip content={<HoldingTip />} cursor={{ fill: "hsl(var(--foreground) / .05)" }} />
-          <Bar dataKey="value" radius={[6, 6, 6, 6]} maxBarSize={18} isAnimationActive={false}>
+          <Bar
+            dataKey="value"
+            radius={[6, 6, 6, 6]}
+            maxBarSize={18}
+            // Bars grow from the zero line when the card appears or the held set
+            // changes. The values and scale stay untouched; only the length animates.
+            animationDuration={620}
+            animationEasing="ease-out"
+          >
             {holdings.map((h) => (
               <Cell
                 key={h.key}
