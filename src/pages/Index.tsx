@@ -32,6 +32,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast }          from "@/hooks/use-toast";
 import { useLivePrices }     from "@/hooks/useLivePrices";
+import { HomeAtmosphere }    from "@/components/dashboard/HomeAtmosphere";
 import { useMarketStatus }   from "@/hooks/useMarketStatus";
 import { useFxRate }         from "@/hooks/useFxRate";
 import {
@@ -654,6 +655,7 @@ export default function Index() {
       <div className="zf">
         <a className="zf-skip" href="#zf-main">Skip to content</a>
 
+        <HomeAtmosphere />
         <DayGlow tone={glowTone} />
         <Rail
           tab={tab}

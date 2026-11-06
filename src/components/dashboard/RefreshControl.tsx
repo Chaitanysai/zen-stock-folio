@@ -100,8 +100,10 @@ export function RefreshControl({ busy = false, failed = false, onRefresh }: Refr
           aria-busy={busy || running}
           onClick={handleClick}
         >
-          <span className="zf-refresh-halo" aria-hidden="true" />
-          <svg className="zf-refresh-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <span className="zf-refresh-orbit" aria-hidden="true" />
+          <span className="zf-refresh-comet" aria-hidden="true" />
+          <span className="zf-refresh-core">
+            <svg className="zf-refresh-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             {/* Two arcs chasing each other, with arrowheads on the leading tips. */}
             <path d="M20 12a8 8 0 0 1-13.1 6.1" />
             <path d="M17.4 6.6 20.8 4.9l.7 3.7" />
@@ -110,7 +112,8 @@ export function RefreshControl({ busy = false, failed = false, onRefresh }: Refr
           </svg>
           <svg className="zf-refresh-tick" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M5.2 12.6 9.6 17l9.2-10" pathLength={1} />
-          </svg>
+            </svg>
+          </span>
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom">
