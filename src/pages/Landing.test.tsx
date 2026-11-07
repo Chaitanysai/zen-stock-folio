@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { describe, expect, it } from "vitest";
@@ -14,15 +14,15 @@ const renderLanding = () =>
   );
 
 describe("Landing page", () => {
-  it("renders the hero heading with sign-up, explore and sign-in CTAs", () => {
+  it("renders the hero heading with sign-up, product and sign-in CTAs", () => {
     renderLanding();
     const hero = screen.getByRole("heading", { level: 1 });
-    expect(hero).toHaveTextContent(/your wealth/i);
-    expect(hero).toHaveTextContent(/one clear perspective/i);
+    expect(hero).toHaveTextContent(/know exactly/i);
+    expect(hero).toHaveTextContent(/where you stand/i);
 
     const heroSection = hero.closest("section") as HTMLElement;
     expect(within(heroSection).getByRole("link", { name: /get started/i })).toHaveAttribute("href", "/signup");
-    expect(within(heroSection).getByRole("link", { name: /explore zenfolio/i })).toHaveAttribute("href", "#story");
+    expect(within(heroSection).getByRole("link", { name: /see the product/i })).toHaveAttribute("href", "#product");
     expect(within(heroSection).getByRole("link", { name: /^sign in$/i })).toHaveAttribute("href", "/login");
   });
 
@@ -33,12 +33,32 @@ describe("Landing page", () => {
     expect(within(nav).getByRole("link", { name: /^sign in$/i })).toHaveAttribute("href", "/login");
   });
 
-  it("uses a portfolio-growth illustration and labels preview data as sample data", () => {
+  it("counts the sample portfolio value up to its final figure", async () => {
+    renderLanding();
+    const statement = screen.getByRole("region", { name: /sample portfolio statement/i });
+    await waitFor(
+      () => expect(within(statement).getByText("₹12,48,560")).toBeInTheDocument(),
+      { timeout: 4000 },
+    );
+  });
+
+  it("switches the statement curve between ranges", () => {
+    renderLanding();
+    const statement = screen.getByRole("region", { name: /sample portfolio statement/i });
+    const range = within(statement).getByRole("group", { name: /chart range/i });
+    expect(within(range).getByRole("button", { name: "6M" })).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(within(range).getByRole("button", { name: "1Y" }));
+    expect(within(range).getByRole("button", { name: "1Y" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(statement).getByText("+14.9% · past year")).toBeInTheDocument();
+  });
+
+  it("uses the workspace preview and labels preview data as sample data", () => {
     const { container } = renderLanding();
     const preview = screen.getByRole("figure", { name: /illustrative preview with sample data/i });
     expect(within(preview).getByText("Sample data")).toBeInTheDocument();
-    expect(container.querySelector(".zl-growth-chart")).toBeInTheDocument();
-    expect(container.querySelector(".zl-scene-candle")).toBeNull();
+    expect(container.querySelector(".zl-sheet")).toBeInTheDocument();
+    expect(container.querySelector(".zl-curve-line")).toBeInTheDocument();
   });
 
   it("opens and closes the mobile menu from the keyboard", () => {
