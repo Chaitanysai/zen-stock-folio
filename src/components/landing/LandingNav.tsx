@@ -6,9 +6,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 
 export const SECTIONS = [
   { id: "product", label: "Product" },
-  { id: "performance", label: "Performance" },
-  { id: "security", label: "Security" },
-  { id: "markets", label: "Markets" },
+  { id: "workflow", label: "How it works" },
+  { id: "trust", label: "Security" },
 ] as const;
 
 export default function LandingNav() {
@@ -43,7 +42,7 @@ export default function LandingNav() {
       <div className="zl-wrap">
         <nav className="zl-nav" aria-label="Main">
           <RouteLink to="/" className="zl-brand" aria-label="ZenFolio home">
-            <LogoMark size={26} />
+            <LogoMark size={30} />
             <span className="zl-brand-name">ZenFolio</span>
           </RouteLink>
 
