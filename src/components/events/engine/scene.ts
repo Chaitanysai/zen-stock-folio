@@ -1011,7 +1011,7 @@ export class FestivalScene {
           x, y, px: x, py: y,
           vx: rand(-20, 20), vy: rand(10, 40),
           life: rand(0.25, 0.45), age: 0,
-          col: "#FFB627", w: 1, drag: 3, g: 30, b: -1, flick: true, far: false,
+          col: "#FFB627", c2: null, w: 1, drag: 3, g: 30, b: -1, flick: true, far: false,
         });
       }
     }
