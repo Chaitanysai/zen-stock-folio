@@ -8,8 +8,8 @@
  * Adding a festival is three edits, none of them in the resolver:
  *   1. a CalendarRecord in src/lib/events/data/calendar-<year>.ts
  *   2. an EventRule below (window + priority + animation id)
- *   3. the animation id in animationIds.ts and its component in
- *      src/components/events/animationRegistry.ts
+ *   3. the animation id in animationIds.ts (the canvas engine then draws its
+ *      composition — see src/components/events/engine/scene.ts)
  */
 import { isAnimationId } from "./animationIds";
 import { compareCalendarDates, parseIsoDate } from "./dateUtils";

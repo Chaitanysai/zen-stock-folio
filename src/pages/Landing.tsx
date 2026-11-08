@@ -22,12 +22,26 @@ import LandingNav, { SECTIONS } from "@/components/landing/LandingNav";
 import DashboardPreview from "@/components/landing/DashboardPreview";
 import HeroScene from "@/components/landing/HeroScene";
 import ScrollStory from "@/components/landing/ScrollStory";
-import EventAnimationLayer from "@/components/events/EventAnimationLayer";
+import { FestivalCanvas, type FestivalZoneSpec } from "@/components/events/FestivalCanvas";
+import { FestivalGreeting } from "@/components/events/FestivalGreeting";
+import { FestivalWash } from "@/components/events/FestivalWash";
 import { useReveal } from "@/components/landing/useReveal";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import "@/styles/landing.css";
 
 const delay = (ms: number) => ({ "--zl-d": `${ms}ms` }) as CSSProperties;
+
+/**
+ * What the celebration may not paint over. Measured live, so the sky is the
+ * space the layout actually left over at this viewport — not a guess.
+ */
+const HERO_ZONES: readonly FestivalZoneSpec[] = [
+  { role: "copy", selector: ".zl-hero-copy" },
+  { role: "hud", selector: ".zl-hud" },
+  { role: "market", selector: ".zl-hud-chip" },
+  { role: "chip", selector: ".zl-hero-visual > .fest-chip" },
+  { role: "note", selector: ".zl-stage-note" },
+];
 
 const CAPABILITIES = [
   {
@@ -121,11 +135,12 @@ const Landing = () => {
 
       <main id="zl-main" tabIndex={-1} style={{ outline: "none" }}>
         {/* ── Hero ── */}
-        <section className="zl-hero" aria-labelledby="zl-hero-title">
+        <section className="zl-hero" aria-labelledby="zl-hero-title" data-festival-scope>
+          {/* Seasonal detail: decorative, non-interactive, absent when no event is active. */}
+          <FestivalWash />
           <HeroScene className="zl-hero-scene" />
           <div className="zl-hero-scrim" aria-hidden="true" />
-          {/* Seasonal detail: decorative, non-interactive, absent when no event is active. */}
-          <EventAnimationLayer />
+          <FestivalCanvas variant="public-hero" garnishInset={4} zones={HERO_ZONES} />
           <div className="zl-wrap zl-hero-grid">
             <div className="zl-hero-copy">
               <span className="zl-eyebrow zl-in">
@@ -184,6 +199,7 @@ const Landing = () => {
                 <span className="zl-pulse" aria-hidden="true" />
                 {marketLabel} · {market.istTime} IST
               </div>
+              <FestivalGreeting surface="public-hero" />
               <p className="zl-stage-note">Illustrative scene with sample data.</p>
             </div>
           </div>

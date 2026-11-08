@@ -33,6 +33,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast }          from "@/hooks/use-toast";
 import { useLivePrices }     from "@/hooks/useLivePrices";
 import { HomeAtmosphere }    from "@/components/dashboard/HomeAtmosphere";
+import { FestivalCanvas, type FestivalZoneSpec } from "@/components/events/FestivalCanvas";
+import { FestivalGreeting }  from "@/components/events/FestivalGreeting";
 import { useMarketStatus }   from "@/hooks/useMarketStatus";
 import { useFxRate }         from "@/hooks/useFxRate";
 import {
@@ -70,6 +72,19 @@ import { NAV_ITEMS, PAGE_TITLES, navItem, type ActiveTab } from "@/components/da
 const SECTION_OUT_MS = 170;
 const SECTION_IN_MS = 350;
 
+/**
+ * The dashboard celebration lives in space that already exists: between the
+ * greeting and the price clock, under the top bar. These zones are the things
+ * it must never paint over — the bar, the headline, the clock and the chip.
+ */
+const DASH_ZONES: readonly FestivalZoneSpec[] = [
+  { role: "top", selector: ".zf-top" },
+  { role: "h1", selector: ".zf-h1" },
+  { role: "right", selector: ".zf-price-clock" },
+  { role: "right", selector: ".zf-fest-cluster > .fest-chip" },
+  { role: "chip", selector: ".zf-fest-cluster > .fest-chip" },
+];
+
 function sectionMotionEnabled() {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
   return window.matchMedia("(prefers-reduced-motion: no-preference)").matches;
@@ -82,6 +97,9 @@ export default function Index() {
   const [tab,       setTab]       = useState<ActiveTab>("overview");
   const [renderedTab, setRenderedTab] = useState<ActiveTab>("overview");
   const [phase, setPhase] = useState<SectionPhase>("idle");
+  // The seasonal ribbon waits for the night-to-day intro to finish.
+  const [chromeLit, setChromeLit] = useState(false);
+  const handleChromeLit = useCallback(() => setChromeLit(true), []);
   const renderedTabRef = useRef<ActiveTab>("overview");
   const sectionTimers = useRef<number[]>([]);
   const [chartScrollSignal, setChartScrollSignal] = useState(0);
@@ -655,7 +673,7 @@ export default function Index() {
       <div className={`zf${renderedTab === "overview" ? " zf-home" : ""}`}>
         <a className="zf-skip" href="#zf-main">Skip to content</a>
 
-        <HomeAtmosphere />
+        <HomeAtmosphere onSettled={handleChromeLit} />
         <DayGlow tone={glowTone} />
         <Rail
           tab={tab}
@@ -666,7 +684,7 @@ export default function Index() {
           onSignOut={() => { void signOut(); }}
         />
 
-        <div className="zf-stage">
+        <div className="zf-stage" data-festival-scope>
           <TopBar
             tab={tab}
             onSelect={goTo}
@@ -689,6 +707,15 @@ export default function Index() {
           <main id="zf-main" className="zf-main" tabIndex={-1}>
           <div className="zf-section-body" data-phase={phase}>
             <div className="zf-page-head">
+              {/* Seasonal detail, absolutely positioned: no height, no shift.
+                  The overview gets the header gap; other tabs get the static
+                  garland only, so no canvas loop runs behind a table. */}
+              <FestivalCanvas
+                variant={renderedTab === "overview" ? "dashboard" : "minimal"}
+                alignTo={renderedTab === "overview" ? ".zf-top" : undefined}
+                zones={renderedTab === "overview" ? DASH_ZONES : undefined}
+                ready={chromeLit}
+              />
               <div>
                 {renderedTab === "overview" ? (
                   <h1 className="zf-h1">{greeting()}, <em>{userName}</em></h1>
@@ -697,18 +724,21 @@ export default function Index() {
                 )}
                 <p className="zf-sub">{renderedTab === "overview" ? pnlSentence : navItem(renderedTab).hint}</p>
               </div>
-              {renderedTab === "overview" && (
-                <div
-                  className="zf-price-clock"
-                  title={priceError ?? (market.isOpen
-                    ? "Prices refresh automatically while the NSE session is running."
-                    : "Prices refresh at a slower cadence while the market is closed.")}
-                >
-                  <i aria-hidden="true" data-live={market.isOpen ? "1" : "0"} />
-                  <span>{priceBadge}</span>
-                  {lastUpdated && <b>{istClock.format(new Date(lastUpdated))} IST</b>}
-                </div>
-              )}
+              <div className="zf-fest-cluster">
+                <FestivalGreeting surface={renderedTab === "overview" ? "dashboard" : "minimal"} />
+                {renderedTab === "overview" && (
+                  <div
+                    className="zf-price-clock"
+                    title={priceError ?? (market.isOpen
+                      ? "Prices refresh automatically while the NSE session is running."
+                      : "Prices refresh at a slower cadence while the market is closed.")}
+                  >
+                    <i aria-hidden="true" data-live={market.isOpen ? "1" : "0"} />
+                    <span>{priceBadge}</span>
+                    {lastUpdated && <b>{istClock.format(new Date(lastUpdated))} IST</b>}
+                  </div>
+                )}
+              </div>
             </div>
 
             {syncNotice && (

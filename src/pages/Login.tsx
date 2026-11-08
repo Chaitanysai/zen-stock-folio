@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import LoginHeroVisuals from "@/components/LoginHeroVisuals";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import { FestivalCanvas } from "@/components/events/FestivalCanvas";
+import { FestivalGreeting } from "@/components/events/FestivalGreeting";
 
 type Mode = "signin" | "signup" | "reset";
 type AuthPhase = "idle" | "submitting" | "google";
@@ -242,7 +244,10 @@ const Login = () => {
   );
 
   return (
-    <div className="atmosphere-bg min-h-screen text-foreground">
+    <div className="atmosphere-bg min-h-screen text-foreground" data-festival-scope>
+      {/* Sign-in and sign-up get the minimal variant: the garland and the chip,
+          drawn once. Nothing loops while someone is typing a password. */}
+      <FestivalCanvas variant="minimal" />
       <div className="mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[1.05fr_0.95fr]">
         {/* Desktop hero */}
         <section className="hidden flex-col justify-between px-10 py-8 lg:flex">
@@ -273,6 +278,7 @@ const Login = () => {
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               Back to home
             </RouteLink>
+            <FestivalGreeting surface="minimal" className="fest-auth-chip" />
             <ThemeToggle />
           </header>
 
