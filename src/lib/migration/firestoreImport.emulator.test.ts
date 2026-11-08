@@ -3,7 +3,15 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import bcrypt from "bcryptjs";
 import { buildSyntheticFixture, type SyntheticFixture, type UidMapping } from "./fixture";
 import { buildImportPlan, type ExistingDocuments, type ImportInput } from "./importPlan";
-import { initAdminForEmulator, getAdminDb, applyImportPlan, assertEmulatorOnly } from "./firestoreImport";
+import type { Firestore } from "firebase-admin/firestore"
+// firebase-admin's Firestore client comes from @google-cloud/firestore, an
+// OPTIONAL dependency: a plain `npm ci` (as on CI) does not install it, so the
+// module graph is imported lazily in beforeAll — after the emulator gate below
+// has decided whether this suite runs at all. Loading it at file scope would
+// throw "Cannot find module '@google-cloud/firestore'" during collection and
+// fail the default test run in every environment without the emulator.
+let getAdminDb: () => Firestore;
+let applyImportPlan: typeof import("./firestoreImport").applyImportPlan;
 
 /**
  * Firestore-emulator integration test for the importer.
@@ -30,9 +38,12 @@ const mapping: UidMapping = {
 };
 
 d("firestoreImport (emulator)", () => {
-  beforeAll(() => {
-    assertEmulatorOnly();
-    initAdminForEmulator(PROJECT_ID);
+  beforeAll(async () => {
+    const firestoreImport = await import("./firestoreImport");
+    firestoreImport.assertEmulatorOnly();
+    firestoreImport.initAdminForEmulator(PROJECT_ID);
+    getAdminDb = firestoreImport.getAdminDb;
+    applyImportPlan = firestoreImport.applyImportPlan;
     fixture = buildSyntheticFixture((password) => bcrypt.hashSync(password, 10));
   });
 
