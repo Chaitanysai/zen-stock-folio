@@ -59,11 +59,19 @@ function markSeen() {
   }
 }
 
-export function HomeAtmosphere() {
+export function HomeAtmosphere({ onSettled }: { onSettled?: () => void }) {
   const [phase, setPhase] = useState<Phase>(() =>
     reducedMotion() || alreadySeen() ? "day" : "night",
   );
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Anything seasonal that lives in the header waits for daylight: a greeting
+  // appearing over a half-lit page would fight the intro it is part of.
+  const settledCallback = useRef(onSettled);
+  settledCallback.current = onSettled;
+  useEffect(() => {
+    if (phase === "day") settledCallback.current?.();
+  }, [phase]);
 
   const stopTimer = () => {
     if (timer.current !== null) {

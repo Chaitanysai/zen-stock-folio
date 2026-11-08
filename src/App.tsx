@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { EventExperienceProvider } from "@/components/events/EventExperienceProvider";
 import { lazy, Suspense, useEffect } from "react";
 import { SessionLoading } from "@/components/ProtectedRoute";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
@@ -49,19 +50,23 @@ const App = () => (
   <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="theme" disableTransitionOnChange>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <RouteLocationTracker />
-            <Routes>
-              <Route path="/login" element={<RouteEnter><Login /></RouteEnter>} />
-              <Route path="/signup" element={<RouteEnter><Login /></RouteEnter>} />
-              <Route path="/" element={<Home />} />
-              <Route path="*" element={<RouteEnter><NotFound /></RouteEnter>} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+        {/* One event resolution for the whole app: the public hero, the
+            dashboard and the auth pages all read the same active festival. */}
+        <EventExperienceProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <RouteLocationTracker />
+              <Routes>
+                <Route path="/login" element={<RouteEnter><Login /></RouteEnter>} />
+                <Route path="/signup" element={<RouteEnter><Login /></RouteEnter>} />
+                <Route path="/" element={<Home />} />
+                <Route path="*" element={<RouteEnter><NotFound /></RouteEnter>} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </EventExperienceProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ThemeProvider>

@@ -1,0 +1,211 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Festival experience
+   ───────────────────────────────────────────────────────────────────────────
+   Four compositions, one engine. The public hero, the dashboard ribbon and the
+   minimal pages differ in where the canvas lives and how big it is; the artwork
+   inside is drawn by src/components/events/engine/scene.ts.
+
+   Nothing here adds height, moves a card, or covers text. Every surface is an
+   absolutely positioned overlay with `pointer-events: none`, so the worst case
+   for a layout is that the celebration is not drawn at all.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── the canvas shell ─────────────────────────────────────────────────────── */
+.fest-canvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  transition: opacity 400ms ease;
+}
+.fest-canvas[data-hidden="1"] { opacity: 0; }
+.fest-canvas > canvas { display: block; width: 100%; height: 100%; }
+
+/* Public hero: above the scrim, below the copy and the HUD. */
+.fest-canvas[data-surface="public-hero"] { z-index: 1; }
+
+/* Dashboard: the header gap. The host is the band itself, which starts at the
+   top of the sticky bar (`--fest-rise`, measured at runtime) and ends with the
+   greeting row — the exact region the concept put the ribbon in. */
+.fest-canvas[data-surface="dashboard"] {
+  top: calc(-1 * var(--fest-rise, 0px));
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+}
+.zf-page-head:has(.fest-canvas[data-surface="dashboard"]) { position: relative; }
+
+/* Minimal: a thin band across the top of an authenticated or auth page. It is
+   drawn once and never animated, so no canvas loop runs off the dashboard. */
+.fest-canvas[data-surface="minimal"] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  z-index: 30;
+}
+
+/* ── seasonal wash: the room behind the artwork ───────────────────────────── */
+/* Only the public hero has one. It is a light tint, masked to nothing at the
+   bottom so it never draws a hard line where the hero section ends. */
+.zl-fest-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  animation: fest-wash-in 900ms ease both;
+}
+.zl-fest-wash[data-fest="diwali"] {
+  background:
+    radial-gradient(42% 58% at 74% 26%, hsl(287 50% 30% / .10), transparent 70%),
+    radial-gradient(55% 75% at 86% 0%, hsl(28 100% 60% / .30), transparent 62%),
+    radial-gradient(45% 60% at 64% 8%, hsl(329 71% 49% / .14), transparent 66%),
+    radial-gradient(40% 50% at 78% 30%, hsl(262 83% 58% / .06), transparent 70%);
+}
+.dark .zl-fest-wash[data-fest="diwali"] {
+  background:
+    radial-gradient(55% 75% at 88% 0%, hsl(22 100% 58% / .26), transparent 62%),
+    radial-gradient(50% 65% at 60% 4%, hsl(288 60% 44% / .30), transparent 66%),
+    linear-gradient(180deg, hsl(288 50% 14% / .50), transparent 60%);
+}
+.zl-fest-wash[data-fest="christmas"] {
+  background: linear-gradient(180deg, #e6eff7 0%, #e9f1f7 52%, hsl(var(--background) / 0) 100%);
+}
+.dark .zl-fest-wash[data-fest="christmas"] {
+  background: linear-gradient(180deg, #0a1626 0%, #0c2632 55%, hsl(var(--background) / 0) 100%);
+}
+@keyframes fest-wash-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── the greeting chip ────────────────────────────────────────────────────── */
+.fest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 12px 7px 9px;
+  border-radius: 999px;
+  font: 500 12.5px/1.1 var(--ff-body);
+  color: hsl(var(--foreground));
+  background: hsl(var(--card) / .78);
+  border: 1px solid hsl(var(--glass-border));
+  box-shadow: 0 10px 26px -18px hsl(220 40% 12% / .55);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  animation: fest-chip-in 600ms 400ms cubic-bezier(.19, 1, .22, 1) both;
+  white-space: nowrap;
+}
+.fest-chip[data-surface="dashboard"] {
+  padding: 6px 11px 6px 8px;
+  font-size: 12px;
+  animation-delay: 400ms;
+}
+.fest-chip-label em {
+  font: italic 400 15px/1 var(--ff-display);
+  color: hsl(var(--brand-ink));
+  letter-spacing: -.01em;
+}
+.fest-chip[data-surface="dashboard"] .fest-chip-label em { font-size: 14px; }
+.fest-chip-from { font-size: 11.5px; color: hsl(var(--muted-foreground)); }
+
+.fest-chip-icon { width: 20px; height: 20px; flex: none; }
+.fest-chip[data-fest="christmas"] .fest-flame { display: none; }
+.fest-chip[data-fest="diwali"] .fest-star { display: none; }
+
+/* A candle and a star, at 1.7 s and 2.4 s — the two smallest living things on
+   the page. Both stop dead under reduced motion. */
+.fest-flame {
+  transform-origin: 12px 14px;
+  animation: fest-flick 1.7s ease-in-out infinite alternate;
+}
+.fest-star {
+  transform-origin: 12px 5px;
+  animation: fest-twinkle 2.4s ease-in-out infinite alternate;
+}
+@keyframes fest-flick {
+  0% { transform: scale(1, 1); }
+  40% { transform: scale(.96, 1.1) skewX(-3deg); }
+  100% { transform: scale(1.02, .94) skewX(2deg); }
+}
+@keyframes fest-twinkle {
+  0% { opacity: .65; transform: scale(.9); }
+  100% { opacity: 1; transform: scale(1.08); }
+}
+
+.fest-chip-btn {
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  margin-left: 1px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  font-size: 9.5px;
+  line-height: 1;
+  opacity: .62;
+  cursor: pointer;
+  transition: background-color 160ms ease, opacity 160ms ease;
+}
+.fest-chip-btn:hover { opacity: 1; background: hsl(var(--foreground) / .10); }
+.fest-chip-btn:focus-visible {
+  outline: 2px solid hsl(var(--brand));
+  outline-offset: 1px;
+  opacity: 1;
+}
+
+@keyframes fest-chip-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── placement: public hero ───────────────────────────────────────────────── */
+/* Under the market-status chip in the hero visual, so the two read as a column
+   of live badges rather than two pills fighting for the same corner. */
+.zl-hero-visual > .fest-chip {
+  position: absolute;
+  z-index: 3;
+  top: calc(clamp(14px, 2vw, 22px) + 44px);
+  right: clamp(14px, 2vw, 22px);
+  max-width: calc(100% - 28px);
+}
+
+/* ── placement: dashboard header ──────────────────────────────────────────── */
+/* The chip joins the price clock rather than replacing it; the pair hugs the
+   right edge of the greeting row exactly where the clock sits today. */
+.zf-fest-cluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* ── placement: login and signup ──────────────────────────────────────────── */
+.fest-auth-chip { animation-delay: 260ms; }
+
+/* ── small screens ────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .zl-hero-visual > .fest-chip {
+    top: 58px;
+    right: 12px;
+    font-size: 11.5px;
+    padding: 6px 10px 6px 8px;
+  }
+  .zl-hero-visual > .fest-chip .fest-chip-from { display: none; }
+  .zl-hero-visual > .fest-chip .fest-chip-label em { font-size: 13.5px; }
+  .zf-fest-cluster { justify-content: flex-start; }
+}
+
+/* ── reduced motion ───────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .fest-flame,
+  .fest-star,
+  .fest-chip,
+  .zl-fest-wash { animation: none; }
+  .fest-canvas { transition: none; }
+  .zl-fest-wash { opacity: 1; }
+  .fest-chip { opacity: 1; transform: none; }
+}
