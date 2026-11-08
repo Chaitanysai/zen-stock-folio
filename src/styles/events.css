@@ -1,0 +1,390 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   ZenFolio — seasonal event animation layer.
+
+   Decorative only. The layer is aria-hidden, pointer-events: none, sits above
+   the hero scrim and below the hero content grid, and is masked away from the
+   copy column so it can never reduce text contrast.
+
+   Motion rules:
+     - transform and opacity only (no layout, no animated blur, no box-shadow
+       animation, no per-frame script)
+     - every loop is paused while the tab is hidden
+     - prefers-reduced-motion renders the same composition, static
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.zl-event {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* above .zl-hero-scrim (1), below .zl-hero-grid (2) */
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  contain: layout paint;
+
+  /* Keep the copy column clear: the layer only exists from the middle right. */
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, transparent 26%, #000 56%);
+          mask-image: linear-gradient(90deg, transparent 0%, transparent 26%, #000 56%);
+
+  --zl-ev-ease: cubic-bezier(.16, 1, .3, 1);
+
+  /* Diwali palette */
+  --ev-gold: 38 92% 62%;
+  --ev-amber: 26 94% 56%;
+  --ev-ember: 18 82% 44%;
+  --ev-glow-a: .30;
+
+  /* Christmas palette */
+  --ev-snow: 214 24% 52%;
+  --ev-snow-a: .34;
+  --ev-star: 38 90% 58%;
+  --ev-star-a: .55;
+  --ev-ink: 222 30% 12%;
+
+  --zl-rangoli-a: .16;
+}
+
+.dark .zl-event {
+  --ev-glow-a: .46;
+  --ev-snow: 210 40% 98%;
+  --ev-snow-a: .52;
+  --ev-star: 42 96% 76%;
+  --ev-star-a: .8;
+  --ev-ink: 210 40% 98%;
+  --zl-rangoli-a: .2;
+}
+
+.zl-ev-scene {
+  position: absolute;
+  inset: 0;
+}
+
+/* ── Ambient light ───────────────────────────────────────────────────────── */
+
+.zl-ev-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: zl-ev-fade-in 2.6s var(--zl-ev-ease) both;
+}
+
+.zl-ev-glow-core {
+  position: absolute;
+  inset: 0;
+  animation: zl-ev-breathe 11s 2.6s ease-in-out infinite;
+}
+
+.zl-ev-glow[data-tone="warm"] .zl-ev-glow-core {
+  background:
+    radial-gradient(38rem 26rem at 78% 20%, hsl(var(--ev-amber) / var(--ev-glow-a)), transparent 68%),
+    radial-gradient(30rem 22rem at 97% 72%, hsl(var(--ev-gold) / calc(var(--ev-glow-a) * .8)), transparent 70%),
+    radial-gradient(26rem 18rem at 62% 98%, hsl(var(--ev-ember) / calc(var(--ev-glow-a) * .5)), transparent 72%);
+}
+
+.zl-ev-glow[data-tone="cool"] .zl-ev-glow-core {
+  background:
+    radial-gradient(36rem 24rem at 82% 16%, hsl(210 90% 82% / calc(var(--ev-glow-a) * .55)), transparent 68%),
+    radial-gradient(28rem 20rem at 96% 66%, hsl(42 96% 78% / calc(var(--ev-glow-a) * .5)), transparent 70%),
+    radial-gradient(30rem 20rem at 58% 100%, hsl(214 80% 70% / calc(var(--ev-glow-a) * .4)), transparent 72%);
+}
+
+@keyframes zl-ev-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes zl-ev-breathe {
+  0%, 100% { opacity: .82; }
+  50%      { opacity: 1; }
+}
+
+/* ── Diwali: diyas ───────────────────────────────────────────────────────── */
+
+.zl-ev-diyas {
+  position: absolute;
+  inset: 0;
+}
+
+.zl-ev-diya {
+  position: absolute;
+  opacity: 0;
+  animation: zl-ev-diya-in 1.4s var(--zl-ev-ease) var(--zl-diya-delay, 0ms) both;
+}
+
+.zl-ev-diya svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.zl-ev-diya-1 {
+  left: 56%;
+  bottom: 7%;
+  width: clamp(64px, 6.4vw, 96px);
+}
+
+.zl-ev-diya-2 {
+  left: 72%;
+  bottom: 13%;
+  width: clamp(78px, 8vw, 124px);
+}
+
+.zl-ev-diya-3 {
+  left: 87%;
+  bottom: 5%;
+  width: clamp(54px, 5.2vw, 80px);
+}
+
+@keyframes zl-ev-diya-in {
+  from { opacity: 0; transform: translateY(10px) scale(.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* The flame pivots on its base and never repeats the same beat twice. */
+.zl-ev-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: zl-ev-flame var(--zl-flame-dur, 2.8s) var(--zl-flame-delay, 0s) ease-in-out infinite;
+}
+
+@keyframes zl-ev-flame {
+  0%   { transform: scale(1, 1) rotate(0deg); }
+  18%  { transform: scale(.97, 1.06) rotate(-1.6deg); }
+  37%  { transform: scale(1.03, .95) rotate(1.2deg); }
+  56%  { transform: scale(.98, 1.04) rotate(-.8deg); }
+  74%  { transform: scale(1.02, .98) rotate(1.5deg); }
+  100% { transform: scale(1, 1) rotate(0deg); }
+}
+
+.zl-ev-flame-inner {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: zl-ev-flame-inner 1.9s ease-in-out infinite;
+}
+
+@keyframes zl-ev-flame-inner {
+  0%, 100% { transform: scaleY(1); opacity: .95; }
+  50%      { transform: scaleY(.9); opacity: .8; }
+}
+
+.zl-ev-diya-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: zl-ev-diya-glow 4.2s ease-in-out infinite;
+}
+
+@keyframes zl-ev-diya-glow {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: .78; }
+}
+
+/* ── Diwali: rangoli ─────────────────────────────────────────────────────── */
+
+.zl-ev-rangoli {
+  position: absolute;
+  right: -6%;
+  bottom: -18%;
+  width: clamp(320px, 42vw, 620px);
+  aspect-ratio: 1;
+  color: hsl(var(--ev-gold));
+  opacity: var(--zl-rangoli-a);
+  animation:
+    zl-ev-rangoli-in 3.2s 1.2s var(--zl-ev-ease) both,
+    zl-ev-spin 180s linear infinite;
+}
+
+@keyframes zl-ev-rangoli-in {
+  from { opacity: 0; }
+  to   { opacity: var(--zl-rangoli-a); }
+}
+
+@keyframes zl-ev-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Diwali: golden motes ────────────────────────────────────────────────── */
+
+.zl-ev-particles {
+  position: absolute;
+  inset: 0;
+}
+
+.zl-ev-particle {
+  position: absolute;
+  bottom: -8px;
+  left: var(--zl-p-x, 50%);
+  width: var(--zl-p-size, 3px);
+  height: var(--zl-p-size, 3px);
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    hsl(var(--ev-gold) / .95) 0%,
+    hsl(var(--ev-amber) / .55) 45%,
+    transparent 72%
+  );
+  animation: zl-ev-drift var(--zl-p-dur, 20s) linear var(--zl-p-delay, 0s) infinite;
+}
+
+@keyframes zl-ev-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(.7); opacity: 0; }
+  12%  { opacity: .85; }
+  70%  { opacity: .5; }
+  100% { transform: translate3d(var(--zl-p-drift, 0px), -62vh, 0) scale(1.05); opacity: 0; }
+}
+
+/* ── Christmas: snow ─────────────────────────────────────────────────────── */
+
+.zl-ev-snow {
+  position: absolute;
+  inset: 0;
+}
+
+.zl-ev-flake {
+  position: absolute;
+  top: -6vh;
+  left: var(--zl-s-x, 50%);
+  width: var(--zl-s-size, 3px);
+  height: var(--zl-s-size, 3px);
+  border-radius: 50%;
+  opacity: 0;
+  background: hsl(var(--ev-snow) / var(--ev-snow-a));
+  box-shadow: 0 0 6px hsl(var(--ev-snow) / calc(var(--ev-snow-a) * .45));
+  animation: zl-ev-snowfall var(--zl-s-dur, 24s) linear var(--zl-s-delay, 0s) infinite;
+}
+
+@keyframes zl-ev-snowfall {
+  0%   { transform: translate3d(0, 0, 0); opacity: 0; }
+  8%   { opacity: var(--zl-s-o, .6); }
+  50%  { transform: translate3d(var(--zl-s-drift, 0px), 52vh, 0); }
+  92%  { opacity: var(--zl-s-o, .6); }
+  100% { transform: translate3d(calc(var(--zl-s-drift, 0px) * -1), 108vh, 0); opacity: 0; }
+}
+
+/* ── Christmas: sparkles ─────────────────────────────────────────────────── */
+
+.zl-ev-stars {
+  position: absolute;
+  inset: 0;
+}
+
+.zl-ev-star {
+  position: absolute;
+  width: var(--zl-star-size, 14px);
+  height: auto;
+  color: hsl(var(--ev-star));
+  opacity: 0;
+  animation: zl-ev-twinkle var(--zl-star-dur, 8s) ease-in-out var(--zl-star-delay, 0s) infinite;
+}
+
+@keyframes zl-ev-twinkle {
+  0%, 100% { opacity: 0; transform: scale(.6) rotate(0deg); }
+  45%      { opacity: var(--ev-star-a); transform: scale(1) rotate(8deg); }
+  62%      { opacity: calc(var(--ev-star-a) * .65); transform: scale(.92) rotate(12deg); }
+}
+
+/* ── Christmas: evergreen horizon ────────────────────────────────────────── */
+
+.zl-ev-evergreen {
+  position: absolute;
+  inset: auto 0 0 0;
+  width: 100%;
+  height: 46%;
+  color: hsl(var(--ev-ink));
+  opacity: .1;
+}
+
+.dark .zl-ev-evergreen {
+  opacity: .16;
+}
+
+/* ── Paused tab ──────────────────────────────────────────────────────────── */
+
+.zl-event[data-paused="1"] * {
+  animation-play-state: paused !important;
+}
+
+/* ── Reduced motion: same composition, no movement ───────────────────────── */
+
+.zl-event[data-reduced="1"] * {
+  animation: none !important;
+}
+
+.zl-event[data-reduced="1"] .zl-ev-glow,
+.zl-event[data-reduced="1"] .zl-ev-diya {
+  opacity: 1;
+}
+
+.zl-event[data-reduced="1"] .zl-ev-particle,
+.zl-event[data-reduced="1"] .zl-ev-flake,
+.zl-event[data-reduced="1"] .zl-ev-star {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zl-event * {
+    animation: none !important;
+  }
+
+  .zl-event .zl-ev-glow,
+  .zl-event .zl-ev-diya {
+    opacity: 1;
+  }
+
+  .zl-event .zl-ev-particle,
+  .zl-event .zl-ev-flake,
+  .zl-event .zl-ev-star {
+    display: none;
+  }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+/* Single-column hero: the copy owns the top, so the layer starts below it. */
+@media (max-width: 1080px) {
+  .zl-event {
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, transparent 44%, #000 72%);
+            mask-image: linear-gradient(180deg, transparent 0%, transparent 44%, #000 72%);
+  }
+
+  .zl-ev-glow[data-tone="warm"] .zl-ev-glow-core {
+    background:
+      radial-gradient(30rem 20rem at 74% 82%, hsl(var(--ev-amber) / var(--ev-glow-a)), transparent 70%),
+      radial-gradient(24rem 16rem at 97% 96%, hsl(var(--ev-gold) / calc(var(--ev-glow-a) * .8)), transparent 72%);
+  }
+
+  .zl-ev-glow[data-tone="cool"] .zl-ev-glow-core {
+    background:
+      radial-gradient(30rem 20rem at 78% 80%, hsl(210 90% 82% / calc(var(--ev-glow-a) * .55)), transparent 70%),
+      radial-gradient(24rem 16rem at 96% 96%, hsl(42 96% 78% / calc(var(--ev-glow-a) * .5)), transparent 72%);
+  }
+
+  .zl-ev-rangoli {
+    right: -18%;
+    bottom: -12%;
+    width: 74vw;
+    --zl-rangoli-a: .11;
+  }
+
+  .zl-ev-diya-1 { left: 62%; bottom: 16%; }
+  .zl-ev-diya-2 { left: 78%; bottom: 24%; }
+  .zl-ev-diya-3 { left: 90%; bottom: 12%; }
+
+  .zl-ev-evergreen { height: 40%; }
+}
+
+@media (max-width: 640px) {
+  .zl-ev-diya-1 { width: 58px; bottom: 18%; }
+  .zl-ev-diya-2 { width: 72px; bottom: 27%; }
+  .zl-ev-diya-3 { display: none; }
+
+  .zl-ev-rangoli {
+    right: -26%;
+    bottom: -8%;
+    width: 88vw;
+    --zl-rangoli-a: .09;
+  }
+
+  .zl-ev-evergreen { height: 34%; opacity: .08; }
+  .dark .zl-ev-evergreen { opacity: .13; }
+}

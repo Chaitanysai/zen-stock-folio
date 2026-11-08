@@ -22,6 +22,7 @@ import LandingNav, { SECTIONS } from "@/components/landing/LandingNav";
 import DashboardPreview from "@/components/landing/DashboardPreview";
 import HeroScene from "@/components/landing/HeroScene";
 import ScrollStory from "@/components/landing/ScrollStory";
+import EventAnimationLayer from "@/components/events/EventAnimationLayer";
 import { useReveal } from "@/components/landing/useReveal";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import "@/styles/landing.css";
@@ -123,6 +124,8 @@ const Landing = () => {
         <section className="zl-hero" aria-labelledby="zl-hero-title">
           <HeroScene className="zl-hero-scene" />
           <div className="zl-hero-scrim" aria-hidden="true" />
+          {/* Seasonal detail: decorative, non-interactive, absent when no event is active. */}
+          <EventAnimationLayer />
           <div className="zl-wrap zl-hero-grid">
             <div className="zl-hero-copy">
               <span className="zl-eyebrow zl-in">
