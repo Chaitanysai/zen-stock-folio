@@ -2,7 +2,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import bcrypt from "bcryptjs";
 import { buildSyntheticFixture, type SyntheticFixture, type UidMapping } from "./fixture";
-import { buildImportPlan, type ImportInput } from "./importPlan";
+import { buildImportPlan, type ExistingDocuments, type ImportInput } from "./importPlan";
 import { initAdminForEmulator, getAdminDb, applyImportPlan, assertEmulatorOnly } from "./firestoreImport";
 
 /**
@@ -70,9 +70,12 @@ d("firestoreImport (emulator)", () => {
     const first = buildImportPlan(input(), mapping, { portfolios: new Set(), users: new Set() });
     await applyImportPlan(db, first, input());
 
-    const existing = {
-      portfolios: new Set((await db.collection("portfolios").get()).docs.map((doc) => doc.id)),
-      users: new Set((await db.collection("users").get()).docs.map((doc) => doc.id)),
+    // Annotated explicitly: `doc.id` narrows to `string` only when
+    // firebase-admin's optional @google-cloud/firestore types resolve, so the
+    // inferred Set element type is not stable across environments.
+    const existing: ExistingDocuments = {
+      portfolios: new Set<string>((await db.collection("portfolios").get()).docs.map((doc) => doc.id)),
+      users: new Set<string>((await db.collection("users").get()).docs.map((doc) => doc.id)),
     };
     const second = buildImportPlan(input(), mapping, existing);
     const secondResult = await applyImportPlan(db, second, input());
