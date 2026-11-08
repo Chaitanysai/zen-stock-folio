@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { FestivalGreeting } from "./FestivalGreeting";
 import * as providerModule from "./EventExperienceProvider";
@@ -46,12 +46,7 @@ const XMAS_EVENT: ResolvedEvent = {
 function mockExperience(overrides: Partial<FestivalExperienceValue> = {}): FestivalExperienceValue {
   return {
     active: DIWALI_EVENT,
-    dismissed: false,
-    paused: false,
     reduced: false,
-    togglePaused: vi.fn(),
-    dismiss: vi.fn(),
-    restore: vi.fn(),
     ...overrides,
   };
 }
@@ -71,8 +66,6 @@ describe("FestivalGreeting component", () => {
     expect(screen.getByText(/Deepavali/i)).toBeInTheDocument();
     expect(screen.getByText(/· from ZenFolio/i)).toBeInTheDocument();
     expect(container.querySelector(".fest-flame")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pause celebration" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Hide celebration" })).toBeInTheDocument();
   });
 
   it("renders Diwali compact copy for dashboard", () => {
@@ -95,44 +88,12 @@ describe("FestivalGreeting component", () => {
     expect(container.querySelector(".fest-star")).toBeInTheDocument();
   });
 
-  it("omits pause button on minimal surfaces", () => {
-    vi.spyOn(providerModule, "useFestivalExperience").mockReturnValue(mockExperience());
-    render(<FestivalGreeting surface="minimal" />);
-
-    expect(screen.queryByRole("button", { name: /pause celebration/i })).toBeNull();
-    expect(screen.getByRole("button", { name: "Hide celebration" })).toBeInTheDocument();
-  });
-
-  it("calls togglePaused when pause button is clicked", () => {
-    const togglePaused = vi.fn();
-    vi.spyOn(providerModule, "useFestivalExperience").mockReturnValue(mockExperience({ togglePaused }));
-    render(<FestivalGreeting surface="public-hero" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Pause celebration" }));
-    expect(togglePaused).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows play label when paused", () => {
-    vi.spyOn(providerModule, "useFestivalExperience").mockReturnValue(mockExperience({ paused: true }));
-    render(<FestivalGreeting surface="public-hero" />);
-
-    const btn = screen.getByRole("button", { name: "Play celebration" });
-    expect(btn).toBeInTheDocument();
-    expect(btn).toHaveAttribute("aria-pressed", "true");
-  });
-
-  it("shows restore button when dismissed", () => {
-    const restore = vi.fn();
-    vi.spyOn(providerModule, "useFestivalExperience").mockReturnValue(
-      mockExperience({ dismissed: true, restore }),
-    );
-    render(<FestivalGreeting surface="public-hero" />);
-
-    expect(screen.queryByRole("button", { name: "Hide celebration" })).toBeNull();
-    const restoreBtn = screen.getByRole("button", { name: "Show celebration again" });
-    expect(restoreBtn).toBeInTheDocument();
-
-    fireEvent.click(restoreBtn);
-    expect(restore).toHaveBeenCalledTimes(1);
+  it("renders no controls on any surface — the experience is time-driven", () => {
+    for (const surface of ["public-hero", "dashboard", "minimal"] as const) {
+      vi.spyOn(providerModule, "useFestivalExperience").mockReturnValue(mockExperience());
+      const view = render(<FestivalGreeting surface={surface} />);
+      expect(screen.queryByRole("button")).toBeNull();
+      view.unmount();
+    }
   });
 });

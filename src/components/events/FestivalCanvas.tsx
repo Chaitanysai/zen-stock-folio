@@ -116,13 +116,13 @@ export function FestivalCanvas({
   ready = true,
   className,
 }: FestivalCanvasProps) {
-  const { active, dismissed, paused, reduced } = useFestivalExperience();
+  const { active, reduced } = useFestivalExperience();
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<FestivalScene | null>(null);
 
   const fest = active?.animationId ?? null;
-  const running = Boolean(fest) && ready && !dismissed;
+  const running = Boolean(fest) && ready;
 
   // Zones are read through refs so a caller can pass a fresh array without
   // tearing down and restarting the animation on every render.
@@ -141,7 +141,6 @@ export function FestivalCanvas({
       fest,
       variant,
       reduced,
-      paused,
       staticOnly: variant === "minimal",
       measure: () => measure(host, zonesRef.current, garnishInset, alignTo),
       isDark: isDarkTheme,
@@ -153,14 +152,10 @@ export function FestivalCanvas({
       scene.destroy();
       sceneRef.current = null;
     };
-    // `reduced` and `paused` are applied by the effects below: restarting the
-    // engine for them would replay the opening sequence.
+    // `reduced` is applied by the effect below: restarting the engine for it
+    // would replay the opening sequence.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- zoneKey stands in for `zones`
   }, [running, fest, variant, garnishInset, alignTo, zoneKey]);
-
-  useEffect(() => {
-    sceneRef.current?.setPaused(paused);
-  }, [paused]);
 
   useEffect(() => {
     sceneRef.current?.setReduced(reduced);
@@ -184,7 +179,6 @@ export function FestivalCanvas({
       className={className ? `fest-canvas ${className}` : "fest-canvas"}
       data-surface={variant}
       data-fest={active.animationId}
-      data-hidden={dismissed ? "1" : "0"}
       aria-hidden="true"
     >
       <canvas ref={canvasRef} />

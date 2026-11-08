@@ -1,11 +1,12 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EventResolution } from "@/lib/events/types";
 import { EventExperienceProvider, useFestivalExperience } from "./EventExperienceProvider";
-import { rememberDismissal } from "./dismissal";
 import { useActiveEvent } from "./useActiveEvent";
+import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
 
 vi.mock("./useActiveEvent", () => ({ useActiveEvent: vi.fn() }));
+vi.mock("./usePrefersReducedMotion", () => ({ usePrefersReducedMotion: vi.fn() }));
 
 const resolution: EventResolution = {
   today: "2026-11-08",
@@ -21,47 +22,62 @@ const resolution: EventResolution = {
   },
 };
 
-const renders: boolean[] = [];
-function Consumer() {
-  const value = useFestivalExperience();
-  renders.push(value.dismissed);
-  return <>
-    <span>{value.dismissed ? "hidden" : "visible"}</span>
-    <button onClick={value.dismiss}>Dismiss</button>
-    <button onClick={value.restore}>Restore</button>
-  </>;
+/** Records what each consumer saw on every render. */
+function makeConsumer(sightings: { active: unknown; reduced: boolean }[]) {
+  return function Consumer() {
+    const value = useFestivalExperience();
+    sightings.push({ active: value.active?.animationId ?? null, reduced: value.reduced });
+    return <span>{value.active ? value.active.animationId : "none"}</span>;
+  };
 }
 
-describe("shared festival dismissal", () => {
+describe("the shared festival experience", () => {
   beforeEach(() => {
-    localStorage.clear();
-    renders.length = 0;
     vi.mocked(useActiveEvent).mockReturnValue(resolution);
+    vi.mocked(usePrefersReducedMotion).mockReturnValue(false);
   });
 
-  it("honors stored dismissal on the first consumer render", () => {
-    rememberDismissal("diwali", "2026-11-09");
-    render(<EventExperienceProvider><Consumer /></EventExperienceProvider>);
-    expect(renders[0]).toBe(true);
-    fireEvent.click(screen.getByText("Restore"));
-    expect(screen.getByText("visible")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Dismiss"));
-    expect(screen.getByText("hidden")).toBeInTheDocument();
+  it("gives every surface the same resolution", () => {
+    const seen: { active: unknown; reduced: boolean }[] = [];
+    const seen2: { active: unknown; reduced: boolean }[] = [];
+    const First = makeConsumer(seen);
+    const Second = makeConsumer(seen2);
+    render(
+      <EventExperienceProvider>
+        <First />
+        <Second />
+      </EventExperienceProvider>,
+    );
+    expect(seen[0]).toEqual({ active: "diwali", reduced: false });
+    expect(seen2[0]).toEqual(seen[0]);
   });
 
-  it("reads dismissal when an event resolves and when its window changes", () => {
-    rememberDismissal("diwali", "2026-11-09");
-    vi.mocked(useActiveEvent).mockReturnValue(null);
+  it("clears the experience when the display window ends", () => {
+    const seen: { active: unknown; reduced: boolean }[] = [];
+    const Consumer = makeConsumer(seen);
     const view = render(<EventExperienceProvider><Consumer /></EventExperienceProvider>);
-    vi.mocked(useActiveEvent).mockReturnValue(resolution);
-    renders.length = 0;
+    expect(screen.getByText("diwali")).toBeInTheDocument();
+
+    // The resolver answers null once the window closes; the provider must pass
+    // that straight through so every surface unmounts together.
+    vi.mocked(useActiveEvent).mockReturnValue({ ...resolution, active: null });
     view.rerender(<EventExperienceProvider><Consumer /></EventExperienceProvider>);
-    expect(renders[0]).toBe(true);
-    vi.mocked(useActiveEvent).mockReturnValue({
-      ...resolution,
-      active: { ...resolution.active!, window: { start: "2027-10-28", end: "2027-10-30" } },
-    });
-    view.rerender(<EventExperienceProvider><Consumer /></EventExperienceProvider>);
-    expect(screen.getByText("visible")).toBeInTheDocument();
+    expect(screen.getByText("none")).toBeInTheDocument();
+    expect(seen.at(-1)).toEqual({ active: null, reduced: false });
+  });
+
+  it("passes reduced motion through to every consumer", () => {
+    vi.mocked(usePrefersReducedMotion).mockReturnValue(true);
+    const seen: { active: unknown; reduced: boolean }[] = [];
+    const Consumer = makeConsumer(seen);
+    render(<EventExperienceProvider><Consumer /></EventExperienceProvider>);
+    expect(seen[0]).toEqual({ active: "diwali", reduced: true });
+  });
+
+  it("hands consumers an inactive null-object outside the provider", () => {
+    const seen: { active: unknown; reduced: boolean }[] = [];
+    const Consumer = makeConsumer(seen);
+    render(<Consumer />);
+    expect(seen[0]).toEqual({ active: null, reduced: false });
   });
 });

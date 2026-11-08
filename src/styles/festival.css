@@ -18,7 +18,6 @@
   overflow: hidden;
   transition: opacity 400ms ease;
 }
-.fest-canvas[data-hidden="1"] { opacity: 0; }
 .fest-canvas > canvas { display: block; width: 100%; height: 100%; }
 
 /* Public hero: above the scrim, below the copy and the HUD. */
@@ -83,7 +82,7 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  padding: 7px 12px 7px 9px;
+  padding: 7px 9px;
   border-radius: 999px;
   font: 500 12.5px/1.1 var(--ff-body);
   color: hsl(var(--foreground));
@@ -96,7 +95,7 @@
   white-space: nowrap;
 }
 .fest-chip[data-surface="dashboard"] {
-  padding: 6px 11px 6px 8px;
+  padding: 6px 8px;
   font-size: 12px;
   animation-delay: 400ms;
 }
@@ -130,30 +129,6 @@
 @keyframes fest-twinkle {
   0% { opacity: .65; transform: scale(.9); }
   100% { opacity: 1; transform: scale(1.08); }
-}
-
-.fest-chip-btn {
-  width: 22px;
-  height: 22px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0;
-  margin-left: 1px;
-  border: 0;
-  border-radius: 50%;
-  background: none;
-  color: inherit;
-  font-size: 9.5px;
-  line-height: 1;
-  opacity: .62;
-  cursor: pointer;
-  transition: background-color 160ms ease, opacity 160ms ease;
-}
-.fest-chip-btn:hover { opacity: 1; background: hsl(var(--foreground) / .10); }
-.fest-chip-btn:focus-visible {
-  outline: 2px solid hsl(var(--brand));
-  outline-offset: 1px;
-  opacity: 1;
 }
 
 @keyframes fest-chip-in {
