@@ -1,0 +1,123 @@
+name: CI
+
+# Every guarantee in the security model depends on this running: the Firestore
+# rules are only as good as the suite that proves them, and the deployed rules
+# are only trustworthy if a machine put them there.
+#
+# The verify job mirrors the Cloudflare Pages build: install from the lockfile,
+# type-check, test, build `dist/`, and bundle `functions/` the same way the
+# deployment does. The Functions bundling step is what catches an unresolvable
+# import before it breaks a production deploy (2026-11-08: the Pages build step
+# was skipped, so `node_modules` never existed and `zod` could not be resolved
+# while bundling `functions/`).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Type-check, lint, test, build, bundle Functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Type-check (app)
+        run: npx tsc -p tsconfig.app.json --noEmit
+
+      - name: Type-check (node/tooling)
+        run: npx tsc -p tsconfig.node.json --noEmit
+
+      - name: Type-check (Functions)
+        run: npm run typecheck:functions
+
+      - name: Lint
+        # Advisory until the pre-existing baseline is cleaned up: 56 problems
+        # (39 errors, 17 warnings) at a7872e7, all in src/ UI components and
+        # tailwind.config.ts, none in functions/. Making it blocking here would
+        # have blocked every PR since the baseline appeared; fix the baseline,
+        # then remove this flag.
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Unit and contract tests
+        run: npm run test
+
+      - name: Build
+        env:
+          # Public Firebase web config, not secrets: access is enforced by
+          # Firebase Auth plus firestore.rules, never by key secrecy
+          # (docs/migration/configuration.md). FIREBASE_API_KEY is already
+          # committed in wrangler.toml [vars]; the build fails by design without
+          # these (vite.config.ts -> assertFirebaseConfig).
+          VITE_FIREBASE_API_KEY: AIzaSyDcKFGeZv2ov8M7SYdv-Q4H3JPhpOhncXQ
+          VITE_FIREBASE_PROJECT_ID: zen-stock-folio
+          VITE_FIREBASE_APP_ID: 1:378079456749:web:f559ddb64709e29a254be4
+        run: npm run build
+
+      - name: Bundle Pages Functions
+        # The same esbuild pass the Pages deployment runs over functions/,
+        # driven by this repo's wrangler.toml (compatibility_date). Fails on any
+        # import it cannot resolve from the root node_modules.
+        run: npx -y wrangler@4 pages functions build --outdir=.wrangler/tmp/functions-build
+
+  rules:
+    name: Firestore security rules (emulator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Runs firestore.rules against the local emulator. This is the gate that
+      # catches a rule change which widens access — the redeploy alone does not.
+      - name: Rules suite
+        run: npm run test:rules
+
+  deploy-rules:
+    name: Deploy rules and indexes
+    # Only from main, and only after both gates pass.
+    needs: [verify, rules]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Deploy
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          if [ -z "$FIREBASE_TOKEN" ] || [ -z "$FIREBASE_PROJECT_ID" ]; then
+            echo "::warning::FIREBASE_TOKEN and/or FIREBASE_PROJECT_ID are not configured — skipping rules deploy."
+            exit 0
+          fi
+          npx -y firebase-tools@14.11.0 deploy \
+            --only firestore:rules,firestore:indexes \
+            --project "$FIREBASE_PROJECT_ID" \
+            --token "$FIREBASE_TOKEN" \
+            --non-interactive
