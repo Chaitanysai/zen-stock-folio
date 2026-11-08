@@ -95,6 +95,13 @@ solely the skipped build step.
 
 ## Notes
 
+- **Do not commit a `bun.lockb`.** The build system picks the install command
+  by lockfile detection before the configured build command runs: a
+  `bun.lockb` in the repo makes it run `bun install --frozen-lockfile`, which
+  fails the deployment if the file is stale (2026-11-08: the template's
+  `bun.lockb` still referenced `lovable-tagger`, removed from `package.json`
+  earlier, so every deploy died before `npm ci`). With only
+  `package-lock.json` present, detection selects npm.
 - A green CI run does not deploy the app; Pages deploys on merge to `main`
   using the build configuration above. Rules and indexes deploy from CI
   (`.github/workflows/ci.yml`), which is separate from the Pages build.

@@ -111,9 +111,12 @@ rules cannot drift from the repository copy.
 ## Package manager
 
 `npm` is canonical: every script in `package.json` shells out to `npm`/`npx`, and
-CI installs with `npm ci` from `package-lock.json`. The stray `bun.lockb` is a
-leftover from an earlier experiment and should be deleted — two lockfiles resolve
-two different dependency trees, and only one of them is tested.
+CI installs with `npm ci` from `package-lock.json`. The template's stray
+`bun.lockb` was deleted on 2026-11-08: it was never regenerated after
+`lovable-tagger` left `package.json`, and Cloudflare's build system auto-runs
+`bun install --frozen-lockfile` whenever it finds one — the stale lockfile
+failed every deployment before `npm ci` could run. One lockfile, the tested
+one.
 
 ## Migration documentation
 
