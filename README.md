@@ -95,6 +95,8 @@ rules cannot drift from the repository copy.
 
 ## Operations
 
+- `docs/operations/deploy.md` — how the Pages deployment builds, the 2026-11-08
+  build-step failure and its fix
 - `docs/operations/observability.md` — what is logged, where to read it, and the
   alerts that must exist in the Cloudflare dashboard
 - `docs/operations/rate-limiting.md` — the in-code budgets and the one WAF rule
