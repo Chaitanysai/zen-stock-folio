@@ -3,33 +3,43 @@ import { describe, expect, it, vi } from "vitest";
 import { FestivalGreeting } from "./FestivalGreeting";
 import * as providerModule from "./EventExperienceProvider";
 import type { FestivalExperienceValue } from "./EventExperienceProvider";
-import type { ActiveFestival } from "./types";
+import type { ResolvedEvent } from "@/lib/events/types";
 
-const DIWALI_EVENT: ActiveFestival = {
+const DIWALI_EVENT: ResolvedEvent = {
   event: {
     id: "diwali",
     name: "Diwali",
     date: "2026-11-08",
+    category: "festival",
+    country: "IN",
+    timezone: "Asia/Kolkata",
     priority: 100,
     animationId: "diwali",
     displayDaysBefore: 1,
     displayDaysAfter: 1,
   },
   animationId: "diwali",
+  dayOffset: 0,
+  isEventDay: true,
   window: { start: "2026-11-07", end: "2026-11-09" },
 };
 
-const XMAS_EVENT: ActiveFestival = {
+const XMAS_EVENT: ResolvedEvent = {
   event: {
     id: "christmas",
     name: "Christmas",
     date: "2026-12-25",
+    category: "festival",
+    country: "IN",
+    timezone: "Asia/Kolkata",
     priority: 80,
     animationId: "christmas",
     displayDaysBefore: 1,
     displayDaysAfter: 1,
   },
   animationId: "christmas",
+  dayOffset: 0,
+  isEventDay: true,
   window: { start: "2026-12-24", end: "2026-12-26" },
 };
 

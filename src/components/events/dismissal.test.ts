@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearDismissal,
   dismissalKey,
@@ -19,6 +19,21 @@ describe("festival dismissal persistence", () => {
 
   it("reports false when not dismissed", () => {
     expect(isDismissed("diwali", "2026-11-09")).toBe(false);
+  });
+
+  it("returns false when storage reads and cleanup throw", () => {
+    const read = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("storage blocked");
+    });
+    const remove = vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => {
+      throw new Error("storage blocked");
+    });
+    try {
+      expect(isDismissed("diwali", "2026-11-09")).toBe(false);
+    } finally {
+      read.mockRestore();
+      remove.mockRestore();
+    }
   });
 
   it("remembers dismissal and reports true", () => {

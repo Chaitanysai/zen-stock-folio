@@ -45,9 +45,9 @@ export function isDismissed(animationId: AnimationId, windowEnd: string): boolea
   const storage = store();
   if (!storage) return false;
   const key = dismissalKey(animationId, windowEnd);
-  const raw = storage.getItem(key);
-  if (!raw) return false;
   try {
+    const raw = storage.getItem(key);
+    if (!raw) return false;
     const record = JSON.parse(raw) as Partial<DismissalRecord>;
     if (record.until !== windowEnd) throw new Error("expired");
     return true;

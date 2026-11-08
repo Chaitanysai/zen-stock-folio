@@ -60,22 +60,16 @@ export function EventExperienceProvider({ children }: { children: ReactNode }) {
   const windowEnd = active?.window.end ?? null;
   const today = resolution?.today ?? null;
 
-  // Initialised from storage on first render so a dismissed festival never
-  // flashes on screen before the effect below has had a chance to run.
-  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  const [, setDismissalVersion] = useState(0);
   const [pausedKey, setPausedKey] = useState<string | null>(null);
 
   // Keys include the window end, so the identity is stable for the whole window
   // and changes automatically when the next festival (or next year) arrives.
   const identity = eventId && windowEnd ? `${eventId}.${windowEnd}` : null;
 
-  useEffect(() => {
-    if (!eventId || !windowEnd) {
-      setDismissedKey(null);
-      return;
-    }
-    setDismissedKey(isDismissed(eventId, windowEnd) ? identity : null);
-  }, [eventId, windowEnd, identity]);
+  // Read during render so consumers never flash a stored dismissal as visible.
+  // Updating the version after storage writes triggers a fresh read.
+  const dismissedKey = eventId && windowEnd && isDismissed(eventId, windowEnd) ? identity : null;
 
   // Pause is per visit: a new festival starts playing, and the preference does
   // not leak between festivals.
@@ -91,13 +85,13 @@ export function EventExperienceProvider({ children }: { children: ReactNode }) {
   const dismiss = useCallback(() => {
     if (!eventId || !windowEnd) return;
     rememberDismissal(eventId, windowEnd);
-    setDismissedKey(identity);
-  }, [eventId, windowEnd, identity]);
+    setDismissalVersion((version) => version + 1);
+  }, [eventId, windowEnd]);
 
   const restore = useCallback(() => {
     if (!eventId || !windowEnd) return;
     clearDismissal(eventId, windowEnd);
-    setDismissedKey(null);
+    setDismissalVersion((version) => version + 1);
   }, [eventId, windowEnd]);
 
   const togglePaused = useCallback(() => {
@@ -115,7 +109,7 @@ export function EventExperienceProvider({ children }: { children: ReactNode }) {
       dismiss,
       restore,
     };
-  }, [active, eventId, identity, dismissedKey, pausedKey, reduced, togglePaused, dismiss, restore]);
+  }, [active, identity, dismissedKey, pausedKey, reduced, togglePaused, dismiss, restore]);
 
   return (
     <FestivalExperienceContext.Provider value={value}>

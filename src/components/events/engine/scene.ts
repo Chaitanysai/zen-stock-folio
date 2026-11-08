@@ -236,7 +236,7 @@ export class FestivalScene {
     if (this.reduced === reduced) return;
     this.reduced = reduced;
     if (reduced) {
-      this.drawStaticFrame();
+      this.kick();
     } else {
       this.replay();
     }
@@ -284,7 +284,7 @@ export class FestivalScene {
     if (this.canvas.height !== h) this.canvas.height = h;
 
     this.layout();
-    if (this.reduced) this.drawStaticFrame();
+    if (this.reduced || this.staticOnly) this.drawStaticFrame();
     else if (this.paused) this.render(0, true);
   }
 
@@ -613,8 +613,9 @@ export class FestivalScene {
         const ry = vy * squash;
         const ct = Math.cos(tilt);
         const st = Math.sin(tilt);
-        vx = vx * ct - ry * st;
-        vy = vx * st + ry * ct;
+        const rx = vx;
+        vx = rx * ct - ry * st;
+        vy = rx * st + ry * ct;
       }
 
       const life = kind === "willow" ? rand(2.2, 2.9) : rand(1.1, 1.7);

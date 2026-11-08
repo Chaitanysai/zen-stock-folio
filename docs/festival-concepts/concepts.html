@@ -127,9 +127,9 @@ td:first-child{color:var(--ink);white-space:nowrap}
 .zl{position:absolute;inset:0;pointer-events:none;z-index:7}
 .hero{cursor:default}
 </style>
-<span class="tag">ZenFolio · Festival experience v2 · Concepts for review · 8 Nov 2026</span>
+<span class="tag">ZenFolio · Festival experience v2 · Pre-implementation concept record · 8 Nov 2026</span>
 <h1>Four festival concepts, <em>live</em>.</h1>
-<p class="lede">These are working motion prototypes running the same particle engine I plan to ship. They are mockups of the ZenFolio hero and dashboard, not the real pages. Nothing in <code>src/</code> has been changed yet. Use the toggles under each frame to switch theme, replay the opening sequence, and show the keep-clear zones.</p>
+<p class="lede">This is a pre-implementation concept record with interactive mockups of the ZenFolio hero and dashboard. The proposals and figures below describe that design stage, including session-only dismissal, palettes, diya counts and spark budgets; they are not the current implementation contract. The shipped experience lives in <code>src/components/events/</code>. Use the toggles under each frame to switch theme, replay the opening sequence, and show the keep-clear zones.</p>
 
 <h2>What I found in the code</h2>
 <div class="grid2">
@@ -288,7 +288,7 @@ class Scene{
   }
   get dark(){return this.frame.classList.contains('dark')}
   resize(){const r=this.host.getBoundingClientRect();this.W=r.width;this.H=r.height;this.dpr=Math.min(devicePixelRatio||1,1.75);
-    this.cv.width=Math.round(this.W*this.dpr);this.cv.height=Math.round(this.H*this.dpr);this.zones();this.layout();if(this.reduced||this.paused)this.drawStatic&&this.frame.classList.contains('lit')&&this.render(0)}
+    this.cv.width=Math.round(this.W*this.dpr);this.cv.height=Math.round(this.H*this.dpr);this.zones();this.layout();if(this.reduced||this.paused)this.drawStatic&&this.frame.classList.contains('lit')&&this.render(0,true)}
   zones(){const hr=this.host.getBoundingClientRect();this.Z=[];
     this.host.querySelectorAll('[data-role]').forEach(el=>{const role=el.dataset.role;if(role==='band')return;const r=el.getBoundingClientRect();const pad=role==='chip'?6:14;
       this.Z.push({x:r.left-hr.left-pad,y:r.top-hr.top-pad,w:r.width+pad*2,h:r.height+pad*2,role})});
