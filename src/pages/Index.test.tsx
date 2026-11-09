@@ -16,6 +16,17 @@ const fxRate = { rate: 90, asOf: null, stale: false, loading: false, error: null
 const market = { isOpen: true, label: "Open", description: "NSE open", istTime: "10:15" };
 const auth = { user: { id: "u1", email: "asha@example.com" }, signOut: vi.fn(), loading: false };
 
+// Broker connections decide which synced rows the dashboard may present.
+const brokerState = vi.hoisted(() => ({ connections: [] as unknown[] }));
+vi.mock("@/lib/brokers/client", () => ({
+  brokerApi: {
+    connections: () => Promise.resolve({ connections: brokerState.connections, storeReady: true, setupIssues: [] }),
+    providers: () => Promise.resolve({ providers: [], storeReady: true, setupIssues: [], callbackOrigin: "" }),
+  },
+  readBrokerCallback: () => null,
+  clearBrokerCallback: () => {},
+  BrokerApiError: class BrokerApiError extends Error {},
+}));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => auth }));
 vi.mock("@/hooks/usePortfolioSync", () => ({
   usePortfolioSync: () => sync,
@@ -65,6 +76,7 @@ const renderIndex = async () => {
 beforeEach(() => {
   localStorage.clear();
   save.mockClear();
+  brokerState.connections = [];
   snapshot = {
     stocks: [stock("RELIANCE", 100, 120, 10), stock("INFY", 200, 180, 5)],
     trades: [], watchlist: [wl], alerts: [], fnoTrades: [],
@@ -209,5 +221,95 @@ describe("Index dashboard", () => {
     const table = await screen.findByRole("table", { name: "Realised profit and loss by month" });
     expect(within(table).getByText("Jan '26")).toBeInTheDocument();
     expect(within(table).getByText("+₹500")).toBeInTheDocument();
+  });
+
+  describe("a disconnected broker", () => {
+    const synced = (ticker: string, connectionId: string): PortfolioStock => ({
+      ...stock(ticker, 100, 120, 10),
+      broker: {
+        provider: "groww",
+        connectionId,
+        key: `groww:${connectionId}:${ticker}`,
+        instrumentId: ticker,
+        source: "holding",
+        quantity: 10,
+        averagePrice: 100,
+        lastSyncedAt: "2026-01-02T00:00:00.000Z",
+      },
+    } as unknown as PortfolioStock);
+
+    const connection = (id: string, status: string) => ({
+      id, provider: "groww", method: "api_keys", displayName: id, status, permissions: [],
+      createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-02T00:00:00.000Z",
+      lastTestedAt: null, lastSuccessfulSyncAt: null, tokenExpiresAt: null, lastErrorCode: null,
+      disconnectedAt: status === "disconnected" ? "2026-01-03T00:00:00.000Z" : null, lastSync: null,
+    });
+
+    const settle = async () => { await act(async () => { await Promise.resolve(); }); };
+
+    it("hides its rows from the dashboard and every calculation", async () => {
+      snapshot = {
+        stocks: [synced("GROWWCO", "groww-1"), stock("MANUAL", 100, 120, 10)],
+        trades: [], watchlist: [], alerts: [], fnoTrades: [],
+      };
+      brokerState.connections = [connection("groww-1", "disconnected")];
+      await renderIndex();
+      await settle();
+
+      // Only the manual row is left: 10 × 120 = ₹1,200, not ₹2,400.
+      const card = screen.getByRole("article", { name: /portfolio value/i });
+      expect(within(card).getByText("₹1,200")).toBeInTheDocument();
+      const holdings = screen.getByRole("table", { name: /open holdings/i });
+      expect(within(holdings).queryByText("GROWWCO · Energy")).toBeNull();
+      expect(within(holdings).getByText("MANUAL · Energy")).toBeInTheDocument();
+      // The hidden rows are explained, not silently missing.
+      expect(screen.getByText(/1 row is hidden because the broker connection/i)).toBeInTheDocument();
+    });
+
+    it("keeps its rows while the connection is only failing", async () => {
+      snapshot = {
+        stocks: [synced("GROWWCO", "groww-1")],
+        trades: [], watchlist: [], alerts: [], fnoTrades: [],
+      };
+      brokerState.connections = [connection("groww-1", "error")];
+      await renderIndex();
+      await settle();
+
+      const holdings = screen.getByRole("table", { name: /open holdings/i });
+      expect(within(holdings).getByText("GROWWCO · Energy")).toBeInTheDocument();
+      expect(screen.queryByText(/row is hidden because the broker connection/i)).toBeNull();
+    });
+
+    it("leaves another broker's rows untouched", async () => {
+      snapshot = {
+        stocks: [synced("GROWWCO", "groww-1"), synced("ZERODHA", "zerodha-1")],
+        trades: [], watchlist: [], alerts: [], fnoTrades: [],
+      };
+      brokerState.connections = [
+        connection("groww-1", "disconnected"),
+        { ...connection("zerodha-1", "connected"), provider: "zerodha" },
+      ];
+      await renderIndex();
+      await settle();
+
+      const holdings = screen.getByRole("table", { name: /open holdings/i });
+      expect(within(holdings).queryByText("GROWWCO · Energy")).toBeNull();
+      expect(within(holdings).getByText("ZERODHA · Energy")).toBeInTheDocument();
+    });
+
+    it("keeps the hidden rows in the stored snapshot", async () => {
+      snapshot = {
+        stocks: [synced("GROWWCO", "groww-1")],
+        trades: [], watchlist: [], alerts: [], fnoTrades: [],
+      };
+      brokerState.connections = [connection("groww-1", "disconnected")];
+      await renderIndex();
+      await settle();
+
+      // Hiding is a read-side decision: nothing is written back, so the row
+      // survives for history and a later reconnect.
+      expect(save).not.toHaveBeenCalled();
+      expect(snapshot.stocks).toHaveLength(1);
+    });
   });
 });

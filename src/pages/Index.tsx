@@ -40,6 +40,8 @@ import { useFxRate }         from "@/hooks/useFxRate";
 import {
   usePortfolioSync, displayNameKeyFor, loadDisplayNameFromServer, saveDisplayNameToServer, PortfolioSnapshot,
 } from "@/hooks/usePortfolioSync";
+import { useBrokerConnections } from "@/hooks/useBrokerConnections";
+import { visibleStockIndices } from "@/lib/brokers/visibility";
 import type { Execution } from "@/lib/data/snapshotTypes";
 import { useAuth }           from "@/contexts/AuthContext";
 import { accountResetPatch, journalNotesPatch } from "@/lib/portfolio/snapshotUpdates";
@@ -238,6 +240,11 @@ export default function Index() {
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [selectedChartKey, setSelectedChartKey] = useState<string | null>(null);
   const [searchedSymbol, setSearchedSymbol] = useState<string | null>(null);
+
+  // A disconnected broker's rows stay in the snapshot but stop being presented
+  // as live portfolio data; this list decides which rows those are.
+  const { connections: brokerConnections, refresh: refreshBrokerConnections } =
+    useBrokerConnections(user?.id, authLoading);
   const [tradesSubTab, setTradesSubTab] = useState<"equity"|"fno">("equity");
   const [chartRange, setChartRange] = useState<"1d"|"5d"|"1mo">("1d");
   const [ready, setReady] = useState(false);
@@ -400,6 +407,25 @@ export default function Index() {
       : stock;
   }), [prices, stocks]);
 
+  // Disconnecting a broker hides its rows rather than deleting them, so the
+  // stored snapshot keeps every historical row. `visibleIndices` is the map back
+  // to the stored rows: `live` stays index-aligned with `stocks` because the lot
+  // editor addresses a saved row by position, and only the display copies below
+  // drop the disconnected account's rows.
+  const visibleIndices = useMemo(
+    () => visibleStockIndices(stocks, brokerConnections),
+    [stocks, brokerConnections],
+  );
+  const hiddenStockCount = stocks.length - visibleIndices.length;
+  const visibleLive = useMemo(
+    () => visibleIndices.map((index) => live[index]),
+    [visibleIndices, live],
+  );
+  const visibleStocks = useMemo(
+    () => visibleIndices.map((index) => stocks[index]),
+    [visibleIndices, stocks],
+  );
+
   const handlePortfolioAdd    = useCallback((stock: PortfolioStock) => { void applySnapshot({ stocks: [...snapshotRef.current.stocks, stock] }, "Portfolio update"); }, [applySnapshot]);
   /**
    * Broker statements are authoritative for their own rows only. The plan
@@ -469,6 +495,18 @@ export default function Index() {
     }
     void applySnapshot({ stocks: nextStocks, trades: nextTrades, alerts: nextAlerts }, "Transaction deletion");
   }, [applySnapshot, selectedChartKey]);
+  // The table sees the filtered rows, so its lot index is a position in that
+  // view. Translate it back to the stored row before editing or deleting.
+  const handleVisibleLotEdit = useCallback((visibleIndex: number, updated: PortfolioStock) => {
+    const storedIndex = visibleIndices[visibleIndex];
+    if (storedIndex === undefined) return;
+    handleLotEdit(storedIndex, updated);
+  }, [visibleIndices, handleLotEdit]);
+  const handleVisibleLotDelete = useCallback((visibleIndex: number) => {
+    const storedIndex = visibleIndices[visibleIndex];
+    if (storedIndex === undefined) return;
+    handleLotDelete(storedIndex);
+  }, [visibleIndices, handleLotDelete]);
   const handleAccountReset   = useCallback(() => {
     setSelectedChartKey(null);
     void applySnapshot(accountResetPatch(), "Account reset");
@@ -526,7 +564,7 @@ export default function Index() {
   // ── Derived, display-only values ──────────────────────────────────────────
   // One USD→INR rate for every U.S. row, fetched only when one exists. The hook
   // sits above the early returns so hook order never changes.
-  const hasUsd = live.some((stock) => currencyOf(stock) === "USD");
+  const hasUsd = visibleLive.some((stock) => currencyOf(stock) === "USD");
   const { rate: usdInr, stale: fxStale, asOf: fxAsOf, loading: fxLoading } = useFxRate({ enabled: hasUsd });
   const fxCached = hasUsd && usdInr !== null && fxStale;
   // Only the observation date the server supplied; never invent a timestamp.
@@ -537,10 +575,10 @@ export default function Index() {
   const fxNote = fxCached ? (fxUntimed ? "unverified FX" : "cached FX") : null;
 
   const m = useMemo(
-    () => computeMetrics(live, fnoTrades, prices, new Date(), usdInr),
-    [live, fnoTrades, prices, usdInr],
+    () => computeMetrics(visibleLive, fnoTrades, prices, new Date(), usdInr),
+    [visibleLive, fnoTrades, prices, usdInr],
   );
-  const movers = useMemo(() => dailyMovers(live, prices, usdInr), [live, prices, usdInr]);
+  const movers = useMemo(() => dailyMovers(visibleLive, prices, usdInr), [visibleLive, prices, usdInr]);
   // Stale or failed quotes must not paint a directional glow: neutral only.
   // The glow follows today's open-position move, never a closed trade.
   const glowTone: Tone = priceError !== null || !m.hasDayData ? "flat" : toneOf(m.dayMove);
@@ -551,7 +589,7 @@ export default function Index() {
   );
   // Every aggregate widget below reads INR rows. `toInrStocks` drops USD rows
   // when no rate exists, so each widget that consumes it is given the note.
-  const inrView = useMemo(() => toInrStocks(live, usdInr), [live, usdInr]);
+  const inrView = useMemo(() => toInrStocks(visibleLive, usdInr), [visibleLive, usdInr]);
   const inrViewIncomplete = hasUsd && !fxLoading && usdInr === null;
   const inrViewNote = inrViewIncomplete
     ? "U.S. holdings are excluded from this INR view until the USD→INR rate is available."
@@ -595,6 +633,21 @@ export default function Index() {
     <div className="zf-notice" role="status" style={{ marginBottom: 12 }}>
       <AlertTriangle aria-hidden="true" />
       <span>{inrViewNote}</span>
+    </div>
+  ) : null;
+  // A disconnected account's rows are hidden rather than deleted, so say so:
+  // rows vanishing with no explanation reads as data loss.
+  const hiddenNotice = hiddenStockCount > 0 ? (
+    <div className="zf-notice" role="status" style={{ marginBottom: 12 }}>
+      <AlertTriangle aria-hidden="true" />
+      <span>
+        {hiddenStockCount === 1 ? "1 row is" : `${hiddenStockCount} rows are`} hidden because the broker
+        connection that imported {hiddenStockCount === 1 ? "it was" : "them was"} disconnected. The data is
+        kept in your account and returns if you reconnect.
+      </span>
+      <button type="button" className="zf-btn zf-btn-outline zf-btn-sm" onClick={() => goTo("brokers")}>
+        Open Brokers
+      </button>
     </div>
   ) : null;
 
@@ -757,6 +810,7 @@ export default function Index() {
 
             {renderedTab === "overview" && (
               <div className="zf-section-overview">
+                {hiddenNotice}
                 <div className="zf-row1">
                   <BalanceCard
                     loading={loading} m={m} watchCount={watchlist.length}
@@ -804,7 +858,7 @@ export default function Index() {
                   />
                   <WatchlistCard watchlist={watchlist} loading={loading} onRemove={handleWatchlistDelete} goTo={goTo} />
                   <div className="zf-stack">
-                    <InsightCard text={describeAiTeaser(m.active.length, bestPerformer(live))} goTo={goTo} />
+                    <InsightCard text={describeAiTeaser(m.active.length, bestPerformer(visibleLive))} goTo={goTo} />
                     <FnoCard m={m} loading={loading} openFno={openFno} />
                   </div>
                   <section className="zf-card zf-strip zf-pulse zf-in" style={stagger(10)} aria-labelledby="zf-pulse-title">
@@ -824,16 +878,17 @@ export default function Index() {
               <div key={renderedTab} className="zf-tab-panel" style={{ minHeight: "calc(100dvh - 240px)" }}>
                 {renderedTab === "holdings" && (
                   <div className="zf-tab-stack">
+                    {hiddenNotice}
                     {user && <BrokerSyncCard userId={user.id} onApplied={reloadPortfolio} />}
                     <PortfolioDashboard
-                      stocks={live}
+                      stocks={visibleLive}
                       usdInr={usdInr}
                       loading={loading}
                       onAdd={handlePortfolioAdd}
                       onImport={handlePortfolioImport}
                       existingStocks={stocks}
-                      onEditLot={handleLotEdit}
-                      onDeleteLot={handleLotDelete}
+                      onEditLot={handleVisibleLotEdit}
+                      onDeleteLot={handleVisibleLotDelete}
                       onResetAll={handleAccountReset}
                     />
                   </div>
@@ -842,7 +897,7 @@ export default function Index() {
                   <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                     <div className="zf-subtabs" role="tablist" aria-label="Trade type">
                       {([
-                        { id: "equity", label: "Equity trades", count: live.length },
+                        { id: "equity", label: "Equity trades", count: visibleLive.length },
                         { id: "fno",    label: "F&O positions", count: fnoTrades.length },
                       ] as const).map(st => (
                         <button key={st.id} type="button" role="tab" id={`zf-subtab-${st.id}`}
@@ -871,16 +926,22 @@ export default function Index() {
                   </div>
                 )}
                 {renderedTab === "watchlist" && <WatchlistTable watchlist={watchlist} onAdd={handleWatchlistAdd} onEdit={handleWatchlistEdit} onDelete={handleWatchlistDelete} />}
-                {renderedTab === "news"      && <StockNewsFeed stocks={live} />}
-                {renderedTab === "charts"    && <PortfolioCharts stocks={live} />}
-                {renderedTab === "analytics" && <>{inrNotice}<TradeAnalytics stocks={inrView} /></>}
-                {renderedTab === "history"   && <>{inrNotice}<TradeHistory stocks={inrView} /></>}
-                {renderedTab === "journal"   && <TradeJournal stocks={stocks} onUpdateNotes={handleJournalNotesUpdate} />}
-                {renderedTab === "sector"    && <>{inrNotice}<SectorDiversification stocks={inrView} /></>}
+                {renderedTab === "news"      && <StockNewsFeed stocks={visibleLive} />}
+                {renderedTab === "charts"    && <PortfolioCharts stocks={visibleLive} />}
+                {renderedTab === "analytics" && <>{hiddenNotice}{inrNotice}<TradeAnalytics stocks={inrView} /></>}
+                {renderedTab === "history"   && <>{hiddenNotice}{inrNotice}<TradeHistory stocks={inrView} /></>}
+                {renderedTab === "journal"   && <>{hiddenNotice}<TradeJournal stocks={visibleStocks} onUpdateNotes={handleJournalNotesUpdate} /></>}
+                {renderedTab === "sector"    && <>{hiddenNotice}{inrNotice}<SectorDiversification stocks={inrView} /></>}
                 {renderedTab === "alerts"    && <PriceAlerts alerts={alerts} onAddAlert={handleAlertAdd} onDeleteAlert={handleAlertDelete} onDismissAlert={handleAlertDismiss} />}
-                {renderedTab === "ai"        && <AIInsights stocks={live} />}
-                {renderedTab === "export"    && <ExportPortfolio stocks={live} />}
-                {renderedTab === "brokers"   && <Brokers stocks={stocks} onImportStocks={handleBrokerImport} />}
+                {renderedTab === "ai"        && <AIInsights stocks={visibleLive} />}
+                {renderedTab === "export"    && <ExportPortfolio stocks={visibleLive} />}
+                {renderedTab === "brokers"   && (
+                  <Brokers
+                    stocks={stocks}
+                    onImportStocks={handleBrokerImport}
+                    onConnectionsChanged={refreshBrokerConnections}
+                  />
+                )}
               </div>
             )}
           </div>
