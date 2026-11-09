@@ -7,32 +7,16 @@
  * and the dashboard can never disagree about which festival is running, and a
  * date change at IST midnight re-renders all of them together.
  *
- * The provider owns the three pieces of state that must be shared rather than
- * per-component:
- *
- *   dismissed  hidden for the rest of this festival window (localStorage)
- *   paused     the visitor pressed pause (this visit only)
- *   reduced    prefers-reduced-motion, read once for every canvas
+ * The experience is fully time-driven: it appears when the resolver opens the
+ * display window and disappears when the window closes. There are no pause or
+ * dismiss controls and no stored dismissal state — a festival runs for a day or
+ * two a year, so it needs no management, only the calendar.
  *
  * Everything here is presentation. There is no network call and no account data
- * involved, which is why a dismissal lives in localStorage and not the backend.
+ * involved.
  */
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import type { ResolvedEvent } from "@/lib/events/types";
-import {
-  clearDismissal,
-  isDismissed,
-  pruneDismissals,
-  rememberDismissal,
-} from "./dismissal";
 import { useActiveEvent } from "./useActiveEvent";
 import { usePrefersReducedMotion } from "./usePrefersReducedMotion";
 import "@/styles/festival.css";
@@ -40,13 +24,8 @@ import "@/styles/festival.css";
 export interface FestivalExperienceValue {
   /** The active festival and its display window, or null when none is running. */
   active: ResolvedEvent | null;
-  /** The visitor hid the celebration for the rest of this window. */
-  dismissed: boolean;
-  paused: boolean;
+  /** prefers-reduced-motion, read once for every canvas. */
   reduced: boolean;
-  togglePaused: () => void;
-  dismiss: () => void;
-  restore: () => void;
 }
 
 const FestivalExperienceContext = createContext<FestivalExperienceValue | null>(null);
@@ -55,61 +34,11 @@ export function EventExperienceProvider({ children }: { children: ReactNode }) {
   const resolution = useActiveEvent();
   const reduced = usePrefersReducedMotion();
 
+  // A stable context value: the resolver already re-renders only when the
+  // visible outcome changes, so a fresh object literal per render would fan
+  // pointless updates out to every consumer for the same answer.
   const active = resolution?.active ?? null;
-  const eventId = active?.animationId ?? null;
-  const windowEnd = active?.window.end ?? null;
-  const today = resolution?.today ?? null;
-
-  const [, setDismissalVersion] = useState(0);
-  const [pausedKey, setPausedKey] = useState<string | null>(null);
-
-  // Keys include the window end, so the identity is stable for the whole window
-  // and changes automatically when the next festival (or next year) arrives.
-  const identity = eventId && windowEnd ? `${eventId}.${windowEnd}` : null;
-
-  // Read during render so consumers never flash a stored dismissal as visible.
-  // Updating the version after storage writes triggers a fresh read.
-  const dismissedKey = eventId && windowEnd && isDismissed(eventId, windowEnd) ? identity : null;
-
-  // Pause is per visit: a new festival starts playing, and the preference does
-  // not leak between festivals.
-  useEffect(() => {
-    setPausedKey(null);
-  }, [identity]);
-
-  // Expired records can be dropped as soon as we know today's date.
-  useEffect(() => {
-    if (today) pruneDismissals(today);
-  }, [today]);
-
-  const dismiss = useCallback(() => {
-    if (!eventId || !windowEnd) return;
-    rememberDismissal(eventId, windowEnd);
-    setDismissalVersion((version) => version + 1);
-  }, [eventId, windowEnd]);
-
-  const restore = useCallback(() => {
-    if (!eventId || !windowEnd) return;
-    clearDismissal(eventId, windowEnd);
-    setDismissalVersion((version) => version + 1);
-  }, [eventId, windowEnd]);
-
-  const togglePaused = useCallback(() => {
-    setPausedKey((current) => (current === identity ? null : identity));
-  }, [identity]);
-
-  const value = useMemo<FestivalExperienceValue>(() => {
-    const dismissed = dismissedKey !== null && dismissedKey === identity;
-    return {
-      active,
-      dismissed,
-      paused: pausedKey !== null && pausedKey === identity,
-      reduced,
-      togglePaused,
-      dismiss,
-      restore,
-    };
-  }, [active, identity, dismissedKey, pausedKey, reduced, togglePaused, dismiss, restore]);
+  const value = useMemo(() => ({ active, reduced }), [active, reduced]);
 
   return (
     <FestivalExperienceContext.Provider value={value}>
@@ -126,13 +55,5 @@ export function EventExperienceProvider({ children }: { children: ReactNode }) {
 export function useFestivalExperience(): FestivalExperienceValue {
   const value = useContext(FestivalExperienceContext);
   if (value) return value;
-  return {
-    active: null,
-    dismissed: false,
-    paused: false,
-    reduced: false,
-    togglePaused: () => {},
-    dismiss: () => {},
-    restore: () => {},
-  };
+  return { active: null, reduced: false };
 }

@@ -70,7 +70,9 @@ export interface FestivalSceneOptions {
   fest: AnimationId;
   variant: FestivalVariant;
   reduced: boolean;
-  paused: boolean;
+  /** Optional: no surface pauses a festival any more; the engine keeps the
+   *  capability for tests and future callers. Defaults to false. */
+  paused?: boolean;
   measure: () => FestivalFrame;
   isDark: () => boolean;
   /** Draw one static frame and never start the loop (the minimal variant). */
@@ -190,7 +192,7 @@ export class FestivalScene {
     this.isDark = options.isDark;
     this.staticOnly = options.staticOnly ?? false;
     this.reduced = options.reduced;
-    this.paused = options.paused;
+    this.paused = options.paused ?? false;
   }
 
   /** Begin observing and play the opening sequence. */

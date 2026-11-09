@@ -80,6 +80,10 @@ id = "1e6435f0a62f4ff6baee8141ddb5264f"
 
 [env.preview.vars]
 FIREBASE_API_KEY = "AIzaSyDcKFGeZv2ov8M7SYdv-Q4H3JPhpOhncXQ"
+# `vars` are not inherited by environments, so every non-secret value the
+# Functions read must be repeated here. Without FIREBASE_PROJECT_ID the preview
+# API fails closed with "Firestore project is not configured" (2026-11-08).
+FIREBASE_PROJECT_ID = "zen-stock-folio"
 # Origin used for provider callback URLs. The suffixed branch alias is the one
 # Cloudflare assigned to this branch after the plain alias stopped resolving to
 # the newest preview (it stayed pinned to the 2026-10-29 deployment), so the

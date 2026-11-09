@@ -1,15 +1,13 @@
 /**
  * The greeting chip: the one piece of the celebration that is not decoration.
  *
- * It says which festival this is, and it is the only place the visitor can
- * pause or hide the animation. Hiding the animation leaves this in place — the
- * greeting is the part that belongs to the page, the particles are the part
- * that can be turned off — and the chip offers the animation back until the
- * display window ends.
+ * It says which festival this is. It carries no controls: a festival runs for a
+ * day or two a year, so it needs no pause or hide button — it appears and
+ * leaves on the calendar's schedule, and the reduced-motion contract is honored
+ * upstream in the provider rather than per chip.
  *
  * The wording follows the approved concepts: a full greeting with the ZenFolio
- * signature on the public page, a short one beside the price clock, and no
- * pause control on the static minimal pages where there is nothing to pause.
+ * signature on the public page, and a short one beside the price clock.
  */
 import { useId } from "react";
 import type { AnimationId } from "@/lib/events/animationIds";
@@ -82,59 +80,23 @@ export function FestivalGreeting({
   surface: FestivalSurface;
   className?: string;
 }) {
-  const { active, dismissed, paused, togglePaused, dismiss, restore } = useFestivalExperience();
+  const { active } = useFestivalExperience();
   if (!active) return null;
 
   const theme = surface === "public-hero" ? "public" : "compact";
   const copy = COPY[active.animationId][theme];
-  // Nothing moves on the minimal pages, so there is nothing to pause.
-  const canPause = surface !== "minimal";
 
   return (
     <span
       className={className ? `fest-chip ${className}` : "fest-chip"}
       data-surface={surface}
       data-fest={active.animationId}
-      data-hidden={dismissed ? "1" : "0"}
     >
       {active.animationId === "diwali" ? <DiyaIcon /> : <PineIcon />}
       <span className="fest-chip-label">
         {copy.lead} <em>{copy.accent}</em>
         {copy.from && <span className="fest-chip-from"> · from ZenFolio</span>}
       </span>
-      {canPause && (
-        <button
-          type="button"
-          className="fest-chip-btn"
-          onClick={togglePaused}
-          aria-pressed={paused}
-          aria-label={paused ? "Play celebration" : "Pause celebration"}
-          title={paused ? "Play animation" : "Pause animation"}
-        >
-          <span aria-hidden="true">{paused ? "▶" : "❚❚"}</span>
-        </button>
-      )}
-      {dismissed ? (
-        <button
-          type="button"
-          className="fest-chip-btn"
-          onClick={restore}
-          aria-label="Show celebration again"
-          title="Show celebration"
-        >
-          <span aria-hidden="true">↺</span>
-        </button>
-      ) : (
-        <button
-          type="button"
-          className="fest-chip-btn"
-          onClick={dismiss}
-          aria-label="Hide celebration"
-          title="Hide celebration"
-        >
-          <span aria-hidden="true">✕</span>
-        </button>
-      )}
     </span>
   );
 }
