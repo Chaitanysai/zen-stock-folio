@@ -1,0 +1,71 @@
+/* Summary already owns the card surface. KpiStat supplies only its figure
+   layout here; the existing dashboard classes retain the type scale. */
+.zf-kpi-adopted {
+  min-width: 0;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  box-shadow: none;
+}
+
+.zf-kpi-adopted .zf-kpi-label {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+}
+
+.zf-kpi-adopted .zf-kpi-action,
+.zf-kpi-adopted .zf-kpi-value.text-muted-foreground {
+  color: inherit;
+}
+
+.zf-kpi-adopted .zf-kpi-value {
+  font: inherit;
+}
+
+.zf-kpi-adopted .zf-kpi-value > .zf-balance-val,
+.zf-kpi-adopted .zf-kpi-value > .zf-stat-val {
+  display: block;
+}
+
+.zf-balance-kpi .zf-kpi-value {
+  color: hsl(var(--foreground));
+}
+
+.zf-stat-kpi {
+  gap: 10px;
+}
+
+.zf-stat-kpi .zf-kpi-head {
+  align-items: flex-start;
+}
+
+.zf-stat-kpi .zf-kpi-foot {
+  align-items: center;
+  gap: 6px 8px;
+  min-height: 24px;
+}
+
+/* Preserve the highlighted figure's contrast on its existing night surface. */
+.zf-stat-hl .zf-stat-kpi .zf-kpi-value {
+  color: hsl(var(--on-night));
+}
+
+/* KpiStat owns loading; match the dimensions reserved by Summary before
+   adoption rather than introducing a second skeleton implementation. */
+.zf-balance-kpi .zf-kpi-value > .zf-skeleton-block {
+  display: block;
+  width: 68%;
+  height: 44px;
+  margin-top: 14px;
+  border-radius: 10px;
+}
+
+.zf-stat-kpi .zf-kpi-value > .zf-skeleton-block {
+  display: block;
+  width: 64%;
+  height: 28px;
+  border-radius: 6px;
+}

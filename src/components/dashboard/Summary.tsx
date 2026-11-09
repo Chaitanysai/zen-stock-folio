@@ -8,7 +8,9 @@ import { compact, inr, signedInr, signedPct, stagger, toneOf } from "@/lib/dashb
 import { AddTradeButton, DeltaPill, EmptyState, ImportButton } from "./ui";
 import { OdometerInr } from "./AnimatedNumber";
 import { Skeleton } from "@/components/ui/skeleton";
+import { KpiStat } from "@/components/ui/kpi-stat";
 import type { ActiveTab } from "./nav";
+import "@/styles/kpi-adoption.css";
 
 // recharts is only needed once there is something to plot.
 const UnrealisedChart = lazy(() => import("./UnrealisedChart"));
@@ -39,12 +41,14 @@ export function BalanceCard({
   const hasFno = m.fnoOpen.length > 0;
   return (
     <article className="zf-card zf-balance zf-in" style={stagger(0)} aria-labelledby="zf-balance-label">
-      <div className="zf-balance-top">
-        <span className="zf-label" id="zf-balance-label">Portfolio value</span>
-        <span className="zf-chip" title="All values are in Indian rupees">INR · ₹</span>
-      </div>
-
-      <div className="zf-balance-val">{loading ? <Skeleton width="68%" height={44} radius={10} /> : inr(m.current)}</div>
+      <KpiStat
+        className="zf-kpi-adopted zf-balance-kpi"
+        label={<span className="zf-label" id="zf-balance-label">Portfolio value</span>}
+        value={<span className="zf-balance-val">{inr(m.current)}</span>}
+        tone="neutral"
+        loading={loading}
+        action={<span className="zf-chip" title="All values are in Indian rupees">INR · ₹</span>}
+      />
 
       <div className="zf-balance-delta">
         {loading ? (
@@ -128,6 +132,7 @@ interface StatProps {
   label: string;
   icon: typeof Zap;
   value: ReactNode;
+  numericValue?: number;
   loading: boolean;
   pill?: { tone: "up" | "down" | "flat"; text: string } | null;
   cap: string;
@@ -136,19 +141,21 @@ interface StatProps {
   children?: ReactNode;
 }
 
-function Stat({ label, icon: Icon, value, loading, pill, cap, highlight, index, children }: StatProps) {
+function Stat({ label, icon: Icon, value, numericValue, loading, pill, cap, highlight, index, children }: StatProps) {
   return (
     <article className={`zf-card zf-stat zf-in${highlight ? " zf-stat-hl" : ""}`} style={stagger(index)} aria-label={label}>
-      <div className="zf-stat-top">
-        <span className="zf-label">{label}</span>
-        <span className="zf-chip-ico" aria-hidden="true"><Icon /></span>
-      </div>
       <div>
-        <div className="zf-stat-val">{loading ? <Skeleton width="64%" height={28} radius={6} /> : value}</div>
-        <div className="zf-stat-foot">
-          {!loading && pill && <DeltaPill tone={pill.tone}>{pill.text}</DeltaPill>}
-          <span className="zf-stat-cap">{cap}</span>
-        </div>
+        <KpiStat
+          className="zf-kpi-adopted zf-stat-kpi"
+          label={<span className="zf-label">{label}</span>}
+          value={<span className="zf-stat-val">{value}</span>}
+          numericValue={numericValue}
+          delta={pill ? <DeltaPill tone={pill.tone}>{pill.text}</DeltaPill> : undefined}
+          numericDelta={numericValue}
+          hint={<span className="zf-stat-cap">{cap}</span>}
+          loading={loading}
+          action={<span className="zf-chip-ico" aria-hidden="true"><Icon /></span>}
+        />
         {!loading && children}
       </div>
     </article>
@@ -245,6 +252,7 @@ export function StatGrid({
     <section className="zf-stats" aria-label="Key figures">
       <Stat
         index={1} highlight label="Today's P&L" icon={Zap} loading={loading} value={todayValue}
+        numericValue={m.hasDayData ? m.dayMove : undefined}
         pill={m.dayMovePct !== null ? { tone: toneOf(m.dayMove), text: signedPct(m.dayMovePct) } : null}
         cap={m.hasDayData
           ? `${dayLabel}${priceMode ? ` · ${priceMode}` : ""}${m.fxIncomplete ? " · USD excluded" : ""}`
@@ -264,6 +272,7 @@ export function StatGrid({
       <Stat
         index={3} label="Unrealised P&L" icon={TrendingUp} loading={loading}
         value={hasUnrealised ? signedInr(m.pnl) : "—"}
+        numericValue={hasUnrealised ? m.pnl : undefined}
         pill={hasUnrealised ? { tone: toneOf(m.pnl), text: signedPct(m.pnlPct) } : null}
         cap={hasUnrealised
           ? `open positions only${exclusions ? ` · ${exclusions}` : ""}`
