@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Activity, AlertTriangle, Loader2 } from "lucide-react";
 import "@/styles/dashboard.css";
@@ -28,6 +29,7 @@ import HealthPanel           from "@/components/HealthPanel";
 import SymbolSearch          from "@/components/SymbolSearch";
 import AuthModal             from "@/components/AuthModal";
 import LogoMark              from "@/components/LogoMark";
+import NotFound              from "@/pages/NotFound";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast }          from "@/hooks/use-toast";
@@ -69,6 +71,7 @@ import { HoldingsCard } from "@/components/dashboard/Holdings";
 import { HoldingCharts } from "@/components/dashboard/HoldingCharts";
 import { FnoCard, InsightCard, PriceChartCard, SectorCard, WatchlistCard } from "@/components/dashboard/Sections";
 import { NAV_ITEMS, PAGE_TITLES, navItem, type ActiveTab } from "@/components/dashboard/nav";
+import { sectionFromSlug, sectionPath } from "@/lib/navigation/routes";
 
 // Timing mirrors --dur-section-out / --dur-section-in in index.css.
 const SECTION_OUT_MS = 170;
@@ -96,13 +99,22 @@ type SectionPhase = "idle" | "leaving" | "entering";
 
 // ════════════════════════════════════════════════════════════════════════════
 export default function Index() {
-  const [tab,       setTab]       = useState<ActiveTab>("overview");
-  const [renderedTab, setRenderedTab] = useState<ActiveTab>("overview");
+  const params = useParams();
+  const navigate = useNavigate();
+
+  // The URL selects the section. `undefined` (bare /dashboard) -> default
+  // section; an unknown segment -> null, which renders Not Found below.
+  const sectionId = sectionFromSlug(params.section);
+  // A safe value for hooks that must run unconditionally; the body gates the
+  // actual render on `sectionId`, so this fallback is never displayed.
+  const tab: ActiveTab = sectionId ?? "overview";
+
+  const [renderedTab, setRenderedTab] = useState<ActiveTab>(tab);
   const [phase, setPhase] = useState<SectionPhase>("idle");
   // The seasonal ribbon waits for the night-to-day intro to finish.
   const [chromeLit, setChromeLit] = useState(false);
   const handleChromeLit = useCallback(() => setChromeLit(true), []);
-  const renderedTabRef = useRef<ActiveTab>("overview");
+  const renderedTabRef = useRef<ActiveTab>(tab);
   const sectionTimers = useRef<number[]>([]);
   const [chartScrollSignal, setChartScrollSignal] = useState(0);
   const [mobileNav, setMobileNav] = useState(false);
@@ -127,34 +139,40 @@ export default function Index() {
     sectionTimers.current = [];
   }, []);
 
-  // `tab` drives the rail and the sliding pill immediately; the body keeps the
-  // outgoing section until it has faded, then swaps and settles the new one.
+  // `tab` (the URL) drives the rail and the sliding pill immediately; the body
+  // keeps the outgoing section until it has faded, then swaps and settles the
+  // new one. This runs on every change of `tab`, so a click, Back/Forward and a
+  // direct URL load all animate identically.
   const goTo = useCallback((id: ActiveTab) => {
-    setTab(id);
     setMobileNav(false);
-    if (id === renderedTabRef.current) return;
+    navigate(sectionPath(id));
+  }, [navigate]);
+
+  useEffect(() => {
+    if (tab === renderedTabRef.current) return;
 
     clearSectionTimers();
     if (!sectionMotionEnabled()) {
-      renderedTabRef.current = id;
-      setRenderedTab(id);
+      renderedTabRef.current = tab;
+      setRenderedTab(tab);
       setPhase("idle");
       return;
     }
 
     setPhase("leaving");
     sectionTimers.current.push(window.setTimeout(() => {
-      renderedTabRef.current = id;
-      setRenderedTab(id);
+      renderedTabRef.current = tab;
+      setRenderedTab(tab);
       setPhase("entering");
       sectionTimers.current.push(window.setTimeout(() => setPhase("idle"), SECTION_IN_MS));
     }, SECTION_OUT_MS));
-  }, [clearSectionTimers]);
+  }, [tab, clearSectionTimers]);
 
   useEffect(() => clearSectionTimers, [clearSectionTimers]);
 
-  // A broker callback lands on `/` with a short status query string; open the
-  // Brokers section so the result is visible, then the section clears the URL.
+  // A broker callback lands on the callback route with a short status query
+  // string; open the Brokers section so the result is visible, then the section
+  // clears the URL.
   useEffect(() => {
     if (readBrokerCallback()) goTo("brokers");
   }, [goTo]);
@@ -698,6 +716,10 @@ export default function Index() {
       <AuthModal open={showAuth} onOpenChange={setShowAuth} />
     </>
   );
+
+  // An unknown section under /dashboard/… is a real 404, not a silent fallback
+  // to Overview, so a mistyped or stale bookmark says so.
+  if (sectionId === null) return <NotFound />;
 
   const loading = !ready;
   const pnlSentence = m.active.length > 0 || m.fnoOpen.length > 0

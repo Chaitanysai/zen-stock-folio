@@ -1,0 +1,14 @@
+# Cloudflare Pages SPA fallback.
+#
+# Dashboard sections are real URLs (/dashboard/portfolio, /dashboard/trades, …)
+# handled client-side by React Router. A hard load or refresh of one of those
+# paths must return the app shell with a 200, not a 404.
+#
+# Ordering matters: Cloudflare Pages runs Pages Functions (functions/api/**)
+# BEFORE this file, and serves an existing static asset (anything in dist/)
+# before falling through to these rewrites. So a request is only ever rewritten
+# by the catch-all below when it is a non-asset, non-Function path — exactly the
+# client-side routes. In particular /api/* is answered by its Function and never
+# reaches this rule, so no API call can be rewritten to the HTML shell.
+
+/*  /index.html  200

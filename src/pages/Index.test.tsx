@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "next-themes";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import type { PortfolioSnapshot } from "@/hooks/usePortfolioSync";
 import type { PortfolioStock, WatchlistStock } from "@/data/sampleData";
 
@@ -64,10 +65,15 @@ const wl: WatchlistStock = {
   target1: 3700, target2: 3800, target3: 3900, rsi: 52, sma50: 3450, ema10: 3490, ema21: 3470,
 };
 
-const renderIndex = async () => {
+const renderIndex = async (entry = "/dashboard") => {
   render(
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-      <Index />
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route path="/dashboard" element={<Index />} />
+          <Route path="/dashboard/:section" element={<Index />} />
+        </Routes>
+      </MemoryRouter>
     </ThemeProvider>,
   );
   await act(async () => { await Promise.resolve(); });
@@ -118,6 +124,18 @@ describe("Index dashboard", () => {
     // The pill navigation mirrors the active page.
     const pills = screen.getByRole("navigation", { name: "Primary" });
     expect(within(pills).getByRole("button", { name: "Watchlist" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("opens the section named in the URL when loaded directly", async () => {
+    await renderIndex("/dashboard/portfolio");
+    expect(screen.getByRole("heading", { level: 1, name: "Portfolio holdings" })).toBeInTheDocument();
+    const rail = screen.getByRole("navigation", { name: "Sections" });
+    expect(within(rail).getByRole("button", { name: "Portfolio" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it("shows Not Found for an unknown section instead of falling back", async () => {
+    await renderIndex("/dashboard/does-not-exist");
+    expect(screen.getByRole("heading", { level: 1, name: /page not found/i })).toBeInTheDocument();
   });
 
   it("keeps every destination reachable from the rail", async () => {
