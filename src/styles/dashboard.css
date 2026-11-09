@@ -629,14 +629,26 @@
 .zf-legend { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .zf-legend .zf-chip { min-height: 24px; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
 .zf-swatch { width: 14px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.zf-swatch-profit {
-  background:
-    repeating-linear-gradient(135deg, hsl(var(--brand)) 0 2px, hsl(var(--brand) / .22) 2px 5px);
-  border: 1px solid hsl(var(--brand));
-}
-.zf-swatch-loss { background: hsl(var(--chart-ink)); }
+.zf-swatch-profit { background: hsl(var(--profit)); border: 1px solid hsl(var(--profit)); }
+.zf-swatch-loss { background: hsl(var(--loss)); border: 1px solid hsl(var(--loss)); }
 .zf-pnl-chart { flex: 1 1 220px; height: 220px; min-height: 190px; width: 100%; }
 .zf-pnl-chart .recharts-text { fill: hsl(var(--muted-foreground)); font-family: var(--ff-mono); font-size: 10.5px; }
+.zf-empty-state.zf-chart-empty { min-height: 220px; justify-content: center; animation: none; }
+/* One floating surface for SVG (Recharts) and canvas (lightweight-charts) data tips. */
+.zf-chart-tooltip,
+.zf-chart-tooltip-wrap .recharts-default-tooltip {
+  padding: 8px 10px !important;
+  border: 1px solid hsl(var(--glass-pop-border)) !important;
+  border-radius: 10px;
+  background: hsl(var(--glass-pop)) !important;
+  background-image: var(--glass-sheen) !important;
+  box-shadow: var(--glass-edge), var(--shadow-pop);
+  color: hsl(var(--foreground));
+  -webkit-backdrop-filter: blur(var(--blur-pop)) saturate(170%);
+  backdrop-filter: blur(var(--blur-pop)) saturate(170%);
+}
+.zf-chart-tooltip { font-size: 12px; }
+.zf-chart-tooltip-wrap .recharts-tooltip-label { color: hsl(var(--muted-foreground)); }
 .zf-pnl-foot { margin: 8px 2px 0; font-size: 12px; color: hsl(var(--muted-foreground)); }
 
 /* Sector concentration */
@@ -1378,8 +1390,8 @@
   border-color: hsl(210 34% 85% / .95);
   box-shadow: inset 0 1px 0 hsl(0 0% 100% / .90);
 }
-.zf-home .zf-pnl-chart .recharts-text { fill: hsl(215 18% 35%); }
-.zf-home .zf-pnl-panel .recharts-cartesian-grid line { stroke: hsl(212 28% 58% / .20); }
+.zf-home .zf-pnl-chart .recharts-text { fill: hsl(var(--muted-foreground)); }
+.zf-home .zf-pnl-panel .recharts-cartesian-grid line { stroke: hsl(var(--border)); }
 /* Holdings is the quiet ledger: straight data edges and a restrained top light. */
 .zf-home .zf-holdings {
   border-radius: 20px;
@@ -1413,8 +1425,8 @@
   background: hsl(214 34% 12% / .88);
   border-color: hsl(207 42% 72% / .24);
 }
-.dark .zf-home .zf-pnl-chart .recharts-text { fill: hsl(208 30% 82%); }
-.dark .zf-home .zf-pnl-panel .recharts-cartesian-grid line { stroke: hsl(207 36% 82% / .22); }
+.dark .zf-home .zf-pnl-chart .recharts-text { fill: hsl(var(--muted-foreground)); }
+.dark .zf-home .zf-pnl-panel .recharts-cartesian-grid line { stroke: hsl(var(--border)); }
 .dark .zf-home .zf-price-clock { background: hsl(208 58% 20% / .45); border-color: hsl(204 88% 72% / .26); color: hsl(207 36% 92%); }
 
 /* ════════ MOTION ════════ */
@@ -1806,9 +1818,8 @@
 .zf-closecard-error { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
 .zf-closecard-error p { margin: 0; font-size: 12px; color: hsl(var(--muted-foreground)); }
 .zf-closecard-tip {
-  position: absolute; z-index: 2; padding: 6px 9px; border-radius: 8px; pointer-events: none;
-  background: hsl(var(--glass-elevated)); border: 1px solid hsl(var(--glass-border)); box-shadow: var(--shadow-1);
-  font: 500 11px var(--ff-mono); color: hsl(var(--foreground)); white-space: nowrap;
+  position: absolute; z-index: 2; pointer-events: none;
+  font: 500 11px var(--ff-mono); white-space: nowrap;
 }
 .zf-closecard-meta {
   margin: 0; font-size: 10.5px; color: hsl(var(--muted-foreground));

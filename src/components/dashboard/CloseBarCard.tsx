@@ -112,7 +112,7 @@ export function CloseBarCard({ symbol, name, market = "NSE" }: CloseBarCardProps
 
     const closes = new Map(envelope.candles.map((candle) => [candle.time, candle.close]));
     const tip = document.createElement("div");
-    tip.className = "zf-closecard-tip";
+    tip.className = "zf-chart-tooltip zf-closecard-tip";
     tip.style.display = "none";
     host.appendChild(tip);
 
