@@ -852,6 +852,56 @@
 .zf-status-list dt { color: hsl(var(--muted-foreground)); }
 .zf-status-list dd { margin: 0; font-weight: 600; text-align: right; }
 
+/* Long task dialogs keep their chrome in view while only the working area
+   scrolls. Radix owns focus and page-scroll locking; this layer owns sizing. */
+.zf-dialog {
+  box-sizing: border-box; display: flex; flex-direction: column; gap: 0;
+  width: calc(100vw - 24px); max-height: calc(100dvh - 24px); padding: 0; overflow: hidden;
+}
+.zf-dialog.zf-dialog-compact { max-width: 32rem; }
+.zf-dialog.zf-dialog-wide { max-width: 42rem; }
+.zf-dialog > button { top: 10px; right: 10px; width: 40px; height: 40px; }
+.zf-dialog-header {
+  flex: 0 0 auto; padding: 20px 56px 16px 20px; border-bottom: 1px solid hsl(var(--border));
+  text-align: left;
+}
+.zf-dialog-header [role="heading"] { line-height: 1.3; overflow-wrap: anywhere; }
+.zf-dialog-body {
+  flex: 1 1 auto; min-width: 0; min-height: 0; padding: 18px 20px; overflow-y: auto;
+  overscroll-behavior: contain; scrollbar-gutter: stable;
+}
+.zf-dialog-form { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.zf-dialog-footer {
+  flex: 0 0 auto; display: flex; flex-direction: row; justify-content: flex-end; gap: 10px;
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid hsl(var(--border)); background: hsl(var(--card));
+}
+.zf-dialog-footer > * + * { margin-right: 0 !important; margin-left: 0 !important; }
+.zf-dialog-table-scroll {
+  width: 100%; max-width: 100%; max-height: min(15rem, 34dvh); overflow: auto;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+}
+.zf-dialog-table-scroll > div { min-width: 100%; overflow: visible; }
+.zf-import-preview-table { min-width: 720px; }
+.zf-import-broker-options { flex-wrap: wrap; }
+.zf-import-dropzone { min-width: 0; overflow-wrap: anywhere; }
+.zf-dialog-table-scroll:focus-visible {
+  outline: 2px solid hsl(var(--ring)); outline-offset: -3px;
+}
+
+@media (max-width: 560px) {
+  .zf-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); border-radius: 14px; }
+  .zf-dialog > button { top: 6px; right: 6px; width: 44px; height: 44px; }
+  .zf-dialog-header { padding: 16px 52px 14px 16px; }
+  .zf-dialog-body { padding: 16px; scrollbar-gutter: auto; }
+  .zf-dialog-footer { padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .zf-edit-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .zf-import-dropzone { padding: 20px 14px; }
+}
+@media (max-width: 768px), (pointer: coarse) {
+  .zf-dialog input, .zf-dialog textarea, .zf-dialog select { font-size: 16px; }
+}
+
 /* Mobile sheet navigation */
 .zf-sheet {
   box-sizing: border-box;
@@ -952,6 +1002,22 @@
 .zf-tab-panel .overflow-x-auto:has(table) { background: hsl(var(--card)); }
 /* Several root cards inside one framed panel stack at the dashboard gap. */
 .zf-tab-stack { display: flex; flex-direction: column; gap: 14px; }
+
+/* Wide financial tables scroll at one explicit boundary instead of nesting the
+   Table primitive's overflow container inside a second scroll container. */
+.zf-wide-table-scroll {
+  width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden;
+  -webkit-overflow-scrolling: touch; overscroll-behavior-inline: contain; scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border-strong)) transparent;
+}
+.zf-wide-table-scroll > div { min-width: 100%; overflow: visible; }
+.zf-wide-table-scroll:focus-visible {
+  outline: 2px solid hsl(var(--ring)); outline-offset: -3px;
+}
+.zf-wide-table-scroll::-webkit-scrollbar, .zf-dialog-table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.zf-wide-table-scroll::-webkit-scrollbar-thumb, .zf-dialog-table-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--border-strong)); border: 2px solid transparent; border-radius: 8px; background-clip: padding-box;
+}
 
 .zf-subtabs { display: flex; align-items: center; gap: 4px; padding: 12px 16px; border-bottom: 1px solid hsl(var(--border)); flex: 0 0 auto !important; overflow: visible !important; }
 .zf-subtab {
@@ -1557,14 +1623,20 @@
 .zf-broker-footnote { display: flex; gap: 8px; align-items: center; margin: 0; font-size: 11.5px; color: var(--tx-500); }
 .zf-broker-footnote svg { width: 15px; height: 15px; flex-shrink: 0; }
 .zf-broker-form { display: flex; flex-direction: column; gap: 6px; }
+.zf-dialog-form.zf-broker-form { gap: 0; }
+.zf-broker-form-body { display: flex; flex-direction: column; gap: 6px; }
 .zf-broker-form .zf-label { margin-top: 10px; }
 .zf-broker-field-error { min-height: 15px; font-size: 10.5px; line-height: 1.4; color: var(--red); }
 .zf-broker-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.zf-dialog .zf-broker-dialog-actions { margin-top: 0; }
 @media (max-width: 720px) {
   .zf-broker-grid { grid-template-columns: 1fr; }
   .zf-broker-meta > div { grid-template-columns: 1fr; gap: 2px; }
   .zf-broker-cats { grid-template-columns: 1fr; }
   .zf-broker-cats li:nth-last-child(2) { border-bottom: 1px dashed var(--bd-100); }
+}
+@media (max-width: 560px) {
+  .zf-dialog .zf-broker-dialog-actions .zf-btn { flex: 1 1 180px; }
 }
 
 /* ── Accent picker ─────────────────────────────────────────────────────────── */
@@ -1819,6 +1891,10 @@
 .zf-source-note { margin: 0; font-size: 11px; color: hsl(var(--warning)); }
 
 /* Filters and table chrome */
+.zf-position-table { width: 100%; min-width: 1460px; }
+.zf-position-table .zf-position-key { min-width: 200px; }
+.zf-portfolio-holdings-table { width: 100%; min-width: 1320px; }
+.zf-lot-table { width: 100%; min-width: 760px; }
 .zf-filters {
   display: flex; align-items: flex-end; flex-wrap: wrap; gap: 10px;
   padding: 12px 16px; border-bottom: 1px solid hsl(var(--border));
@@ -1871,6 +1947,10 @@
 @media (max-width: 1200px) {
   .zf-pcharts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .zf-pchart:last-child { grid-column: 1 / -1; }
+  .zf-position-table { min-width: 1360px; }
+  .zf-portfolio-holdings-table { min-width: 1220px; }
+  .zf-position-table th, .zf-position-table td,
+  .zf-portfolio-holdings-table th, .zf-portfolio-holdings-table td { padding-right: 10px !important; padding-left: 10px !important; }
 }
 @media (max-width: 860px) {
   .zf-pstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1878,6 +1958,22 @@
 @media (max-width: 760px) {
   .zf-pcharts { grid-template-columns: 1fr; }
   .zf-pchart:last-child { grid-column: auto; }
+}
+@media (max-width: 768px) {
+  .zf-position-table { min-width: 1120px; }
+  .zf-portfolio-holdings-table { min-width: 1040px; }
+  .zf-lot-table { min-width: 700px; }
+  .zf-position-table th, .zf-position-table td,
+  .zf-portfolio-holdings-table th, .zf-portfolio-holdings-table td,
+  .zf-lot-table th, .zf-lot-table td { padding-right: 8px !important; padding-left: 8px !important; }
+  .zf-position-table .zf-col-date,
+  .zf-portfolio-holdings-table .zf-col-entry-date { display: none; }
+  .zf-wide-table-scroll .zf-sticky-col {
+    position: sticky; left: 0; z-index: 3; background: hsl(var(--card)) !important;
+    box-shadow: 1px 0 0 hsl(var(--border));
+  }
+  .zf-wide-table-scroll thead .zf-sticky-col { z-index: 4; background: hsl(var(--surface-2)) !important; }
+  .zf-wide-table-scroll tr:hover > .zf-sticky-col { background: hsl(var(--surface-2)) !important; }
 }
 @media (max-width: 768px), (pointer: coarse) {
   .zf-filters .zf-input,

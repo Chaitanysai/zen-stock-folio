@@ -173,8 +173,13 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete, usdInr = nu
             </p>
           </div>
         ) : (
-        <div className="overflow-x-auto">
-          <Table className="min-w-[1320px] [font-variant-numeric:tabular-nums]">
+        <div
+          className="zf-wide-table-scroll"
+          role="region"
+          aria-label="Portfolio holdings table, scrolls sideways on small screens"
+          tabIndex={0}
+        >
+          <Table className="zf-portfolio-holdings-table [font-variant-numeric:tabular-nums]">
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead className="w-10 pl-5">
@@ -187,7 +192,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete, usdInr = nu
                 <TableHead className="w-8" />
                 <TableHead className="zf-sticky-col">Ticker</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Entry Date</TableHead>
+                <TableHead className="zf-col-entry-date">Entry Date</TableHead>
                 <TableHead className="text-right">Avg Cost</TableHead>
                 <TableHead className="text-right">LTP</TableHead>
                 <TableHead className="text-right">52W High</TableHead>
@@ -264,7 +269,7 @@ const PortfolioTable = ({ stocks, onAdd, onImport, onEdit, onDelete, usdInr = nu
                         {stock.stockName}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="zf-col-entry-date">
                       <span className="text-[11px] text-muted-foreground font-mono" title={stock.entryDate ? undefined : "Purchase date not in the statement"}>
                         {stock.entryDate ?? "—"}
                       </span>
