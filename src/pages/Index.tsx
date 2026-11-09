@@ -416,7 +416,6 @@ export default function Index() {
     () => visibleStockIndices(stocks, brokerConnections),
     [stocks, brokerConnections],
   );
-  const hiddenStockCount = stocks.length - visibleIndices.length;
   const visibleLive = useMemo(
     () => visibleIndices.map((index) => live[index]),
     [visibleIndices, live],
@@ -635,22 +634,6 @@ export default function Index() {
       <span>{inrViewNote}</span>
     </div>
   ) : null;
-  // A disconnected account's rows are hidden rather than deleted, so say so:
-  // rows vanishing with no explanation reads as data loss.
-  const hiddenNotice = hiddenStockCount > 0 ? (
-    <div className="zf-notice" role="status" style={{ marginBottom: 12 }}>
-      <AlertTriangle aria-hidden="true" />
-      <span>
-        {hiddenStockCount === 1 ? "1 row is" : `${hiddenStockCount} rows are`} hidden because the broker
-        connection that imported {hiddenStockCount === 1 ? "it was" : "them was"} disconnected. The data is
-        kept in your account and returns if you reconnect.
-      </span>
-      <button type="button" className="zf-btn zf-btn-outline zf-btn-sm" onClick={() => goTo("brokers")}>
-        Open Brokers
-      </button>
-    </div>
-  ) : null;
-
   const userEmail = user?.email ?? "";
   const userName = displayName || userEmail.split("@")[0] || "Trader";
   const openFno = useCallback(() => { setTradesSubTab("fno"); goTo("trades"); }, [goTo]);
@@ -810,7 +793,6 @@ export default function Index() {
 
             {renderedTab === "overview" && (
               <div className="zf-section-overview">
-                {hiddenNotice}
                 <div className="zf-row1">
                   <BalanceCard
                     loading={loading} m={m} watchCount={watchlist.length}
@@ -878,7 +860,6 @@ export default function Index() {
               <div key={renderedTab} className="zf-tab-panel" style={{ minHeight: "calc(100dvh - 240px)" }}>
                 {renderedTab === "holdings" && (
                   <div className="zf-tab-stack">
-                    {hiddenNotice}
                     {user && <BrokerSyncCard userId={user.id} onApplied={reloadPortfolio} />}
                     <PortfolioDashboard
                       stocks={visibleLive}
@@ -928,10 +909,10 @@ export default function Index() {
                 {renderedTab === "watchlist" && <WatchlistTable watchlist={watchlist} onAdd={handleWatchlistAdd} onEdit={handleWatchlistEdit} onDelete={handleWatchlistDelete} />}
                 {renderedTab === "news"      && <StockNewsFeed stocks={visibleLive} />}
                 {renderedTab === "charts"    && <PortfolioCharts stocks={visibleLive} />}
-                {renderedTab === "analytics" && <>{hiddenNotice}{inrNotice}<TradeAnalytics stocks={inrView} /></>}
-                {renderedTab === "history"   && <>{hiddenNotice}{inrNotice}<TradeHistory stocks={inrView} /></>}
-                {renderedTab === "journal"   && <>{hiddenNotice}<TradeJournal stocks={visibleStocks} onUpdateNotes={handleJournalNotesUpdate} /></>}
-                {renderedTab === "sector"    && <>{hiddenNotice}{inrNotice}<SectorDiversification stocks={inrView} /></>}
+                {renderedTab === "analytics" && <>{inrNotice}<TradeAnalytics stocks={inrView} /></>}
+                {renderedTab === "history"   && <>{inrNotice}<TradeHistory stocks={inrView} /></>}
+                {renderedTab === "journal"   && <TradeJournal stocks={visibleStocks} onUpdateNotes={handleJournalNotesUpdate} />}
+                {renderedTab === "sector"    && <>{inrNotice}<SectorDiversification stocks={inrView} /></>}
                 {renderedTab === "alerts"    && <PriceAlerts alerts={alerts} onAddAlert={handleAlertAdd} onDeleteAlert={handleAlertDelete} onDismissAlert={handleAlertDismiss} />}
                 {renderedTab === "ai"        && <AIInsights stocks={visibleLive} />}
                 {renderedTab === "export"    && <ExportPortfolio stocks={visibleLive} />}

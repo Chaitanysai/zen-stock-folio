@@ -3,6 +3,7 @@ import { PortfolioStock } from "@/data/sampleData";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateField } from "@/components/ui/date-field";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2, CheckCircle2, AlertCircle, TrendingUp } from "lucide-react";
@@ -387,11 +388,12 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Entry Date
               </Label>
-              <Input
-                type="date"
+              <DateField
                 value={form.entryDate}
-                onChange={e => f("entryDate", e.target.value)}
-                className="bg-secondary border-border text-sm"
+                onChange={(value) => f("entryDate", value)}
+                placeholder="Today"
+                toDate={new Date()}
+                aria-label="Entry date"
               />
             </div>
           </div>
@@ -431,11 +433,12 @@ const AddTransactionDialog = ({ onAdd, trigger }: AddTransactionDialogProps) => 
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Exit Date
                 </Label>
-                <Input
-                  type="date"
+                <DateField
                   value={form.exitDate}
-                  onChange={e => f("exitDate", e.target.value)}
-                  className="bg-secondary border-border text-sm"
+                  onChange={(value) => f("exitDate", value)}
+                  placeholder="Pick exit date"
+                  toDate={new Date()}
+                  aria-label="Exit date"
                 />
               </div>
             </div>
