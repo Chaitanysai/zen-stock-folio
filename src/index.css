@@ -722,3 +722,87 @@
 }
 
 .zf-route h1:focus, .zf-route h1:focus-visible { outline: none; box-shadow: none; }
+
+/* ── KPI tile ──────────────────────────────────────────────────────────────────
+   The compact financial metric block (see src/components/ui/kpi-stat.tsx).
+   Numbers are the product here: the figure uses tabular numerals at a fixed
+   scale, so a column of tiles aligns digit-for-digit, and the delta sits on the
+   same baseline as the hint. Colour is applied by the component's tone class,
+   never hard-coded here. */
+.zf-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: var(--radius-card);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow: var(--card-rim), var(--shadow-1);
+}
+.zf-kpi-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.zf-kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+.zf-kpi-action { display: inline-flex; align-items: center; color: hsl(var(--muted-foreground)); }
+.zf-kpi-value {
+  font-family: var(--ff-mono);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.zf-kpi-foot { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.zf-kpi-delta {
+  font-family: var(--ff-mono);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.zf-kpi-hint { font-size: 11px; color: hsl(var(--muted-foreground)); }
+
+/* ── Tilt card ─────────────────────────────────────────────────────────────────
+   Pointer-responsive depth (see src/components/ui/tilt-card.tsx). The component
+   writes --tilt-x/--tilt-y/--tilt-lift/--spot-* and only attaches listeners on a
+   fine pointer without reduced motion; the defaults below are the resting state,
+   so a card that never receives a pointer still renders correctly.
+
+   Transform-only on purpose: nothing here can affect layout, and the surface
+   never intercepts pointer events. */
+.zf-tilt {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --tilt-lift: 0px;
+  --spot-x: 50%;
+  --spot-y: 50%;
+  position: relative;
+  transform: perspective(var(--tilt-perspective, 900px))
+    rotateX(var(--tilt-x)) rotateY(var(--tilt-y)) translate3d(0, calc(var(--tilt-lift) * -1), 0);
+  transition: transform var(--dur) var(--ease-out);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+/* The highlight tracks the pointer. Purely decorative, so it is hidden from AT
+   and never sits over content that needs selecting. */
+.zf-tilt-spot {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    220px circle at var(--spot-x) var(--spot-y),
+    hsl(var(--brand) / .10),
+    transparent 62%
+  );
+  transition: opacity var(--dur) var(--ease-out);
+}
+.zf-tilt:hover .zf-tilt-spot { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .zf-tilt { transform: none; will-change: auto; transition: none; }
+  .zf-tilt-spot { display: none; }
+}
+

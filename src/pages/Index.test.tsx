@@ -262,8 +262,9 @@ describe("Index dashboard", () => {
       const holdings = screen.getByRole("table", { name: /open holdings/i });
       expect(within(holdings).queryByText("GROWWCO · Energy")).toBeNull();
       expect(within(holdings).getByText("MANUAL · Energy")).toBeInTheDocument();
-      // The hidden rows are explained, not silently missing.
-      expect(screen.getByText(/1 row is hidden because the broker connection/i)).toBeInTheDocument();
+      // The hidden rows stay hidden and are not announced with operational copy:
+      // the dashboard shows the current portfolio state, not how it was derived.
+      expect(screen.queryByText(/row is hidden because the broker connection/i)).toBeNull();
     });
 
     it("keeps its rows while the connection is only failing", async () => {
