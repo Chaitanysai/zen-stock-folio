@@ -121,8 +121,34 @@ hard-coded hex colors — one of the token-drift sites.
 - **No pause/close/dismiss controls exist** — `FestivalGreeting.tsx:5` documents
   the intent ("needs no pause or hide button"). Already compliant with the
   requirement that festival not be manually dismissible.
-- `FestivalGreeting.tsx` carries 11 hard-coded hex colours — the main festival
-  token-drift site. Must confirm decorations do not cover financial figures.
+- `FestivalGreeting.tsx` carries 11 hard-coded hex colours — **these are the
+  festive SVG artwork** (a diya/lamp flame, a tree), not UI chrome. They
+  deliberately represent illustration, so they must NOT be recoloured onto
+  brand/profit tokens: doing so would break the Diwali/Christmas designs.
+
+### Obstruction requirement — verified (Pass 2)
+
+The requirement "decorations must not obstruct financial information" was
+verified two ways, both current:
+
+1. **Source scope.** The dashboard canvas is only ever given `DASH_ZONES`
+   (`src/pages/Index.tsx`), which are `.zf-top`, `.zf-h1`, `.zf-price-clock`
+   and `.zf-fest-cluster > .fest-chip` — header chrome only, with **no
+   financial-figure selector**. Non-overview tabs degrade to the `minimal`
+   variant with no zones and no canvas loop ("no canvas loop runs behind a
+   table"). `.fest-canvas` is `position: absolute; inset: 0;
+   pointer-events: none` (`src/styles/festival.css`), and the dashboard variant
+   is bounded inside `.zf-page-head` at `z-index: 1`.
+2. **Real-browser measurement** of the live Diwali render (today, 2026-11-09,
+   the last day of the -1/+1 window around 2026-11-08):
+   - Landing: `.fest-canvas[data-surface="public-hero"]` present, painting
+     pixels, `aria-hidden="true"`, `pointer-events: none`; `elementsFromPoint`
+     at its centre resolves the hero content underneath — the layer intercepts
+     nothing.
+   - Dashboard harness reproducing the real zone elements with a financial card
+     below the head: canvas band is 49px tall inside the header; **every
+     financial region reports zero overlap** at 390 (light) and 1440 (dark), and
+     no page horizontal overflow.
 
 ## Responsive
 
