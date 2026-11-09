@@ -16,10 +16,10 @@ import { fetchHealth } from "@/lib/market-data/client.ts";
 import { formatExchangeTimestamp } from "@/lib/market-data/freshness.ts";
 
 const STATE_STYLE: Record<IntegrationState, { color: string; bg: string; stripe: string; label: string }> = {
-  connected:    { color: "var(--green)", bg: "var(--green-bg, rgba(22,163,74,.10))",  stripe: "var(--green)",  label: "Connected" },
-  degraded:     { color: "var(--amber)", bg: "var(--amber-bg, rgba(217,119,6,.12))", stripe: "var(--amber)", label: "Degraded" },
+  connected:    { color: "var(--green)", bg: "hsl(var(--profit) / .10)",  stripe: "var(--green)",  label: "Connected" },
+  degraded:     { color: "var(--amber)", bg: "hsl(var(--warning) / .10)", stripe: "var(--amber)", label: "Degraded" },
   unconfigured: { color: "var(--tx-400)", bg: "var(--bg-hover)",                       stripe: "var(--tx-300)", label: "Unconfigured" },
-  error:        { color: "var(--red)", bg: "var(--red-bg, rgba(220,38,38,.10))",      stripe: "var(--red)",    label: "Error" },
+  error:        { color: "var(--red)", bg: "hsl(var(--loss) / .09)",      stripe: "var(--red)",    label: "Error" },
 };
 
 function StateIcon({ state }: { state: IntegrationState }) {
@@ -79,7 +79,7 @@ function IntegrationRow({ integration }: { integration: IntegrationHealth }) {
                 style={{
                   fontSize: 9.5, fontFamily: "var(--ff-mono)",
                   padding: "2px 6px", borderRadius: 4,
-                  border: `1px solid ${present ? "var(--green-bd, rgba(22,163,74,.35))" : "var(--bd-100)"}`,
+                  border: `1px solid ${present ? "hsl(var(--profit) / .26)" : "var(--bd-100)"}`,
                   color: present ? "var(--green)" : "var(--tx-300)",
                   textDecoration: present ? "none" : "line-through",
                 }}

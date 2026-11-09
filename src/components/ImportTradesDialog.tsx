@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, type ReactNode } from "react";
 import { PortfolioStock, hasKnownCost } from "@/data/sampleData";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -348,8 +348,8 @@ const ImportTradesDialog = ({ onImport, existingStocks = [], trigger }: ImportTr
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="zf-dialog zf-dialog-wide bg-card border-border">
+        <DialogHeader className="zf-dialog-header">
           <DialogTitle className="text-foreground flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" /> Import Past Trades
           </DialogTitle>
@@ -359,10 +359,10 @@ const ImportTradesDialog = ({ onImport, existingStocks = [], trigger }: ImportTr
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="zf-dialog-body space-y-4">
           {/* Upload area */}
           <div
-            className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+            className="zf-import-dropzone border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
             onClick={() => fileRef.current?.click()}
           >
             <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -417,7 +417,7 @@ const ImportTradesDialog = ({ onImport, existingStocks = [], trigger }: ImportTr
                   : `Detected ${BROKER_LABEL[parsed.broker]}. Change it if that is wrong.`}
                 {parsed.brokerEvidence.length > 0 && ` Evidence: ${parsed.brokerEvidence.join("; ")}.`}
               </p>
-              <div className="flex items-center gap-4">
+              <div className="zf-import-broker-options flex items-center gap-4">
                 {(Object.keys(BROKER_LABEL) as StatementBroker[]).map((broker) => (
                   <label key={broker} className="flex items-center gap-2 text-xs">
                     <input
@@ -576,8 +576,13 @@ const ImportTradesDialog = ({ onImport, existingStocks = [], trigger }: ImportTr
                   {previewRows.length} trade{previewRows.length > 1 ? "s" : ""} ready to import
                 </span>
               </div>
-              <div className="border border-border rounded-lg overflow-x-auto max-h-60 overflow-y-auto">
-                <Table>
+              <div
+                className="zf-dialog-table-scroll border border-border rounded-lg"
+                role="region"
+                aria-label="Trades ready to import, scrolls sideways on small screens"
+                tabIndex={0}
+              >
+                <Table className="zf-import-preview-table">
                   <TableHeader>
                     <TableRow className="hover:bg-transparent border-border">
                       <TableHead className="text-xs">Ticker</TableHead>
@@ -638,13 +643,17 @@ const ImportTradesDialog = ({ onImport, existingStocks = [], trigger }: ImportTr
                 </label>
               )}
 
-              <Button onClick={() => { void handleImport(); }} disabled={busy || importing || !canImport} className="w-full gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                {importing ? "Importing…" : `Import ${previewRows.length} Trade${previewRows.length > 1 ? "s" : ""}`}
-              </Button>
             </div>
           )}
         </div>
+        {previewRows.length > 0 && (
+          <DialogFooter className="zf-dialog-footer">
+            <Button onClick={() => { void handleImport(); }} disabled={busy || importing || !canImport} className="w-full gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              {importing ? "Importing…" : `Import ${previewRows.length} Trade${previewRows.length > 1 ? "s" : ""}`}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

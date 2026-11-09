@@ -20,7 +20,7 @@ function HoldingTip({ active, payload }: TipProps) {
   const holding = active ? payload?.[0]?.payload : undefined;
   if (!holding) return null;
   return (
-    <div className="glass-elevated rounded-xl px-3 py-2 text-xs">
+    <div className="zf-chart-tooltip">
       <div className="font-mono text-muted-foreground">{holding.ticker} · {holding.sourceLabel}</div>
       <div className="zf-num mt-0.5 text-sm font-semibold" style={{ color: holding.value < 0 ? "hsl(var(--loss))" : "hsl(var(--profit))" }}>
         {signedInr(holding.value)}

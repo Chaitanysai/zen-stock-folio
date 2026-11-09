@@ -6,6 +6,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { BarChart3, PieChart as PieChartIcon } from "lucide-react";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { useMarketStatus } from "@/hooks/useMarketStatus";
 import { fetchCandles } from "@/lib/market-data/client";
@@ -25,7 +26,7 @@ const PALETTE = [
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-popover border border-border rounded-lg px-3 py-2 shadow-lg">
+    <div className="zf-chart-tooltip">
       {label && (
         <p className="text-[11px] text-muted-foreground mb-0.5 font-mono">{label}</p>
       )}
@@ -269,6 +270,12 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
     const value = calcInvestedValue(s) ?? (isValidPrice(cmp) ? cmp * s.quantity : 0);
     return { name: s.ticker, value };
   });
+  const hasPnlChartData = plData.some(
+    (entry) => entry.pl !== null && Number.isFinite(entry.pl) && entry.pl !== 0,
+  );
+  const hasAllocationChartData = allocationData.some(
+    (entry) => Number.isFinite(entry.value) && entry.value !== 0,
+  );
 
   const axisStyle = {
     fill: "hsl(var(--muted-foreground))",
@@ -378,38 +385,48 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
               )}
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={plData} barSize={16}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="hsl(var(--border) / 0.55)"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="name"
-                tick={axisStyle}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={axisStyle}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
-                width={52}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="pl" radius={[4, 4, 0, 0]}>
-                {plData.map((entry, i) => (
-                  <Cell
-                    key={i}
-                    fill={entry.pl === null ? "hsl(var(--muted-foreground) / 0.35)" : entry.pl >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"}
-                    fillOpacity={0.85}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          {hasPnlChartData ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={plData} barSize={16}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border) / 0.55)"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="name"
+                  tick={axisStyle}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={axisStyle}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                  width={52}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="pl" radius={[4, 4, 0, 0]}>
+                  {plData.map((entry, i) => (
+                    <Cell
+                      key={i}
+                      fill={entry.pl === null ? "hsl(var(--muted-foreground) / 0.35)" : entry.pl >= 0 ? "hsl(var(--profit))" : "hsl(var(--loss))"}
+                      fillOpacity={0.85}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="zf-empty-state zf-chart-empty">
+              <span className="zf-empty-icon" aria-hidden="true"><BarChart3 /></span>
+              <p className="zf-empty-title">No P&amp;L movement to chart</p>
+              <p className="zf-empty-body">
+                A non-zero unrealized result appears once market prices and cost basis are available.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Allocation Donut */}
@@ -423,51 +440,61 @@ const PortfolioCharts = ({ stocks }: PortfolioChartsProps) => {
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-5 min-[420px]:flex-row">
-            <ResponsiveContainer width={130} height={130}>
-              <PieChart>
-                <Pie
-                  data={allocationData}
-                  dataKey="value"
-                  nameKey="name"
-                  outerRadius={58}
-                  innerRadius={32}
-                  strokeWidth={2}
-                  stroke="hsl(var(--card))"
-                >
-                  {allocationData.map((_, i) => (
-                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-              </PieChart>
-            </ResponsiveContainer>
-
-            <div className="flex flex-col gap-2 flex-1 min-w-0">
-              {allocationData.slice(0, 7).map((item, i) => {
-                const total = allocationData.reduce((s, d) => s + d.value, 0);
-                const pct =
-                  total > 0 ? ((item.value / total) * 100).toFixed(1) : "0";
-                return (
-                  <div
-                    key={item.name}
-                    className="flex items-center gap-2 min-w-0"
+          {hasAllocationChartData ? (
+            <div className="flex flex-col items-center gap-5 min-[420px]:flex-row">
+              <ResponsiveContainer width={130} height={130}>
+                <PieChart>
+                  <Pie
+                    data={allocationData}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={58}
+                    innerRadius={32}
+                    strokeWidth={2}
+                    stroke="hsl(var(--card))"
                   >
+                    {allocationData.map((_, i) => (
+                      <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+
+              <div className="flex flex-col gap-2 flex-1 min-w-0">
+                {allocationData.slice(0, 7).map((item, i) => {
+                  const total = allocationData.reduce((s, d) => s + d.value, 0);
+                  const pct =
+                    total > 0 ? ((item.value / total) * 100).toFixed(1) : "0";
+                  return (
                     <div
-                      className="w-2 h-2 rounded-sm flex-shrink-0"
-                      style={{ background: PALETTE[i % PALETTE.length] }}
-                    />
-                    <span className="text-[11px] text-muted-foreground font-mono truncate flex-1">
-                      {item.name}
-                    </span>
-                    <span className="text-[11px] font-mono font-semibold text-foreground flex-shrink-0">
-                      {pct}%
-                    </span>
-                  </div>
-                );
-              })}
+                      key={item.name}
+                      className="flex items-center gap-2 min-w-0"
+                    >
+                      <div
+                        className="w-2 h-2 rounded-sm flex-shrink-0"
+                        style={{ background: PALETTE[i % PALETTE.length] }}
+                      />
+                      <span className="text-[11px] text-muted-foreground font-mono truncate flex-1">
+                        {item.name}
+                      </span>
+                      <span className="text-[11px] font-mono font-semibold text-foreground flex-shrink-0">
+                        {pct}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="zf-empty-state zf-chart-empty">
+              <span className="zf-empty-icon" aria-hidden="true"><PieChartIcon /></span>
+              <p className="zf-empty-title">No allocation value to chart</p>
+              <p className="zf-empty-body">
+                Allocation appears once a position has a known cost or usable market value.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

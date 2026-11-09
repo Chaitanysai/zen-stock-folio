@@ -22,7 +22,7 @@ export default function HeroScene({ className }: HeroSceneProps) {
           <linearGradient id="zl-growth-line" x1="0" x2="1" y1="0" y2="0">
             <stop offset="0%" stopColor="currentColor" stopOpacity=".42" />
             <stop offset="72%" stopColor="currentColor" />
-            <stop offset="100%" stopColor="#e68a3d" />
+            <stop offset="100%" stopColor="hsl(var(--brand))" />
           </linearGradient>
         </defs>
 

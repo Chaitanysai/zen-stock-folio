@@ -259,14 +259,7 @@ export function OutcomeChartCard({
                 >
                   {slices.map((slice) => <Cell key={slice.key} fill={slice.fill} />)}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--surface-2))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 12,
-                    fontSize: 12,
-                  }}
-                />
+                <Tooltip wrapperClassName="zf-chart-tooltip-wrap" />
               </PieChart>
             </ResponsiveContainer>
             <div className="zf-outcome-center">

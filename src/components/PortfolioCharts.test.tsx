@@ -21,12 +21,14 @@ vi.mock("lightweight-charts", () => ({
 }));
 vi.mock("recharts", () => {
   const Container = ({ children }: { children?: React.ReactNode }) => <div>{children}</div>;
+  const PnlChart = ({ children }: { children?: React.ReactNode }) => <div data-testid="pnl-chart">{children}</div>;
+  const AllocationChart = ({ children }: { children?: React.ReactNode }) => <div data-testid="allocation-chart">{children}</div>;
   const Empty = () => null;
   return {
-    BarChart: Container,
+    BarChart: PnlChart,
     Bar: Container,
     Cell: Empty,
-    PieChart: Container,
+    PieChart: AllocationChart,
     Pie: Container,
     XAxis: Empty,
     YAxis: Empty,
@@ -164,5 +166,24 @@ describe("PortfolioCharts controls", () => {
     expect(
       screen.getByText("1 position without a market price or cost basis is excluded from this chart."),
     ).toBeInTheDocument();
+  });
+
+  it("shows empty states instead of chart frames when P&L is unknown and allocation is zero", async () => {
+    render(<PortfolioCharts stocks={[row({ entryPrice: null, cmp: 0 })]} />);
+    await waitForChart();
+
+    expect(screen.getByText("No P&L movement to chart")).toBeInTheDocument();
+    expect(screen.getByText("No allocation value to chart")).toBeInTheDocument();
+    expect(screen.queryByTestId("pnl-chart")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("allocation-chart")).not.toBeInTheDocument();
+  });
+
+  it("shows the P&L empty state when every computed result is zero", async () => {
+    render(<PortfolioCharts stocks={[row({ entryPrice: 100, cmp: 100 })]} />);
+    await waitForChart();
+
+    expect(screen.getByText("No P&L movement to chart")).toBeInTheDocument();
+    expect(screen.queryByTestId("pnl-chart")).not.toBeInTheDocument();
+    expect(screen.getByTestId("allocation-chart")).toBeInTheDocument();
   });
 });

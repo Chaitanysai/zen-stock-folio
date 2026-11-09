@@ -63,18 +63,20 @@ const csvCell = (value: string | number | null | undefined): string => {
 };
 
 function SortHead({
-  label, sortKey, sort, onSort, align = "left",
+  label, sortKey, sort, onSort, align = "left", className,
 }: {
   label: string;
   sortKey: PositionSortKey;
   sort: { key: PositionSortKey; dir: "asc" | "desc" };
   onSort: (key: PositionSortKey) => void;
   align?: "left" | "right";
+  className?: string;
 }) {
   const active = sort.key === sortKey;
+  const headClassName = [align === "right" ? "text-right" : "", className ?? ""].filter(Boolean).join(" ");
   return (
     <TableHead
-      className={align === "right" ? "text-right" : undefined}
+      className={headClassName || undefined}
       aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
     >
       <button
@@ -319,13 +321,18 @@ export default function PositionTable({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <Table className="min-w-[1460px] [font-variant-numeric:tabular-nums]">
+            <div
+              className="zf-wide-table-scroll"
+              role="region"
+              aria-label="Position history table, scrolls sideways on small screens"
+              tabIndex={0}
+            >
+              <Table className="zf-position-table [font-variant-numeric:tabular-nums]">
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
                     <TableHead className="w-8" />
-                    <TableHead>Position</TableHead>
-                    <TableHead>Source</TableHead>
+                    <TableHead className="zf-position-key zf-sticky-col">Position</TableHead>
+                    <TableHead className="zf-col-source">Source</TableHead>
                     <SortHead label="Status" sortKey="status" sort={sort} onSort={toggleSort} />
                     <SortHead label="Bought" sortKey="qty" sort={sort} onSort={toggleSort} align="right" />
                     <TableHead className="text-right">Sold</TableHead>
@@ -338,8 +345,8 @@ export default function PositionTable({
                     <SortHead label="Realised" sortKey="realised" sort={sort} onSort={toggleSort} align="right" />
                     <SortHead label="Unrealised" sortKey="unrealised" sort={sort} onSort={toggleSort} align="right" />
                     <SortHead label="Total P&L" sortKey="total" sort={sort} onSort={toggleSort} align="right" />
-                    <SortHead label="Entry" sortKey="entry" sort={sort} onSort={toggleSort} />
-                    <SortHead label="Exit" sortKey="exit" sort={sort} onSort={toggleSort} />
+                    <SortHead label="Entry" sortKey="entry" sort={sort} onSort={toggleSort} className="zf-col-date" />
+                    <SortHead label="Exit" sortKey="exit" sort={sort} onSort={toggleSort} className="zf-col-date" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -538,7 +545,7 @@ function PositionRow({
             {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
           </button>
         </TableCell>
-        <TableCell>
+        <TableCell className="zf-position-key zf-sticky-col">
           <div className="flex items-center gap-1.5">
             <span className="font-medium text-foreground">{position.ticker}</span>
             <span className="shrink-0 whitespace-nowrap rounded border border-border px-1 py-0.5 font-mono text-[9px] text-muted-foreground">
@@ -548,7 +555,7 @@ function PositionRow({
           <span className="block max-w-[190px] truncate text-[12px] text-muted-foreground">{position.name}</span>
           {position.isin && <span className="block font-mono text-[10px] text-muted-foreground/80">{position.isin}</span>}
         </TableCell>
-        <TableCell className="text-[12px] text-muted-foreground">{position.sourceLabel}</TableCell>
+        <TableCell className="zf-col-source text-[12px] text-muted-foreground">{position.sourceLabel}</TableCell>
         <TableCell>
           <span className={`inline-flex rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold ${statusTone[position.status]}`}>
             {POSITION_STATUS_LABEL[position.status]}
@@ -576,8 +583,8 @@ function PositionRow({
         <TableCell className={`text-right font-mono text-[12px] font-semibold ${tone(totalInr)}`}>
           {signed(totalInr)}
         </TableCell>
-        <TableCell className="font-mono text-[11px] text-muted-foreground">{position.firstEntryDate ?? "—"}</TableCell>
-        <TableCell className="font-mono text-[11px] text-muted-foreground">{position.lastExitDate ?? "—"}</TableCell>
+        <TableCell className="zf-col-date font-mono text-[11px] text-muted-foreground">{position.firstEntryDate ?? "—"}</TableCell>
+        <TableCell className="zf-col-date font-mono text-[11px] text-muted-foreground">{position.lastExitDate ?? "—"}</TableCell>
       </TableRow>
 
       {expanded && (
@@ -590,8 +597,13 @@ function PositionRow({
                 {position.investedUnknownLots > 0 && `${position.investedUnknownLots} without a recorded cost`}
                 {position.realisedUnknownLots === 0 && position.investedUnknownLots === 0 && "all values derived from stored cost and prices"}
               </p>
-              <div className="overflow-x-auto">
-                <Table className="min-w-[760px]">
+              <div
+                className="zf-wide-table-scroll zf-lot-table-scroll"
+                role="region"
+                aria-label={`Transactions for ${position.ticker}, scrolls sideways on small screens`}
+                tabIndex={0}
+              >
+                <Table className="zf-lot-table">
                   <TableHeader>
                     <TableRow className="border-border hover:bg-transparent">
                       <TableHead>Transaction</TableHead>
