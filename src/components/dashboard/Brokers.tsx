@@ -39,7 +39,7 @@ interface BrokersProps {
 
 const STATUS_COLOR: Record<BrokerConnectionStatus, string> = {
   connected: "var(--green)",
-  syncing: "var(--blue, #2563eb)",
+  syncing: "hsl(var(--chart-4))",
   pending_credentials: "var(--amber)",
   pending_authorization: "var(--amber)",
   reauthorization_required: "var(--amber)",

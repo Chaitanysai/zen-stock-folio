@@ -15,8 +15,8 @@
   --ff-num: 'Geist', -apple-system, system-ui, sans-serif;
   --card-r: var(--radius-card);
   --gap: 16px;
-  --rail-w: 64px;
-  --rail-inset: 14px;
+  --rail-w: 68px;
+  --rail-inset: 12px;
 
   /* Layout: the top bar and the page share one side padding so their edges line up.
      The cap only matters on screens wider than ~2300px. */
@@ -84,41 +84,41 @@
   height: calc(100dvh - 2 * var(--rail-inset));
   border-radius: 999px;
   display: flex; flex-direction: column; align-items: center;
-  padding: 10px 0;
-  gap: 6px;
+  padding: 8px 0;
+  gap: 8px;
   z-index: 30;
 }
-.zf-rail-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.zf-rail-group { display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .zf-rail-mid {
   position: relative;
   flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
-  scrollbar-width: none; padding: 2px 0;
+  scrollbar-width: none; padding: 4px 0;
 }
 .zf-rail-mid::-webkit-scrollbar { display: none; }
 .zf-rail-pill {
   position: absolute; top: 0; left: 0; z-index: 0;
-  width: 40px; height: 40px;
+  width: 42px; height: 42px;
   border-radius: 50%; background: hsl(var(--primary));
   box-shadow: var(--shadow-1);
   opacity: 0; pointer-events: none;
-  transition: opacity 160ms ease;
-  will-change: transform, width, height;
+  transition: opacity var(--dur-hover) var(--ease-out), transform var(--dur-indicator) var(--ease-out);
+  will-change: transform;
 }
 .zf-rail-pill[data-ready] { opacity: 1; }
 .zf-rail-mid .zf-rbtn { z-index: 1; }
 .zf-rail .zf-rbtn[aria-current="page"] { background: transparent; box-shadow: none; color: hsl(var(--primary-foreground)); }
 .zf-rail .zf-rbtn[aria-current="page"]:hover { background: transparent; }
-.zf-rail-sep { width: 22px; height: 1px; background: hsl(var(--border)); margin: 4px 0; flex-shrink: 0; }
+.zf-rail-sep { width: 24px; height: 1px; background: hsl(var(--border)); margin: 5px 0; flex-shrink: 0; }
 
 /* Theme switch: two stacked buttons, the active one is a raised disc */
 .zf-theme {
-  display: flex; flex-direction: column; gap: 2px; padding: 3px;
+  display: flex; flex-direction: column; gap: 3px; padding: 3px;
   border-radius: 999px; background: hsl(var(--surface-3) / .8);
 }
 
 .zf-rbtn {
   position: relative;
-  width: 40px; height: 40px; flex-shrink: 0;
+  width: 42px; height: 42px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 50%; border: 1px solid transparent; background: transparent;
   color: hsl(var(--muted-foreground)); cursor: pointer;
@@ -146,7 +146,7 @@
 }
 .zf-dayglow::before, .zf-dayglow::after {
   content: ""; position: absolute; inset: 0; opacity: 0;
-  transition: opacity 600ms ease;
+  transition: opacity var(--dur-reveal) var(--ease-out);
 }
 .zf-dayglow::before {
   background:
@@ -170,28 +170,28 @@
 .zf-top {
   position: sticky; top: 0; z-index: 40;
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px;
-  padding: 14px var(--pad-x) 10px;
+  padding: 12px var(--pad-x) 8px;
   pointer-events: none;           /* the gaps between groups stay click-through */
 }
 .zf-top > * { pointer-events: auto; }
-.zf-top-left { display: flex; align-items: center; gap: 10px; min-width: 0; justify-self: start; }
-.zf-top > .zf-nav { justify-self: center; min-width: 0; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.zf-top-left { display: flex; align-items: center; gap: 8px; min-width: 0; justify-self: start; }
+.zf-top > .zf-nav { justify-self: center; min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
 .zf-top > .zf-nav::-webkit-scrollbar { display: none; }
 /* Between the rail breakpoint and the width where all pills fit, the rail
    already navigates every section; the squeezed centre strip only clips. */
 @media (min-width: 769px) and (max-width: 1259px) {
   .zf-top > .zf-nav { display: none; }
 }
-.zf-top-right { display: flex; align-items: center; gap: 10px; min-width: 0; justify-self: end; }
+.zf-top-right { display: flex; align-items: center; gap: 8px; min-width: 0; justify-self: end; }
 
 .zf-brand {
-  display: inline-flex; align-items: center; gap: 10px; padding: 5px 16px 5px 5px;
+  display: inline-flex; align-items: center; gap: 9px; padding: 4px 14px 4px 4px;
   border-radius: 999px; color: inherit; text-decoration: none; font-weight: 700; letter-spacing: -.02em; font-size: 15px;
 }
 .zf-brand-mark { display: inline-flex; width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
 .zf-brand-mark svg { width: 34px; height: 34px; }
 
-.zf-pills { display: inline-flex; align-items: center; gap: 2px; padding: 4px; border-radius: 999px; position: relative; }
+.zf-pills { display: inline-flex; align-items: center; gap: 3px; padding: 4px; border-radius: 999px; position: relative; }
 .zf-nav-item {
   flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
@@ -212,13 +212,14 @@
   border-radius: 999px; background: hsl(var(--primary)); box-shadow: var(--shadow-1);
   pointer-events: none; opacity: 0;
   transition-property: transform, width, opacity;
-  transition-duration: var(--dur-indicator, 520ms), var(--dur-indicator, 520ms), 120ms;
-  transition-timing-function: var(--ease-section), var(--ease-section), ease;
+  transition-duration: var(--dur-indicator), var(--dur-indicator), var(--dur-hover);
+  transition-timing-function: var(--ease-out), var(--ease-out), var(--ease-out);
 }
 .zf-nav-indicator[data-ready] { opacity: 1; }
 .zf-nav-item { position: relative; z-index: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .zf-nav-indicator { transition-property: opacity; transition-duration: 120ms; }
+  .zf-rail-pill,
+  .zf-nav-indicator { transition-property: opacity; transition-duration: var(--dur-hover); }
 }
 
 .zf-iconbtn {
@@ -313,7 +314,9 @@
   /* The rendered strip begins at −19, leaving headroom for a full final roll
      before the component silently rebases to an identical copy of the digit. */
   transform: translateY(calc((var(--slot) + 19) * -1em));
-  transition: transform 620ms cubic-bezier(.22, .9, .28, 1.06);
+  /* Duration mirrors ROLL_MS in AnimatedNumber.tsx; changing one without the
+     other exposes the strip rebase. The shared curve still comes from tokens. */
+  transition: transform 620ms var(--ease-out);
   will-change: transform;
 }
 /* Rebase only after a roll has settled. The visible character is identical, so
@@ -850,16 +853,50 @@
 .zf-status-list dd { margin: 0; font-weight: 600; text-align: right; }
 
 /* Mobile sheet navigation */
+.zf-sheet {
+  box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 0;
+  width: min(88vw, 380px); max-width: 100%; height: 100dvh;
+  padding: calc(14px + env(safe-area-inset-top, 0px)) 14px calc(16px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto; overscroll-behavior: contain;
+  border-color: hsl(var(--glass-border-strong));
+}
+.zf-sheet > button {
+  top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px;
+  width: 40px; height: 40px;
+}
+.zf-sheet-title {
+  display: flex; align-items: center; min-height: 44px;
+  padding: 0 48px 0 8px;
+  font: 700 18px/1.2 var(--ff-body); letter-spacing: -.02em;
+}
+.zf-sheet-theme { display: flex; margin: 10px 6px 2px; }
+.zf-sheet-theme button { flex: 1; min-height: 44px; }
+.zf-sheet .zf-accent-row { margin: 12px 8px 2px; }
+.zf-sheet nav { padding-top: 4px; }
+.zf-sheet nav > div + div { margin-top: 4px; }
 .zf-sheet-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.zf-sheet-group { margin: 14px 8px 4px; font: 600 11px var(--ff-body); letter-spacing: .1em; text-transform: uppercase; color: hsl(var(--muted-foreground)); }
+.zf-sheet-group { margin: 18px 10px 6px; font: 650 12px var(--ff-body); color: hsl(var(--muted-foreground)); }
 .zf-sheet-item {
-  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 14px; border-radius: 14px;
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 12px; border-radius: 12px;
   background: transparent; border: 0; color: inherit; font: 500 15px var(--ff-body); text-align: left; cursor: pointer;
+  transition: background-color var(--dur-hover) var(--ease-out), color var(--dur-hover) var(--ease-out);
 }
 .zf-sheet-item svg { width: 19px; height: 19px; color: hsl(var(--muted-foreground)); }
-.zf-sheet-item:hover { background: hsl(var(--surface-3)); }
+@media (hover: hover) and (pointer: fine) {
+  .zf-sheet-item:hover { background: hsl(var(--surface-3)); }
+}
+.zf-sheet-item:active { background: hsl(var(--surface-3)); transform: none; }
 .zf-sheet-item[aria-current="page"] { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 600; }
 .zf-sheet-item[aria-current="page"] svg { color: inherit; }
+.zf-sheet-account {
+  display: flex; flex-direction: column; gap: 3px;
+  margin: 0 4px 4px; padding: 11px 12px;
+  border: 1px solid hsl(var(--border)); border-radius: 12px;
+  background: hsl(var(--surface-2)); min-width: 0;
+}
+.zf-sheet-account-name { display: block; font-size: 14px; overflow-wrap: anywhere; }
+.zf-sheet-account-email { font-size: 12px; color: hsl(var(--muted-foreground)); overflow-wrap: anywhere; }
 
 /* ════════ SECONDARY SCREENS (existing feature components) ════════
    Re-skins shadcn markup inside the panel onto the tokens so Portfolio,
@@ -990,7 +1027,7 @@
     radial-gradient(80% 58% at 84% -8%, hsl(var(--lucid-blue) / .16), transparent 60%),
     radial-gradient(70% 50% at 6% 6%, hsl(222 70% 40% / .24), transparent 62%),
     linear-gradient(180deg, hsl(var(--night-ink)) 0%, hsl(var(--night-deep)) 52%, hsl(var(--night-lift)) 100%);
-  transition: opacity 300ms var(--ease-lucid);
+  transition: opacity var(--dur-slow) var(--ease-lucid);
 }
 .zf-atmos-sky::before {
   content: ''; position: absolute; inset: 0;
@@ -1002,7 +1039,7 @@
     radial-gradient(1.9px 1.9px at 78% 26%, hsl(210 90% 97% / .55), transparent 100%),
     radial-gradient(1.5px 1.5px at 89% 8%,  hsl(210 90% 97% / .65), transparent 100%);
   opacity: .75;
-  transition: opacity 220ms var(--ease-lucid);
+  transition: opacity var(--dur) var(--ease-lucid);
 }
 /* Stars go out first: they are the most "night" cue, so clearing them early is
    what makes the sky read as lifting rather than merely thinning. */
@@ -1017,7 +1054,7 @@
   filter: blur(28px) saturate(120%);
   opacity: .9;
   animation: zf-drift 26s ease-in-out infinite alternate;
-  transition: opacity 300ms var(--ease-lucid);
+  transition: opacity var(--dur-slow) var(--ease-lucid);
 }
 .zf-atmos[data-phase="dawn"] .zf-atmos-aurora { opacity: 0; }
 @keyframes zf-drift {
@@ -1031,7 +1068,7 @@
     radial-gradient(70% 50% at 50% 8%, hsl(var(--lucid-mist) / .12), transparent 70%),
     radial-gradient(50% 40% at 10% 60%, hsl(var(--on-night) / .05), transparent 70%);
   mix-blend-mode: screen;
-  transition: opacity 300ms var(--ease-lucid);
+  transition: opacity var(--dur-slow) var(--ease-lucid);
 }
 .zf-atmos[data-phase="dawn"] .zf-atmos-mist { opacity: 0; }
 
@@ -1048,7 +1085,7 @@
   display: block;
   background: radial-gradient(160% 160% at 50% 50%, hsl(var(--night-deep) / .95) 58%, transparent 100%);
   opacity: 1;
-  transition: opacity 260ms var(--ease-lucid);
+  transition: opacity var(--dur-slow) var(--ease-lucid);
   transition-delay: calc((var(--t) * 12ms) + (var(--r) * 16ms));
 }
 .zf-atmos[data-phase="dawn"] .zf-atmos-veil i { opacity: 0; }
@@ -1074,13 +1111,13 @@
    rectangle sitting on a dark page. The gate disappears with the phase, so a
    later section change runs the same entrance at normal speed. */
 .zf:has(.zf-atmos[data-phase="night"]) .zf-in { animation: none; opacity: 0; }
-/* Dawn is the handover. The sky clears inside 300ms and the first card starts at
-   320ms — so the numbers always arrive on daylight, never through it. The last
-   card finishes at 320 + 11×28 + 600 = 1228ms, inside the 1250ms dawn, which
+/* Dawn is the handover. The sky clears on the slow token and the first card starts
+   after that token — so the numbers always arrive on daylight, never through it.
+   The last card finishes at 320 + 11×28 + 520 = 1148ms, inside the 1250ms dawn, which
    means the flip to `day` never cuts an animation short. */
 .zf:has(.zf-atmos[data-phase="dawn"]) .zf-in {
-  animation: zf-card-in 600ms var(--ease-lucid) both;
-  animation-delay: calc(320ms + min(var(--i, 0), 11) * 28ms);
+  animation: zf-card-in var(--dur-indicator) var(--ease-lucid) both;
+  animation-delay: calc(var(--dur-slow) + min(var(--i, 0), 11) * 28ms);
 }
 .zf:has(.zf-atmos[data-phase="night"]) .zf-h1,
 .zf:has(.zf-atmos[data-phase="night"]) .zf-sub,
@@ -1088,12 +1125,12 @@
 .zf:has(.zf-atmos[data-phase="night"]) .zf-brand-name { color: hsl(var(--on-night)); }
 .zf:has(.zf-atmos[data-phase="night"]) .zf-sub strong { color: hsl(var(--on-night)); }
 .zf:has(.zf-atmos[data-phase="night"]) .zf-page-head {
-  animation: zf-chrome-in 650ms var(--ease-lucid) both;
+  animation: zf-chrome-in var(--dur-reveal) var(--ease-lucid) both;
 }
 /* Chips are opaque by default, which makes them the brightest thing on a night
    sky. They dim with the chrome and come back as the light does. */
 .zf .zf-chip {
-  transition: background-color 400ms var(--ease-lucid), color 400ms var(--ease-lucid);
+  transition: background-color var(--dur-route) var(--ease-lucid), color var(--dur-route) var(--ease-lucid);
 }
 .zf:has(.zf-atmos[data-phase="night"]) .zf-chip {
   background: hsl(var(--on-night) / .10);
@@ -1106,7 +1143,7 @@
    is bounded by the night phase, so the page is back to its normal furniture the
    moment dawn starts. The nav items and icon buttons keep their own fast
    interaction transitions — slowing them here would make hover feel sticky. */
-.zf .zf-market { transition: background-color 400ms var(--ease-lucid), color 400ms var(--ease-lucid); }
+.zf .zf-market { transition: background-color var(--dur-route) var(--ease-lucid), color var(--dur-route) var(--ease-lucid); }
 .zf:has(.zf-atmos[data-phase="night"]) .zf-nav-indicator {
   background: hsl(var(--on-night) / .13);
   box-shadow: inset 0 0 0 1px hsl(var(--on-night) / .16);
@@ -1175,6 +1212,8 @@
   background: hsl(var(--glass) / .88);
   border-color: hsl(var(--glass-border-strong));
   box-shadow: var(--glass-highlight), 0 12px 30px -22px hsl(222 50% 8% / .45);
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(140%);
+          backdrop-filter: blur(var(--blur-md)) saturate(140%);
 }
 .zf-pnl-panel,
 .zf-inset {
@@ -1331,12 +1370,12 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .zf-in {
-    animation: zf-card-in 620ms var(--ease-lucid) both;
+    animation: zf-card-in var(--dur-reveal) var(--ease-lucid) both;
     animation-delay: calc(min(var(--i, 0), 11) * 45ms);
   }
-  .zf-section-body[data-phase="leaving"] { animation: zf-section-out var(--dur-section-out) ease-in both; }
+  .zf-section-body[data-phase="leaving"] { animation: zf-section-out var(--dur-section-out) var(--ease-out) both; }
   .zf-section-body[data-phase="entering"] { animation: zf-section-in var(--dur-section-in) var(--ease-section) both; }
-  .zf-empty-state { animation: zf-fade var(--dur-slow) ease both; }
+  .zf-empty-state { animation: zf-fade var(--dur-slow) var(--ease-out) both; }
 }
 
 /* ════════ RESPONSIVE ════════ */
@@ -1369,11 +1408,13 @@
   .zf-rail { display: none; }
   .zf-stage { height: auto; overflow: visible; }
   .zf-top {
-    grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; padding: 10px var(--pad-x) 6px;
+    grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) var(--pad-x) 6px;
     position: sticky; top: 0;
   }
   .zf-top-left { grid-column: 1; }
   .zf-top-right { grid-column: 2; gap: 6px; }
+  .zf-top-right > .zf-pills { gap: 1px; padding: 2px; }
   .zf-user, .zf-hide-mobile { display: none; }
   .zf-menu-btn { display: inline-flex; }
   .zf-iconbtn, .zf-refresh { width: 44px; height: 44px; }
@@ -1421,6 +1462,11 @@
   .zf-tile { min-height: 44px; }
 }
 @media (max-width: 420px) {
+  .zf-market { position: relative; width: 44px; padding: 0; margin: 0; justify-content: center; }
+  .zf-market-text {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
   .zf-tiles { grid-template-columns: minmax(0, 1fr); }
   .zf-tile { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
   .zf-tile-val { margin-left: auto; }
@@ -1561,7 +1607,7 @@
 /* ── Sector concentration meter ─────────────────────────────────────────────── */
 .zf-meter { display: flex; width: 100%; height: 12px; border-radius: 999px; overflow: hidden; background: hsl(var(--surface-3)); margin-top: 10px; }
 .zf-meter-lg { height: 18px; margin-top: 0; }
-.zf-meter-seg { height: 100%; min-width: 2px; transition: width .5s var(--ease-out); }
+.zf-meter-seg { height: 100%; min-width: 2px; transition: width var(--dur-indicator) var(--ease-out); }
 .zf-meter-seg[data-other] { opacity: .55; }
 .zf-sector-legend { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
 .zf-sector-legend li { display: flex; align-items: center; gap: 8px; min-width: 0; }

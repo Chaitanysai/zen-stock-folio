@@ -40,12 +40,11 @@ interface RailProps {
 export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailProps) {
   const navRef = useRef<HTMLElement | null>(null);
   const pillRef = useRef<HTMLSpanElement | null>(null);
-  const previousRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
-  const animationRef = useRef<Animation | null>(null);
 
   // The pill is measured from the active button so its size always matches the
   // button's box (the rail shrinks at short viewports). Width and height stay
-  // equal so the highlight remains a perfect circle while it travels.
+  // equal so the highlight remains a perfect circle while it travels. CSS owns
+  // the token-driven transition; this effect only measures and places it.
   useLayoutEffect(() => {
     const nav = navRef.current;
     const pill = pillRef.current;
@@ -70,8 +69,6 @@ export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailP
         pill.style.opacity = "0";
         return;
       }
-      animationRef.current?.cancel();
-      previousRef.current = next;
       place(next);
       pill.dataset.ready = "";
     };
@@ -82,30 +79,12 @@ export function Rail({ tab, onSelect, theme, onTheme, onHelp, onSignOut }: RailP
       return;
     }
 
-    const previous = previousRef.current;
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    animationRef.current?.cancel();
-
-    if (previous && !reduced && typeof pill.animate === "function") {
-      animationRef.current = pill.animate(
-        [
-          { transform: `translate(${previous.x}px, ${previous.y}px)` },
-          { transform: `translate(${next.x}px, ${next.y}px)` },
-        ],
-        { duration: 380, easing: "cubic-bezier(.22,.9,.28,1.06)" },
-      );
-    }
-
-    previousRef.current = next;
     place(next);
     pill.dataset.ready = "";
 
     const observer = new ResizeObserver(sync);
     observer.observe(nav);
-    return () => {
-      observer.disconnect();
-      animationRef.current?.cancel();
-    };
+    return () => observer.disconnect();
   }, [tab]);
 
   return (
@@ -412,13 +391,13 @@ export function MobileMenu(p: MobileMenuProps) {
   const act = (fn: () => void) => () => { p.onOpenChange(false); fn(); };
   return (
     <Sheet open={p.open} onOpenChange={p.onOpenChange}>
-      <SheetContent side="left" className="zf-sheet overflow-y-auto p-4">
-        <SheetTitle className="zf-brand-name" style={{ display: "block", fontSize: 18, fontWeight: 700, padding: "4px 8px 0" }}>ZenFolio</SheetTitle>
+      <SheetContent side="left" className="zf-sheet">
+        <SheetTitle className="zf-sheet-title">ZenFolio</SheetTitle>
         <SheetDescription className="zf-sr-only">Navigate between sections, change theme or manage your account.</SheetDescription>
 
-        <div className="zf-seg" role="group" aria-label="Theme" style={{ margin: "14px 8px 0", display: "flex" }}>
-          <button type="button" style={{ flex: 1, minHeight: 40 }} aria-pressed={p.theme === "light"} onClick={(e) => p.onTheme("light", e)}>Light</button>
-          <button type="button" style={{ flex: 1, minHeight: 40 }} aria-pressed={p.theme === "dark"} onClick={(e) => p.onTheme("dark", e)}>Dark</button>
+        <div className="zf-seg zf-sheet-theme" role="group" aria-label="Theme">
+          <button type="button" aria-pressed={p.theme === "light"} onClick={(e) => p.onTheme("light", e)}>Light</button>
+          <button type="button" aria-pressed={p.theme === "dark"} onClick={(e) => p.onTheme("dark", e)}>Dark</button>
         </div>
 
         <div className="zf-accent-row">
@@ -444,9 +423,9 @@ export function MobileMenu(p: MobileMenuProps) {
         </nav>
 
         <p className="zf-sheet-group">Account</p>
-        <div style={{ padding: "0 14px 6px" }}>
-          <b style={{ display: "block", fontSize: 14 }}>{p.userName}</b>
-          <span style={{ fontSize: 12, color: "hsl(var(--muted-foreground))" }}>{p.userEmail}</span>
+        <div className="zf-sheet-account">
+          <b className="zf-sheet-account-name">{p.userName}</b>
+          <span className="zf-sheet-account-email">{p.userEmail}</span>
         </div>
         <ul className="zf-sheet-list">
           <li><button type="button" className="zf-sheet-item" onClick={act(p.onDisplayName)}><Pencil aria-hidden="true" /> Display name</button></li>
