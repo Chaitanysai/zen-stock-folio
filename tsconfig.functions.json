@@ -22,5 +22,10 @@
     "functions/api/brokers/**/*.ts",
     "src/lib/brokers/**/*.ts"
   ],
-  "exclude": ["src/lib/brokers/client.ts", "src/lib/brokers/merge.ts", "src/lib/brokers/*.test.ts"]
+  "exclude": [
+    "src/lib/brokers/client.ts",
+    "src/lib/brokers/merge.ts",
+    "src/lib/brokers/visibility.ts",
+    "src/lib/brokers/*.test.ts"
+  ]
 }

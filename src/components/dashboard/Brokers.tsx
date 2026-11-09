@@ -29,6 +29,12 @@ import { BrokerTile } from "./BrokerTile";
 interface BrokersProps {
   stocks: PortfolioStock[];
   onImportStocks: (stocks: PortfolioStock[], label: string) => void;
+  /**
+   * Reports the connection list whenever it changes. The dashboard filters
+   * broker-sourced rows out of every view as soon as a connection is
+   * disconnected, so it needs the new list without a page reload.
+   */
+  onConnectionsChanged?: (connections: BrokerConnectionPublic[]) => void | Promise<void>;
 }
 
 const STATUS_COLOR: Record<BrokerConnectionStatus, string> = {
@@ -190,7 +196,7 @@ function ConnectionCard({
   );
 }
 
-export default function Brokers({ stocks, onImportStocks }: BrokersProps) {
+export default function Brokers({ stocks, onImportStocks, onConnectionsChanged }: BrokersProps) {
   const { toast } = useToast();
   const [providers, setProviders] = useState<BrokerProviderPublic[]>([]);
   const [connections, setConnections] = useState<BrokerConnectionPublic[]>([]);
@@ -202,6 +208,11 @@ export default function Brokers({ stocks, onImportStocks }: BrokersProps) {
   const [form, setForm] = useState<{ provider: BrokerProviderPublic; method: "oauth" | "api_keys"; connection?: BrokerConnectionPublic } | null>(null);
   const [disconnectTarget, setDisconnectTarget] = useState<BrokerConnectionPublic | null>(null);
   const callbackHandled = useRef(false);
+  // Held in a ref so `refresh` keeps a stable identity: its mount effect
+  // re-runs whenever `refresh` changes, and an inline parent callback would
+  // otherwise re-fetch on every render.
+  const onConnectionsChangedRef = useRef(onConnectionsChanged);
+  onConnectionsChangedRef.current = onConnectionsChanged;
 
   const refresh = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -213,9 +224,12 @@ export default function Brokers({ stocks, onImportStocks }: BrokersProps) {
       setSetupIssues(providerData.setupIssues);
       if (providerData.storeReady) {
         const connectionData = await brokerApi.connections();
-        setConnections(connectionData.connections);
+        const rows = connectionData.connections;
+        setConnections(rows);
+        await onConnectionsChangedRef.current?.(rows);
       } else {
         setConnections([]);
+        await onConnectionsChangedRef.current?.([]);
       }
     } catch (caught) {
       setError(actionError(caught));
@@ -325,7 +339,10 @@ export default function Brokers({ stocks, onImportStocks }: BrokersProps) {
     setBusy(connection.id);
     try {
       await brokerApi.disconnect(connection.id);
-      toast({ title: "Broker disconnected", description: "Stored credentials were deleted. Imported holdings remain in your portfolio." });
+      toast({
+        title: "Broker disconnected",
+        description: "Stored credentials were deleted and its holdings are now hidden from the dashboard. Your data is kept and returns if you reconnect.",
+      });
       setDisconnectTarget(null);
       await refresh(true);
     } catch (caught) {
@@ -463,8 +480,8 @@ export default function Brokers({ stocks, onImportStocks }: BrokersProps) {
           <DialogHeader>
             <DialogTitle>Disconnect {disconnectTarget?.displayName}?</DialogTitle>
             <DialogDescription>
-              The encrypted credentials are deleted and the connection stops syncing. Holdings already imported stay
-              in your portfolio so you can remove them yourself.
+              The encrypted credentials are deleted and its holdings are hidden from the dashboard and every
+              calculation. Nothing is deleted: your data is kept and returns if you reconnect this broker.
             </DialogDescription>
           </DialogHeader>
           <div className="zf-broker-dialog-actions">
