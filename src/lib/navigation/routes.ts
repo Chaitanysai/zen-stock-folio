@@ -59,6 +59,31 @@ const SLUG_BY_SECTION: Record<DashboardSectionId, string> = {
   brokers: "brokers",
 };
 
+/**
+ * Human-readable name for each section.
+ *
+ * Kept beside the slug map so a section cannot gain a URL without gaining a
+ * label. `pages/Index.tsx` uses its own page titles for headings; this map is
+ * for surfaces that must name a section outside the shell (the assistant's
+ * navigation card, for example).
+ */
+export const DASHBOARD_SECTION_LABELS: Record<DashboardSectionId, string> = {
+  overview: "Dashboard",
+  holdings: "Portfolio",
+  trades: "Trades",
+  history: "History",
+  journal: "Journal",
+  charts: "Charts",
+  sector: "Sectors",
+  analytics: "Performance",
+  watchlist: "Watchlist",
+  news: "News Feed",
+  ai: "AI Insights",
+  alerts: "Alerts",
+  export: "Export",
+  brokers: "Brokers",
+};
+
 const SECTION_BY_SLUG: Record<string, DashboardSectionId> = Object.fromEntries(
   (Object.entries(SLUG_BY_SECTION) as [DashboardSectionId, string][]).map(
     ([id, slug]) => [slug, id],

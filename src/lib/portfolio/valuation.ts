@@ -390,9 +390,14 @@ export function toInrStocks(stocks: PortfolioStock[], usdInr: number | null): Po
     // null) value must stay unknown, never become a converted zero.
     if (hasKnownCost(stock)) converted.entryPrice = stock.entryPrice * fx;
     if (Number.isFinite(stock.cmp)) converted.cmp = stock.cmp * fx;
-    if (Number.isFinite(stock.weekHigh52)) converted.weekHigh52 = stock.weekHigh52 * fx;
-    if (Number.isFinite(stock.weekLow52)) converted.weekLow52 = stock.weekLow52 * fx;
-    if (Number.isFinite(stock.exitPrice)) converted.exitPrice = stock.exitPrice * fx;
+    // `typeof` narrows the optional fields for the strict Functions project;
+    // `Number.isFinite` alone does not, and the behaviour is identical.
+    const weekHigh = stock.weekHigh52;
+    if (typeof weekHigh === "number" && Number.isFinite(weekHigh)) converted.weekHigh52 = weekHigh * fx;
+    const weekLow = stock.weekLow52;
+    if (typeof weekLow === "number" && Number.isFinite(weekLow)) converted.weekLow52 = weekLow * fx;
+    const exitPrice = stock.exitPrice;
+    if (typeof exitPrice === "number" && Number.isFinite(exitPrice)) converted.exitPrice = exitPrice * fx;
     // A converted row is INR: its USD rate at cost no longer means anything.
     delete converted.fxAtCost;
     out.push(converted);

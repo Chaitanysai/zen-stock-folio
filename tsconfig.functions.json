@@ -6,6 +6,9 @@
     "module": "ESNext",
     "moduleDetection": "force",
     "moduleResolution": "bundler",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "noEmit": true,
     "noImplicitAny": false,
     "noUnusedLocals": false,
@@ -20,7 +23,11 @@
     "functions/_middleware.ts",
     "functions/api/_lib/securityHeaders.ts",
     "functions/api/brokers/**/*.ts",
-    "src/lib/brokers/**/*.ts"
+    "functions/api/assistant/**/*.ts",
+    "src/lib/brokers/**/*.ts",
+    "src/lib/assistant/schemas.ts",
+    "src/lib/assistant/types.ts",
+    "src/lib/assistant/toolCatalog.ts"
   ],
   "exclude": [
     "src/lib/brokers/client.ts",
