@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react";
 import { getPortfolioDataStore } from "@/lib/data";
+import { ASSISTANT_STORAGE_PREFIX } from "@/lib/assistant/types";
 import type { LoadSnapshotResult } from "@/lib/data/types";
 import type { PortfolioSnapshot } from "@/lib/data/snapshotTypes";
 
@@ -85,6 +86,9 @@ export const clearLocalPortfolioCache = (): void => {
       if (
         key.startsWith(`${STORAGE_PREFIX}:`) ||
         key.startsWith(`${DISPLAY_NAME_PREFIX}:`) ||
+        // Assistant conversations are per-uid, but a shared browser must not
+        // retain the thread after sign-out: it can contain portfolio figures.
+        key.startsWith(`${ASSISTANT_STORAGE_PREFIX}:`) ||
         CLEARABLE_EXACT_KEYS.includes(key)
       ) {
         doomed.push(key);

@@ -23,6 +23,15 @@ export interface Env {
   /** AI providers. */
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
+  /**
+   * Assistant kill switch. Any value other than the literal string "false"
+   * leaves the feature enabled, so a deployment needs no variable to work.
+   * Set it to "false" to withdraw the assistant without a code change.
+   */
+  ASSISTANT_ENABLED?: string;
+  /** Override the primary/fallback model ids without a rebuild. */
+  ASSISTANT_MODEL_PRIMARY?: string;
+  ASSISTANT_MODEL_FALLBACK?: string;
   /** Upstox ops callback: OAuth client + shared ops secret (never a user-facing route). */
   UPSTOX_API_KEY?: string;
   UPSTOX_API_SECRET?: string;

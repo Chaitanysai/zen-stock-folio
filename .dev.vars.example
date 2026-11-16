@@ -21,6 +21,13 @@ FINNHUB_API_KEY=
 GROQ_API_KEY=
 OPENROUTER_API_KEY=
 
+# Assistant (optional). Leave ASSISTANT_ENABLED unset to keep the assistant on;
+# set it to "false" to withdraw the route without a code change. The model
+# overrides are optional and only change which model id each provider uses.
+# ASSISTANT_ENABLED=true
+# ASSISTANT_MODEL_PRIMARY=llama-3.3-70b-versatile
+# ASSISTANT_MODEL_FALLBACK=meta-llama/llama-3.3-70b-instruct
+
 # Upstox ops callback (operator secret + OAuth client)
 UPSTOX_OPS_KEY=
 UPSTOX_API_KEY=

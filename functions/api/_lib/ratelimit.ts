@@ -104,4 +104,8 @@ export const RATE_LIMITS = {
   fx: { limit: 30, windowMs: 60_000 },
   /** /api/broker/** — link + preview/apply; also bounded to 20/day per user. */
   broker: { limit: 6, windowMs: 60_000, daily: 20 },
+  /** /api/assistant/chat — one turn is a model round-trip plus tool calls, so
+   * this is deliberately tighter than /api/ai: a turn can cost several provider
+   * calls, and a stuck client must not be able to spend them in a loop. */
+  assistant: { limit: 20, windowMs: 60_000 },
 } as const;

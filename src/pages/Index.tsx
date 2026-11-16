@@ -28,6 +28,7 @@ import MarketIndexStrip      from "@/components/MarketIndexStrip";
 import HealthPanel           from "@/components/HealthPanel";
 import SymbolSearch          from "@/components/SymbolSearch";
 import AuthModal             from "@/components/AuthModal";
+import AssistantRoot        from "@/components/assistant/AssistantRoot";
 import LogoMark              from "@/components/LogoMark";
 import NotFound              from "@/pages/NotFound";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -951,6 +952,10 @@ export default function Index() {
           </main>
         </div>
       </div>
+
+      {/* Assistant: read-only in this phase. Mounted inside the authenticated
+          shell so it only exists for a signed-in user. */}
+      <AssistantRoot />
 
       <MobileMenu
         open={mobileNav}
