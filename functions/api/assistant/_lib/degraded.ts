@@ -12,6 +12,7 @@
  */
 
 import type { AssistantCard, AssistantToolTrace, AssistantChatMessage } from "../../../../src/lib/assistant/schemas.ts";
+import { DASHBOARD_SECTION_IDS, type DashboardSectionId } from "../../../../src/lib/navigation/routes.ts";
 import { executeToolDefinition } from "./tools/registry";
 import type { ToolContext } from "./context";
 
@@ -33,7 +34,6 @@ interface Route {
 const ROUTES: Array<{ pattern: RegExp; route: Route }> = [
   { pattern: /\b(market|nse|bse)\b.*\b(open|closed|status|session)\b|\b(open|closed)\b.*\b(market|nse)\b/, route: { tool: "get_market_status", args: {} } },
   { pattern: /\b(nifty|sensex|bank ?nifty|indices|index)\b/, route: { tool: "get_market_status", args: { includeIndices: true } } },
-  { pattern: /\b(watchlist|alerts?|journal|brokers?)\b.*\b(open|show|where|go)\b/, route: { tool: "navigate_to_section", args: { section: "watchlist" } } },
   { pattern: /\b(closed|sold|realised|realized)\b.*\b(trades?|positions?|p&l|profit)\b/, route: { tool: "get_holdings", args: { status: "closed", limit: 10 } } },
   { pattern: /\b(position|positions|holding|holdings|own|invested)\b/, route: { tool: "get_holdings", args: { status: "active", limit: 10 } } },
   { pattern: /\b(price|trading at|quote)\b/, route: { tool: "get_stock_price", args: {} } },
@@ -41,15 +41,78 @@ const ROUTES: Array<{ pattern: RegExp; route: Route }> = [
   { pattern: /\b(portfolio|profit|loss|p&l|worth|value|doing|performance)\b/, route: { tool: "get_portfolio_summary", args: {} } },
 ];
 
-const NAV_SECTIONS: Array<{ pattern: RegExp; section: string }> = [
-  { pattern: /\bwatchlist\b/, section: "watchlist" },
-  { pattern: /\balerts?\b/, section: "alerts" },
-  { pattern: /\bjournal\b/, section: "journal" },
-  { pattern: /\bbrokers?\b/, section: "brokers" },
-  { pattern: /\bexport\b/, section: "export" },
-  { pattern: /\bcharts?\b/, section: "charts" },
-  { pattern: /\bnews\b/, section: "news" },
+/**
+ * Navigation aliases, keyed by the canonical section ids from routes.ts.
+ * Using a Record keyed by DashboardSectionId makes the compiler reject any
+ * missing section, so all 14 dashboard destinations must be covered.
+ *
+ * Aliases are whole words only. The four requested singular/plural pairs are
+ * listed explicitly; the shared "es" misspellings (brokeres, alertes, chartes,
+ * tradees) therefore cannot match through a permissive (?:s|es) suffix.
+ */
+const NAV_ALIASES: Record<DashboardSectionId, readonly string[]> = {
+  overview: ["overview", "dashboard", "home"],
+  holdings: ["portfolio holdings", "holdings", "positions"],
+  trades: ["trade plans", "trades", "trade"],
+  history: ["trade history", "history"],
+  journal: ["trade journal", "journal"],
+  charts: ["charts", "chart", "graph"],
+  sector: ["sector allocation", "sectors", "sector"],
+  analytics: ["trade analytics", "analytics", "performance", "analysis"],
+  watchlist: ["watchlist"],
+  news: ["news feed", "news"],
+  ai: ["ai insights", "insights", "ai"],
+  alerts: ["price alerts", "alerts", "alert"],
+  export: ["export", "exports"],
+  brokers: ["broker connections", "brokers", "broker"],
+};
+
+/** Explicit navigation verbs. Deliberately excludes bare "show" so that
+ * "show my holdings" remains a data request rather than a navigation. The
+ * captured group is the verb's object (at most three words): the section alias
+ * must be the destination, not merely a word anywhere in the sentence. */
+const NAV_REQUEST =
+  /\b(?:open|go to|navigate to|take me to|show me the|where is|where are|where can i find|where do i find)\b(?:\s+(?:the|my|our|a|an))?\s+([a-z][a-z'-]*(?:\s+[a-z][a-z'-]*){0,2})/i;
+
+/** Data questions that must never be turned into navigation, however phrased. */
+const DATA_OVERRIDES: readonly RegExp[] = [
+  /\b(closed|sold|realised|realized)\b.*\b(trades?|positions?|p&l|profit)\b/i,
+  /\b(portfolio|holdings?|positions?)\b.*\b(performance|worth|value|doing|profit|loss|p&l)\b/i,
+  /\b(performance|worth|value|doing)\b.*\b(portfolio|holdings?|positions?)\b/i,
 ];
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+interface NavAliasEntry {
+  section: DashboardSectionId;
+  alias: string;
+  pattern: RegExp;
+}
+
+/** Built from the canonical id list; longer aliases win when phrases overlap. */
+const NAV_ALIAS_ENTRIES: NavAliasEntry[] = DASHBOARD_SECTION_IDS.flatMap((section) =>
+  NAV_ALIASES[section].map((alias) => ({
+    section,
+    alias,
+    pattern: new RegExp(`\\b${escapeRegExp(alias)}\\b`, "i"),
+  })),
+).sort((a, b) => b.alias.length - a.alias.length);
+
+/**
+ * Resolve an explicit navigation request to a canonical dashboard section.
+ * Returns null for unknown requests — there is intentionally no Watchlist
+ * fallback.
+ */
+export function resolveNavigationSection(text: string): DashboardSectionId | null {
+  // How-to questions are not navigation, even when they contain a nav verb and
+  // a section alias (e.g. "how do I open a broker account").
+  if (/\b(how do i|how can i|tutorial|guide)\b/i.test(text)) return null;
+  if (DATA_OVERRIDES.some((pattern) => pattern.test(text))) return null;
+  const object = NAV_REQUEST.exec(text)?.[1];
+  if (!object) return null;
+  const match = NAV_ALIAS_ENTRIES.find((entry) => entry.pattern.test(object));
+  return match ? match.section : null;
+}
 
 const HELP_TEXT =
   "The AI service is unavailable, so I can only run simple lookups right now. Try \"how is my portfolio doing\", \"show my holdings\", \"is the market open\" or \"find Reliance\".";
@@ -81,12 +144,11 @@ export async function runDeterministicFallback(
     return { reply: HELP_TEXT, cards: [], toolTrace: [], toolCalls: 0 };
   }
 
-  // "Open the journal" is a navigation request before it is anything else.
-  if (/\b(open|go to|show me the|take me to)\b/.test(text)) {
-    const target = NAV_SECTIONS.find((entry) => entry.pattern.test(text));
-    if (target) {
-      return runOne(ctx, "navigate_to_section", { section: target.section });
-    }
+  // Navigation is checked first, but only for explicit navigation phrases and
+  // only when a canonical section alias is actually present.
+  const section = resolveNavigationSection(text);
+  if (section) {
+    return runOne(ctx, "navigate_to_section", { section });
   }
 
   const match = ROUTES.find((entry) => entry.pattern.test(text));
