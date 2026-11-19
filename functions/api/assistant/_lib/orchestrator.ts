@@ -127,7 +127,7 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<Assis
   });
 
   const degradedTurn = async (reason: "no_provider" | "provider_failed"): Promise<AssistantTurnOutput> => {
-    const fallback = await runDeterministicFallback(ctx, input.messages);
+    const fallback = await runDeterministicFallback(ctx, input.messages, input.context);
     logAssistantEvent({
       event: "chat",
       uid: ctx.uid,

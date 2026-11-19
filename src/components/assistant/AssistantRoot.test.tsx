@@ -175,6 +175,129 @@ describe("AssistantRoot", () => {
   });
 });
 
+const quoteCard = (ticker: string, market: "NSE" | "US" = "NSE") => ({
+  kind: "quote" as const,
+  title: ticker,
+  ticker,
+  market,
+  currency: "INR" as const,
+  price: 100,
+  changePercent: 1,
+  weekHigh52: null,
+  weekLow52: null,
+  asOf: null,
+  dataMode: "eod" as const,
+});
+
+const stocksCard = (symbols: string[]) => ({
+  kind: "stocks" as const,
+  title: "Matches",
+  hits: symbols.map((symbol) => ({
+    symbol,
+    name: symbol,
+    exchange: "NSE",
+    market: "NSE" as const,
+    isin: null,
+    instrumentType: null,
+  })),
+});
+
+const holdingsCard = (tickers: string[]) => ({
+  kind: "holdings" as const,
+  title: "Holdings",
+  rows: tickers.map((ticker) => ({
+    ticker,
+    name: ticker,
+    market: "NSE" as const,
+    quantity: 1,
+    averageCost: null,
+    price: 100,
+    pnl: null,
+    pnlPercent: null,
+    currency: "INR" as const,
+    status: "Active" as const,
+  })),
+});
+
+const sendAndWait = async (input: HTMLElement, text: string, expectedCalls: number) => {
+  submit(input, text);
+  await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(expectedCalls));
+  await waitFor(() =>
+    expect(screen.getAllByText("You hold two positions.").length).toBeGreaterThanOrEqual(expectedCalls),
+  );
+};
+
+const contextOf = (callIndex: number) => postedBodyAt(callIndex).context;
+
+const postedBodyAt = (callIndex: number) => {
+  const [, init] = apiFetch.mock.calls[callIndex];
+  return JSON.parse(String((init as RequestInit).body)) as {
+    context?: { ticker?: string; market?: string; page?: { section: string; ticker?: string } };
+  };
+};
+
+describe("AssistantRoot entity continuity (B1)", () => {
+  it("carries a quote-card antecedent into the next request (C1)", async () => {
+    apiFetch
+      .mockResolvedValueOnce(jsonResponse(200, { ...replyPayload, cards: [quoteCard("RELIANCE")] }))
+      .mockResolvedValue(jsonResponse(200, replyPayload));
+    renderRoot();
+    const input = await openPanel();
+
+    await sendAndWait(input, "price of Reliance", 1);
+    await sendAndWait(input, "how much of it do I own?", 2);
+
+    expect(contextOf(1)?.ticker).toBe("RELIANCE");
+    expect(contextOf(1)?.market).toBe("NSE");
+  });
+
+  it("sets an antecedent from a single-hit stocks card (C2)", async () => {
+    apiFetch
+      .mockResolvedValueOnce(jsonResponse(200, { ...replyPayload, cards: [stocksCard(["TCS"])] }))
+      .mockResolvedValue(jsonResponse(200, replyPayload));
+    renderRoot();
+    const input = await openPanel();
+
+    await sendAndWait(input, "find Tata Consultancy", 1);
+    await sendAndWait(input, "what about its price", 2);
+
+    expect(contextOf(1)?.ticker).toBe("TCS");
+  });
+
+  it("does not set an antecedent from a multi-hit or multi-ticker turn (C4, C5)", async () => {
+    apiFetch
+      .mockResolvedValueOnce(jsonResponse(200, { ...replyPayload, cards: [stocksCard(["TCS", "INFY"])] }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { ...replyPayload, cards: [quoteCard("TCS"), quoteCard("INFY")] }),
+      )
+      .mockResolvedValue(jsonResponse(200, replyPayload));
+    renderRoot();
+    const input = await openPanel();
+
+    await sendAndWait(input, "find TCS", 1);
+    expect(contextOf(0)?.ticker).toBeUndefined();
+
+    await sendAndWait(input, "compare TCS and Infosys", 2);
+    await sendAndWait(input, "what about it", 3);
+    expect(contextOf(2)?.ticker).toBeUndefined();
+  });
+
+  it("expires a stale antecedent after six entity-less turns (C8)", async () => {
+    apiFetch
+      .mockResolvedValueOnce(jsonResponse(200, { ...replyPayload, cards: [quoteCard("RELIANCE")] }))
+      .mockResolvedValue(jsonResponse(200, replyPayload));
+    renderRoot();
+    const input = await openPanel();
+
+    await sendAndWait(input, "price of Reliance", 1);
+    for (let turn = 2; turn <= 8; turn += 1) {
+      await sendAndWait(input, "hello", turn);
+    }
+    // Six entity-less replies have been seen; the next request has no hint.
+    expect(contextOf(7)?.ticker).toBeUndefined();
+  });
+});
+
 describe("AssistantRoot page context (B1)", () => {
   it("sends the routed section as page context (X1, X2)", async () => {
     apiFetch.mockResolvedValue(jsonResponse(200, replyPayload));

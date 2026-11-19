@@ -11,8 +11,16 @@
  * during a provider outage.
  */
 
-import type { AssistantCard, AssistantToolTrace, AssistantChatMessage } from "../../../../src/lib/assistant/schemas.ts";
+import type {
+  AssistantCard,
+  AssistantToolTrace,
+  AssistantChatMessage,
+  AssistantConversationContext,
+} from "../../../../src/lib/assistant/schemas.ts";
+import { SECTION_GUIDANCE } from "../../../../src/lib/assistant/sectionGuidance.ts";
 import { DASHBOARD_SECTION_IDS, type DashboardSectionId } from "../../../../src/lib/navigation/routes.ts";
+import { normalizeSymbol } from "../../../../src/lib/market-data/symbols.ts";
+import { sanitizeLabel } from "./guard";
 import { executeToolDefinition } from "./tools/registry";
 import type { ToolContext } from "./context";
 
@@ -123,6 +131,9 @@ function subjectFrom(text: string): string | null {
     "price", "of", "the", "what", "whats", "is", "current", "quote", "for", "on", "at",
     "find", "search", "look", "up", "show", "me", "my", "stock", "share", "trading",
     "today", "now", "and", "please", "nse", "bse", "us", "market",
+    // Pronouns are never an antecedent: an unresolved reference must be asked
+    // about, not turned into a guessed ticker (G5/C7).
+    "it", "its", "this", "that", "about",
   ]);
   const tokens = text
     .toLowerCase()
@@ -136,12 +147,27 @@ function subjectFrom(text: string): string | null {
 export async function runDeterministicFallback(
   ctx: ToolContext,
   messages: AssistantChatMessage[],
+  context?: AssistantConversationContext,
 ): Promise<DegradedTurn> {
   const lastUser = [...messages].reverse().find((message) => message.role === "user");
   const text = lastUser?.content.toLowerCase() ?? "";
 
   if (!text.trim()) {
     return { reply: HELP_TEXT, cards: [], toolTrace: [], toolCalls: 0 };
+  }
+
+  // Section help is answered from the same static, server-owned map the model
+  // sees. It is deterministic and invents neither a capability nor a value.
+  if (
+    context?.page?.section &&
+    /\b(what can i do here|what can you do here|what can you do|how can you help|help|what do you do)\b/i.test(text)
+  ) {
+    return {
+      reply: `${SECTION_GUIDANCE[context.page.section]}${DEGRADED_SUFFIX}`,
+      cards: [],
+      toolTrace: [],
+      toolCalls: 0,
+    };
   }
 
   // Navigation is checked first, but only for explicit navigation phrases and
@@ -159,7 +185,11 @@ export async function runDeterministicFallback(
   let args: Record<string, unknown> = { ...match.route.args };
 
   if (match.route.tool === "search_stock" || match.route.tool === "get_stock_price") {
-    const subject = subjectFrom(text);
+    const subject =
+      subjectFrom(text) ??
+      (context?.ticker
+        ? normalizeSymbol(sanitizeLabel(context.ticker, 24), context.market ?? context.page?.market)
+        : null);
     if (!subject) {
       return {
         reply: `Tell me which stock, for example "price of RELIANCE".${DEGRADED_SUFFIX}`,
