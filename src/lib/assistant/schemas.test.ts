@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DASHBOARD_SECTION_IDS } from "../navigation/routes";
 import {
   MAX_CARDS_PER_TURN,
   MAX_HISTORY_MESSAGES,
@@ -91,5 +92,52 @@ describe("assistant wire contract", () => {
     expect(navigateToSectionArgsSchema.safeParse({ section: "holdings" }).success).toBe(true);
     expect(navigateToSectionArgsSchema.safeParse({ section: "admin" }).success).toBe(false);
     expect(navigateToSectionArgsSchema.safeParse({ section: "/dashboard/holdings" }).success).toBe(false);
+  });
+});
+
+describe("assistant page context (B1)", () => {
+  const withPage = (page: Record<string, unknown>) => envelope({ context: { page } });
+
+  it("accepts every canonical section (X4)", () => {
+    expect(DASHBOARD_SECTION_IDS).toHaveLength(14);
+    for (const section of DASHBOARD_SECTION_IDS) {
+      expect(chatRequestSchema.safeParse(withPage({ section })).success).toBe(true);
+    }
+  });
+
+  it("rejects unknown sections and malformed context instead of ignoring them (X5, X7)", () => {
+    expect(chatRequestSchema.safeParse(withPage({ section: "admin" })).success).toBe(false);
+    expect(chatRequestSchema.safeParse(withPage({ section: "/dashboard/holdings" })).success).toBe(false);
+    expect(chatRequestSchema.safeParse(withPage({ section: 42 })).success).toBe(false);
+    expect(chatRequestSchema.safeParse(envelope({ context: { page: "overview" } })).success).toBe(false);
+    expect(chatRequestSchema.safeParse(envelope({ context: { page: { section: "overview", bogus: 1 } } })).success).toBe(
+      false,
+    );
+    expect(
+      chatRequestSchema.safeParse(envelope({ context: { page: { section: "overview" }, extra: "x" } })).success,
+    ).toBe(false);
+  });
+
+  it("allows a page ticker only on charts and caps its length (X3, X10, X9)", () => {
+    expect(chatRequestSchema.safeParse(withPage({ section: "charts", ticker: "RELIANCE" })).success).toBe(true);
+    expect(chatRequestSchema.safeParse(withPage({ section: "overview", ticker: "RELIANCE" })).success).toBe(false);
+    expect(chatRequestSchema.safeParse(withPage({ section: "charts", ticker: "x".repeat(25) })).success).toBe(false);
+    expect(
+      chatRequestSchema.safeParse(withPage({ section: "charts", ticker: "AAPL", market: "US" })).success,
+    ).toBe(true);
+  });
+
+  it("stays backward compatible when context or page is absent (X6, X8)", () => {
+    expect(chatRequestSchema.safeParse(envelope()).success).toBe(true);
+    expect(chatRequestSchema.safeParse(envelope({ context: {} })).success).toBe(true);
+    expect(chatRequestSchema.safeParse(envelope({ context: { ticker: "TCS", market: "NSE" } })).success).toBe(true);
+  });
+
+  it("keeps the strict envelope when a page is present (S2)", () => {
+    expect(
+      chatRequestSchema.safeParse(
+        envelope({ uid: "victim", context: { page: { section: "overview" } } }),
+      ).success,
+    ).toBe(false);
   });
 });
