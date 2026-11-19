@@ -5,6 +5,7 @@ import {
   MAX_MESSAGE_CHARS,
   assistantChatResponseSchema,
   type AssistantChatResponse,
+  type AssistantPageContext,
 } from "@/lib/assistant/schemas";
 import { capMessages, clearStoredMessages, loadStoredMessages, saveStoredMessages } from "@/lib/assistant/storage";
 import type { AssistantMessage } from "@/lib/assistant/types";
@@ -109,7 +110,10 @@ export interface UseAssistantResult {
  * panel. Every response is validated before it is rendered, and a response that
  * arrives after a newer turn (or after the panel was cleared) is discarded.
  */
-export function useAssistant(userId: string | null): UseAssistantResult {
+export function useAssistant(
+  userId: string | null,
+  pageContext?: AssistantPageContext | null,
+): UseAssistantResult {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [status, setStatus] = useState<AssistantStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +126,10 @@ export function useAssistant(userId: string | null): UseAssistantResult {
   const messagesRef = useRef<AssistantMessage[]>([]);
   const conversationIdRef = useRef<string>(newConversationId());
   const contextRef = useRef<{ market?: "NSE" | "US"; ticker?: string }>({});
+  // Screen hint captured at send time. Written during render so a turn always
+  // carries the section that was on screen when the user pressed send.
+  const pageContextRef = useRef<AssistantPageContext | null>(pageContext ?? null);
+  pageContextRef.current = pageContext ?? null;
   const abortRef = useRef<AbortController | null>(null);
   const sequenceRef = useRef(0);
   const busyRef = useRef(false);
@@ -173,14 +181,15 @@ export function useAssistant(userId: string | null): UseAssistantResult {
       const sequence = sequenceRef.current + 1;
       sequenceRef.current = sequence;
 
+      const entity = contextRef.current;
+      const page = pageContextRef.current;
+      const context = { ...entity, ...(page ? { page } : {}) };
       const payload = {
         conversationId: conversationIdRef.current,
         messages: history
           .slice(-MAX_HISTORY_MESSAGES)
           .map((message) => ({ role: message.role, content: message.content.slice(0, MAX_MESSAGE_CHARS) })),
-        ...(contextRef.current.market || contextRef.current.ticker
-          ? { context: contextRef.current }
-          : {}),
+        ...(context.market || context.ticker || context.page ? { context } : {}),
       };
 
       try {

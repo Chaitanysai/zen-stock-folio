@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 /**
  * Radix's dialog machinery touches ResizeObserver, which jsdom does not
@@ -51,6 +51,26 @@ const renderRoot = () =>
       <AssistantRoot />
     </MemoryRouter>,
   );
+
+const renderRootAt = (
+  path: string,
+  chartEntity?: { ticker: string; market: "NSE" | "US" },
+) =>
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/dashboard/:section" element={<AssistantRoot chartEntity={chartEntity} />} />
+        <Route path="/dashboard" element={<AssistantRoot chartEntity={chartEntity} />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+const postedBody = () => {
+  const [, init] = apiFetch.mock.calls[0];
+  return JSON.parse(String((init as RequestInit).body)) as {
+    context?: { ticker?: string; market?: string; page?: { section: string; ticker?: string; market?: string } };
+  };
+};
 
 const openPanel = async () => {
   fireEvent.click(screen.getByRole("button", { name: "Open the ZenFolio assistant" }));
@@ -152,5 +172,51 @@ describe("AssistantRoot", () => {
 
     await waitFor(() => expect(screen.queryByText("You hold two positions.")).not.toBeInTheDocument());
     expect(screen.getByText("Ask about your portfolio")).toBeInTheDocument();
+  });
+});
+
+describe("AssistantRoot page context (B1)", () => {
+  it("sends the routed section as page context (X1, X2)", async () => {
+    apiFetch.mockResolvedValue(jsonResponse(200, replyPayload));
+    renderRootAt("/dashboard/portfolio");
+
+    submit(await openPanel(), "what can I do here?");
+    expect(await screen.findByText("You hold two positions.")).toBeInTheDocument();
+    expect(postedBody().context?.page?.section).toBe("holdings");
+  });
+
+  it("bare dashboard resolves to the default section (X6)", async () => {
+    apiFetch.mockResolvedValue(jsonResponse(200, replyPayload));
+    renderRootAt("/dashboard");
+
+    submit(await openPanel(), "hello");
+    expect(await screen.findByText("You hold two positions.")).toBeInTheDocument();
+    expect(postedBody().context?.page?.section).toBe("overview");
+  });
+
+  it("omits page context on an unknown route (X5)", async () => {
+    apiFetch.mockResolvedValue(jsonResponse(200, replyPayload));
+    renderRootAt("/dashboard/not-a-section");
+
+    submit(await openPanel(), "hello");
+    expect(await screen.findByText("You hold two positions.")).toBeInTheDocument();
+    expect(postedBody().context?.page).toBeUndefined();
+  });
+
+  it("sends the charts ticker only on the charts section (X3, X10)", async () => {
+    apiFetch.mockResolvedValue(jsonResponse(200, replyPayload));
+    const entity = { ticker: "RELIANCE", market: "NSE" as const };
+
+    const charts = renderRootAt("/dashboard/charts", entity);
+    submit(await openPanel(), "is this a good price?");
+    expect(await screen.findByText("You hold two positions.")).toBeInTheDocument();
+    expect(postedBody().context?.page).toEqual({ section: "charts", ticker: "RELIANCE", market: "NSE" });
+    charts.unmount();
+
+    apiFetch.mockClear();
+    renderRootAt("/dashboard/portfolio", entity);
+    submit(await openPanel(), "hello");
+    expect(await screen.findByText("You hold two positions.")).toBeInTheDocument();
+    expect(postedBody().context?.page).toEqual({ section: "holdings" });
   });
 });
