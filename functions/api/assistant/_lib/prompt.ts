@@ -13,13 +13,19 @@
  *     a trade date must be right about.
  */
 
+import type { AssistantPageContext } from "../../../../src/lib/assistant/schemas.ts";
+import { SECTION_GUIDANCE } from "../../../../src/lib/assistant/sectionGuidance.ts";
+import { DASHBOARD_SECTION_LABELS } from "../../../../src/lib/navigation/routes.ts";
+import { normalizeSymbol } from "../../../../src/lib/market-data/symbols.ts";
 import { getMarketStatus } from "../../../../src/lib/market/marketStatus.ts";
 import type { Market } from "../../../../src/lib/market-data/types.ts";
+import { sanitizeLabel } from "./guard";
 
 export interface PromptContext {
   now: number;
   market?: Market;
   ticker?: string;
+  page?: AssistantPageContext;
 }
 
 export function buildSystemPrompt(context: PromptContext): string {
@@ -28,6 +34,35 @@ export function buildSystemPrompt(context: PromptContext): string {
     context.market ? `market ${context.market}` : null,
     context.ticker ? `instrument ${context.ticker}` : null,
   ].filter((part): part is string => part !== null);
+
+  // Screen hints are pointers, never facts. The section is a closed enum and
+  // the ticker is sanitised and symbol-normalised before it reaches the prompt.
+  const page = context.page;
+  const sectionLabel = page ? DASHBOARD_SECTION_LABELS[page.section] : null;
+  const rawPageTicker = page?.ticker ? sanitizeLabel(page.ticker, 24) : null;
+  const pageTicker = rawPageTicker
+    ? normalizeSymbol(rawPageTicker, page?.market ?? context.market)
+    : null;
+
+  const extraLines: string[] = [];
+  if (page && sectionLabel) {
+    extraLines.push(
+      `- User is currently viewing: ${sectionLabel}. This is a screen hint, not data — never infer holdings, prices or ownership from it.`,
+      `- On this screen: ${SECTION_GUIDANCE[page.section]}`,
+    );
+    if (pageTicker) {
+      extraLines.push(
+        `- Selected instrument on screen: ${pageTicker}. This is a hint only — call a tool before using any value.`,
+      );
+    }
+  }
+  // A2 prompts with no context stay byte-identical: these rules only appear
+  // when the model actually has an antecedent to resolve.
+  if (context.market || context.ticker || context.page) {
+    extraLines.push(
+      `- Resolve "it", "this", "that" and "this stock" to the last instrument discussed or shown. If there is none, or more than one candidate, ask which one — never guess.`,
+    );
+  }
 
   return `You are ZenFolio's assistant, built into an Indian stock portfolio dashboard. You help the signed-in user understand their own portfolio and market data by calling application tools.
 
@@ -52,5 +87,5 @@ export function buildSystemPrompt(context: PromptContext): string {
 
 - IST now: ${status.istDate} ${status.istTime} (${status.label})
 - Session: ${status.description}${status.sessionName ? ` Special session: ${status.sessionName}.` : ""}${status.holidayName ? ` Holiday: ${status.holidayName}.` : ""}
-- Markets supported: NSE (India) and US.${focus.length > 0 ? `\n- The user was last talking about: ${focus.join(", ")}.` : ""}`;
+- Markets supported: NSE (India) and US.${focus.length > 0 ? `\n- The user was last talking about: ${focus.join(", ")}.` : ""}${extraLines.length > 0 ? `\n${extraLines.join("\n")}` : ""}`;
 }

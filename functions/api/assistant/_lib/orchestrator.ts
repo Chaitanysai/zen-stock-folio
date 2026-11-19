@@ -24,6 +24,7 @@ import {
   MAX_TOOL_ROUNDS,
   type AssistantCard,
   type AssistantChatMessage,
+  type AssistantConversationContext,
   type AssistantToolTrace,
 } from "../../../../src/lib/assistant/schemas.ts";
 import { createProviderChain, type ProviderChain, type ProviderMessage, type ProviderReply, type ToolSpec } from "./provider";
@@ -41,7 +42,9 @@ export interface AssistantTurnInput {
   ctx: ToolContext;
   conversationId: string;
   messages: AssistantChatMessage[];
-  context?: { market?: "NSE" | "US"; ticker?: string };
+  // Derived from the wire schema so client validation and server consumption
+  // cannot drift apart. Context never reaches ToolContext, only the prompt.
+  context?: AssistantConversationContext;
 }
 
 export interface AssistantTurnOutput {
