@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AssistantPageContext } from "@/lib/assistant/schemas";
+import { suggestionsForSection } from "@/lib/assistant/toolCatalog";
 import { sectionFromSlug } from "@/lib/navigation/routes";
 import { AssistantLauncher } from "./AssistantLauncher";
 import { AssistantPanel } from "./AssistantPanel";
@@ -61,7 +62,12 @@ export default function AssistantRoot({ chartEntity }: AssistantRootProps = {}) 
   return (
     <>
       <AssistantLauncher open={open} onToggle={toggle} />
-      <AssistantPanel open={open} onOpenChange={setOpen} assistant={assistant} />
+      <AssistantPanel
+        open={open}
+        onOpenChange={setOpen}
+        assistant={assistant}
+        suggestions={suggestionsForSection(section)}
+      />
     </>
   );
 }

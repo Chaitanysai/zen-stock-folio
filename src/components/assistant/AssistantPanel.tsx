@@ -8,6 +8,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assistant: UseAssistantResult;
+  suggestions?: readonly string[];
 }
 
 /**
@@ -18,7 +19,7 @@ interface Props {
  * dashboard already uses — rather than a bespoke overlay that would need all of
  * that re-implemented (and would drift).
  */
-export function AssistantPanel({ open, onOpenChange, assistant }: Props) {
+export function AssistantPanel({ open, onOpenChange, assistant, suggestions }: Props) {
   const { messages, status, error, hydration, send, retry, clear, canSend } = assistant;
   const badge = hydration.degraded ? "Fallback" : "Read-only";
 
@@ -75,6 +76,7 @@ export function AssistantPanel({ open, onOpenChange, assistant }: Props) {
           sending={status === "sending"}
           onSuggestion={send}
           onRetry={retry}
+          suggestions={suggestions}
         />
 
         <AssistantComposer onSend={send} disabled={!canSend} sending={status === "sending"} />
