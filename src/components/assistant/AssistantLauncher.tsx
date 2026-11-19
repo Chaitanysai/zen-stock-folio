@@ -20,7 +20,7 @@ export function AssistantLauncher({ open, onToggle }: Props) {
       onClick={onToggle}
       aria-expanded={open}
       aria-controls="zf-assistant-panel"
-      aria-label={open ? "Close the ZenFolio assistant" : "Open the ZenFolio assistant"}
+      aria-label={open ? "Close AssistZF" : "Open AssistZF"}
       className="fixed right-4 z-40 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-3 text-xs font-semibold text-foreground shadow-lg transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:active:scale-95 md:right-6"
       style={{
         // Clear the fixed mobile nav; safe-area inset keeps it off the home bar.

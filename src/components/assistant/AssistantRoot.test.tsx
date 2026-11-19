@@ -73,8 +73,8 @@ const postedBody = () => {
 };
 
 const openPanel = async () => {
-  fireEvent.click(screen.getByRole("button", { name: "Open the ZenFolio assistant" }));
-  return screen.findByLabelText("Ask the ZenFolio assistant");
+  fireEvent.click(screen.getByRole("button", { name: "Open AssistZF" }));
+  return screen.findByLabelText("Ask AssistZF");
 };
 
 const submit = (input: HTMLElement, text: string) => {
@@ -93,14 +93,14 @@ describe("AssistantRoot", () => {
     useAuth.mockReturnValue({ user: null, isAuthenticated: false, isLoading: false });
     renderRoot();
 
-    expect(screen.queryByRole("button", { name: /ZenFolio assistant/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /AssistZF/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("opens the panel from the launcher and closes it again", async () => {
     renderRoot();
 
-    const launcher = screen.getByRole("button", { name: "Open the ZenFolio assistant" });
+    const launcher = screen.getByRole("button", { name: "Open AssistZF" });
     expect(launcher).toHaveAttribute("aria-expanded", "false");
     expect(launcher).toHaveAttribute("aria-controls", "zf-assistant-panel");
 

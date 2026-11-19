@@ -29,7 +29,7 @@ export function AssistantPanel({ open, onOpenChange, assistant, suggestions }: P
         id="zf-assistant-panel"
         side="right"
         className="flex w-full flex-col gap-0 p-0 sm:w-[440px] sm:max-w-[440px]"
-        aria-label="ZenFolio assistant"
+        aria-label="AssistZF"
       >
         <header className="flex items-center gap-2.5 border-b border-border/70 px-4 py-3 pr-12">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -39,7 +39,7 @@ export function AssistantPanel({ open, onOpenChange, assistant, suggestions }: P
           </div>
           <div className="min-w-0 flex-1">
             <SheetTitle className="truncate text-sm font-semibold leading-tight text-foreground">
-              ZenFolio Assistant
+              AssistZF
             </SheetTitle>
             <SheetDescription className="truncate text-[11px] leading-tight text-muted-foreground">
               {hydration.degraded

@@ -37,7 +37,7 @@ describe("AssistantPanel", () => {
   it("shows the read-only disclosure and the suggested openers when empty", () => {
     renderPanel();
 
-    expect(screen.getByText("ZenFolio Assistant")).toBeInTheDocument();
+    expect(screen.getByText("AssistZF")).toBeInTheDocument();
     expect(screen.getByText("Read-only")).toBeInTheDocument();
     expect(screen.getByText("Ask about your portfolio")).toBeInTheDocument();
     // The disclosure is a fact about this phase, not a tooltip the user must find.

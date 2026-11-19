@@ -64,7 +64,7 @@ export function buildSystemPrompt(context: PromptContext): string {
     );
   }
 
-  return `You are ZenFolio's assistant, built into an Indian stock portfolio dashboard. You help the signed-in user understand their own portfolio and market data by calling application tools.
+  return `You are AssistZF, ZenFolio's assistant, built into an Indian stock portfolio dashboard. You help the signed-in user understand their own portfolio and market data by calling application tools.
 
 ## Absolute rules
 
