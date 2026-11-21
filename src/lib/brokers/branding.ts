@@ -13,14 +13,14 @@ export const BROKER_BRANDING: Record<BrokerProviderId, BrokerBrand> = {
     displayName: "Zerodha",
     tagline: "Kite Connect · own app credentials",
     brandColor: "#387ED1",
-    logo: "/brand/zerodha.svg",
+    logo: null,
     logoAlt: "Zerodha",
   },
   groww: {
     displayName: "Groww",
     tagline: "Groww Trading API · API key and secret",
     brandColor: "#00D09C",
-    logo: "/brand/groww.png",
+    logo: null,
     logoAlt: "Groww",
   },
   upstox: {

@@ -127,3 +127,10 @@ one.
 - `docs/migration/cutover-checklist.md` — controlled production cutover
 - `docs/migration/phase0-verification.md`, `phase4-regression.md` — audit history
 - `docs/migration/firebase-setup.md`, `cloudflare-api.md`, `upstox-reauth.md`
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE](LICENSE).
+
+Third-party components, fonts, and assets retain their own licenses; see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [EXCLUSIONS.md](EXCLUSIONS.md).
