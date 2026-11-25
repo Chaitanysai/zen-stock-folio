@@ -204,8 +204,15 @@ export function useAssistant(
         // entity-bearing card becomes the antecedent for follow-ups. More than
         // one distinct quote ticker is ambiguous, so the hint is cleared rather
         // than guessed. A long run without an entity card expires stale hints.
+        // Keep these guards explicit instead of relying on `Extract` here.
+        // The Zod discriminated-union type can be widened by different Zod
+        // minor versions, which otherwise makes Extract resolve to `never`
+        // during the app typecheck while the runtime narrowing remains valid.
+        type QuoteCard = AssistantCard & { kind: "quote" };
+        type StocksCard = AssistantCard & { kind: "stocks" };
+        type HoldingsCard = AssistantCard & { kind: "holdings" };
         const quotes = turn.cards.filter(
-          (card): card is Extract<AssistantCard, { kind: "quote" }> => card.kind === "quote",
+          (card): card is QuoteCard => card.kind === "quote",
         );
         const distinctTickers = new Set(quotes.map((card) => card.ticker));
 
@@ -219,13 +226,13 @@ export function useAssistant(
             entity = { market: quote.market, ticker: quote.ticker };
           } else {
             const stocks = turn.cards.find(
-              (card): card is Extract<AssistantCard, { kind: "stocks" }> => card.kind === "stocks",
+              (card): card is StocksCard => card.kind === "stocks",
             );
             if (stocks && stocks.hits.length === 1) {
               entity = { market: stocks.hits[0].market, ticker: stocks.hits[0].symbol };
             } else {
               const holdings = turn.cards.find(
-                (card): card is Extract<AssistantCard, { kind: "holdings" }> => card.kind === "holdings",
+                (card): card is HoldingsCard => card.kind === "holdings",
               );
               const rows = holdings?.rows ?? [];
               if (rows.length > 0 && rows.every((row) => row.ticker === rows[0].ticker)) {
