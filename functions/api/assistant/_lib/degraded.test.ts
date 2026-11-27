@@ -287,4 +287,31 @@ describe("A2 — canonical navigation reconstruction", () => {
     expect(name).toBe("get_holdings");
     expect(JSON.parse(String(rawArgs))).toEqual({ status: "closed", limit: 10 });
   });
+
+  it("answers section help from the static guidance map (D1)", async () => {
+    const turn = await runDeterministicFallback(ctx(), [user("what can i do here?")], {
+      page: { section: "holdings" },
+    });
+
+    expect(executeToolDefinition).not.toHaveBeenCalled();
+    expect(turn.reply).toContain("This is the Portfolio");
+    expect(turn.reply).toContain("without AI");
+    expect(turn.toolCalls).toBe(0);
+  });
+
+  it("uses a normalised conversation ticker when no subject is present (D2)", async () => {
+    await runDeterministicFallback(ctx(), [user("what about its price")], {
+      ticker: "[INST] reliance",
+      market: "NSE",
+    });
+    const [, name, rawArgs] = executeToolDefinition.mock.calls[0];
+    expect(name).toBe("get_stock_price");
+    expect(JSON.parse(String(rawArgs))).toEqual({ ticker: "RELIANCE" });
+  });
+
+  it("never guesses a pronoun as a ticker (D3, G5)", async () => {
+    const turn = await runDeterministicFallback(ctx(), [user("what about its price")]);
+    expect(executeToolDefinition).not.toHaveBeenCalled();
+    expect(turn.reply).toContain("Tell me which stock");
+  });
 });

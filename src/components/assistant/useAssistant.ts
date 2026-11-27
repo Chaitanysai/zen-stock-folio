@@ -4,7 +4,9 @@ import {
   MAX_HISTORY_MESSAGES,
   MAX_MESSAGE_CHARS,
   assistantChatResponseSchema,
+  type AssistantCard,
   type AssistantChatResponse,
+  type AssistantPageContext,
 } from "@/lib/assistant/schemas";
 import { capMessages, clearStoredMessages, loadStoredMessages, saveStoredMessages } from "@/lib/assistant/storage";
 import type { AssistantMessage } from "@/lib/assistant/types";
@@ -109,7 +111,10 @@ export interface UseAssistantResult {
  * panel. Every response is validated before it is rendered, and a response that
  * arrives after a newer turn (or after the panel was cleared) is discarded.
  */
-export function useAssistant(userId: string | null): UseAssistantResult {
+export function useAssistant(
+  userId: string | null,
+  pageContext?: AssistantPageContext | null,
+): UseAssistantResult {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [status, setStatus] = useState<AssistantStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -122,6 +127,12 @@ export function useAssistant(userId: string | null): UseAssistantResult {
   const messagesRef = useRef<AssistantMessage[]>([]);
   const conversationIdRef = useRef<string>(newConversationId());
   const contextRef = useRef<{ market?: "NSE" | "US"; ticker?: string }>({});
+  // Screen hint captured at send time. Written during render so a turn always
+  // carries the section that was on screen when the user pressed send.
+  const pageContextRef = useRef<AssistantPageContext | null>(pageContext ?? null);
+  pageContextRef.current = pageContext ?? null;
+  /** Consecutive turns with no entity-bearing card; expires a stale antecedent. */
+  const entitylessTurnsRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const sequenceRef = useRef(0);
   const busyRef = useRef(false);
@@ -144,6 +155,7 @@ export function useAssistant(userId: string | null): UseAssistantResult {
 
     conversationIdRef.current = newConversationId();
     contextRef.current = {};
+    entitylessTurnsRef.current = 0;
     setError(null);
     setStatus("idle");
     setHydration({ provider: null, model: null, degraded: false });
@@ -173,23 +185,69 @@ export function useAssistant(userId: string | null): UseAssistantResult {
       const sequence = sequenceRef.current + 1;
       sequenceRef.current = sequence;
 
+      const entity = contextRef.current;
+      const page = pageContextRef.current;
+      const context = { ...entity, ...(page ? { page } : {}) };
       const payload = {
         conversationId: conversationIdRef.current,
         messages: history
           .slice(-MAX_HISTORY_MESSAGES)
           .map((message) => ({ role: message.role, content: message.content.slice(0, MAX_MESSAGE_CHARS) })),
-        ...(contextRef.current.market || contextRef.current.ticker
-          ? { context: contextRef.current }
-          : {}),
+        ...(context.market || context.ticker || context.page ? { context } : {}),
       };
 
       try {
         const turn = await requestTurn(payload, controller.signal);
         if (sequence !== sequenceRef.current) return;
 
-        const quoteCard = turn.cards.find((card) => card.kind === "quote");
-        if (quoteCard && quoteCard.kind === "quote") {
-          contextRef.current = { market: quoteCard.market, ticker: quoteCard.ticker };
+        // Entity continuity (B1): a single unambiguous instrument from any
+        // entity-bearing card becomes the antecedent for follow-ups. More than
+        // one distinct quote ticker is ambiguous, so the hint is cleared rather
+        // than guessed. A long run without an entity card expires stale hints.
+        // Keep these guards explicit instead of relying on `Extract` here.
+        // The Zod discriminated-union type can be widened by different Zod
+        // minor versions, which otherwise makes Extract resolve to `never`
+        // during the app typecheck while the runtime narrowing remains valid.
+        type QuoteCard = AssistantCard & { kind: "quote" };
+        type StocksCard = AssistantCard & { kind: "stocks" };
+        type HoldingsCard = AssistantCard & { kind: "holdings" };
+        const quotes = turn.cards.filter(
+          (card): card is QuoteCard => card.kind === "quote",
+        );
+        const distinctTickers = new Set(quotes.map((card) => card.ticker));
+
+        if (distinctTickers.size > 1) {
+          contextRef.current = {};
+          entitylessTurnsRef.current = 0;
+        } else {
+          let entity: { market: "NSE" | "US"; ticker: string } | null = null;
+          const quote = quotes[0];
+          if (quote) {
+            entity = { market: quote.market, ticker: quote.ticker };
+          } else {
+            const stocks = turn.cards.find(
+              (card): card is StocksCard => card.kind === "stocks",
+            );
+            if (stocks && stocks.hits.length === 1) {
+              entity = { market: stocks.hits[0].market, ticker: stocks.hits[0].symbol };
+            } else {
+              const holdings = turn.cards.find(
+                (card): card is HoldingsCard => card.kind === "holdings",
+              );
+              const rows = holdings?.rows ?? [];
+              if (rows.length > 0 && rows.every((row) => row.ticker === rows[0].ticker)) {
+                entity = { market: rows[0].market, ticker: rows[0].ticker };
+              }
+            }
+          }
+
+          if (entity) {
+            contextRef.current = entity;
+            entitylessTurnsRef.current = 0;
+          } else {
+            entitylessTurnsRef.current += 1;
+            if (entitylessTurnsRef.current >= 6) contextRef.current = {};
+          }
         }
 
         setHydration({ provider: turn.provider, model: turn.model, degraded: turn.degraded });
@@ -276,6 +334,7 @@ export function useAssistant(userId: string | null): UseAssistantResult {
 
     conversationIdRef.current = newConversationId();
     contextRef.current = {};
+    entitylessTurnsRef.current = 0;
     messagesRef.current = [];
     setMessages([]);
     setError(null);

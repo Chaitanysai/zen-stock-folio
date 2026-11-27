@@ -54,7 +54,7 @@ export function AssistantComposer({ onSend, disabled, sending }: Props) {
         }}
       >
         <label htmlFor="zf-assistant-input" className="sr-only">
-          Ask the ZenFolio assistant
+          Ask AssistZF
         </label>
         <textarea
           id="zf-assistant-input"

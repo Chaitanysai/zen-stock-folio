@@ -24,6 +24,7 @@ import {
   MAX_TOOL_ROUNDS,
   type AssistantCard,
   type AssistantChatMessage,
+  type AssistantConversationContext,
   type AssistantToolTrace,
 } from "../../../../src/lib/assistant/schemas.ts";
 import { createProviderChain, type ProviderChain, type ProviderMessage, type ProviderReply, type ToolSpec } from "./provider";
@@ -41,7 +42,9 @@ export interface AssistantTurnInput {
   ctx: ToolContext;
   conversationId: string;
   messages: AssistantChatMessage[];
-  context?: { market?: "NSE" | "US"; ticker?: string };
+  // Derived from the wire schema so client validation and server consumption
+  // cannot drift apart. Context never reaches ToolContext, only the prompt.
+  context?: AssistantConversationContext;
 }
 
 export interface AssistantTurnOutput {
@@ -124,7 +127,7 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<Assis
   });
 
   const degradedTurn = async (reason: "no_provider" | "provider_failed"): Promise<AssistantTurnOutput> => {
-    const fallback = await runDeterministicFallback(ctx, input.messages);
+    const fallback = await runDeterministicFallback(ctx, input.messages, input.context);
     logAssistantEvent({
       event: "chat",
       uid: ctx.uid,

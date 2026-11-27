@@ -11,6 +11,8 @@
  * compare-and-set protection (see docs/assistant/phase-0-…, §12 D7).
  */
 
+import type { DashboardSectionId } from "../navigation/routes.ts";
+
 export type AssistantToolRisk = "read" | "write" | "high_impact";
 
 export type AssistantToolDomain = "portfolio" | "trades" | "market" | "dashboard";
@@ -85,3 +87,29 @@ export const ASSISTANT_SUGGESTIONS: readonly string[] = [
   "Find Reliance on NSE",
   "What are my closed trades worth?",
 ] as const;
+
+/**
+ * Per-section openers (B1.2). Every entry is answerable by a tool in the
+ * catalog above — a screen-specific prompt that needs a write would be a
+ * broken promise. The map is complete by construction.
+ */
+export const SECTION_SUGGESTIONS: Record<DashboardSectionId, readonly string[]> = {
+  overview: ["How is my portfolio doing today?", "Is the market open right now?"],
+  holdings: ["Show my holdings and P&L", "What's my biggest position?"],
+  trades: ["What are my closed trades worth?", "Show my active positions"],
+  history: ["What are my closed trades worth?", "How is my portfolio doing today?"],
+  journal: ["How is my portfolio doing today?", "Show my holdings and P&L"],
+  charts: ["Find Reliance on NSE", "What is the price of TCS?"],
+  sector: ["Show my holdings and P&L", "What's my biggest position?"],
+  analytics: ["How is my portfolio doing today?", "What are my closed trades worth?"],
+  watchlist: ["Find Reliance on NSE", "What is the price of TCS?"],
+  news: ["Is the market open right now?", "How is my portfolio doing today?"],
+  ai: ["How is my portfolio doing today?", "Show my holdings and P&L"],
+  alerts: ["What is the price of TCS?", "Is the market open right now?"],
+  export: ["How is my portfolio doing today?", "Show my holdings and P&L"],
+  brokers: ["How is my portfolio doing today?", "Is the market open right now?"],
+};
+
+export function suggestionsForSection(section?: DashboardSectionId | null): readonly string[] {
+  return section ? SECTION_SUGGESTIONS[section] : ASSISTANT_SUGGESTIONS;
+}

@@ -18,7 +18,7 @@
  */
 
 import { z } from "zod";
-import { isDashboardSection } from "../navigation/routes.ts";
+import { DASHBOARD_SECTION_IDS, isDashboardSection } from "../navigation/routes.ts";
 
 // ── Limits ────────────────────────────────────────────────────────────────────
 
@@ -154,14 +154,40 @@ export const chatMessageSchema = z.object({
   content: z.string().min(1).max(MAX_MESSAGE_CHARS),
 });
 
-const conversationContextSchema = z
+/**
+ * Screen the user is looking at, captured at send time.
+ *
+ * This is a hint, never a fact: the section is a closed enum (the same one the
+ * navigation tool uses), the ticker is capped, and the server re-reads every
+ * authoritative value through the read-only tool registry. A forged section
+ * can only change which static guidance sentence the model sees.
+ */
+export const pageContextSchema = z
+  .object({
+    section: z.enum(DASHBOARD_SECTION_IDS),
+    /** Selected instrument; only meaningful on the Charts screen. */
+    ticker: z.string().min(1).max(24).optional(),
+    market: marketSchema.optional(),
+  })
+  .strict()
+  .refine((page) => page.ticker === undefined || page.section === "charts", {
+    message: "page.ticker is only valid on the charts section",
+    path: ["ticker"],
+  });
+
+/** Conversation-derived hints plus the optional send-time screen hint. */
+export const conversationContextSchema = z
   .object({
     /** Market the user last referred to, so "and Reliance?" stays unambiguous. */
     market: marketSchema.optional(),
     /** Last instrument the user asked about. */
     ticker: z.string().min(1).max(24).optional(),
+    page: pageContextSchema.optional(),
   })
   .strict();
+
+export type AssistantPageContext = z.infer<typeof pageContextSchema>;
+export type AssistantConversationContext = z.infer<typeof conversationContextSchema>;
 
 export const chatRequestSchema = z
   .object({
