@@ -1,9 +1,9 @@
 /**
- * OpenAI-compatible tool-calling provider adapter.
+ * OpenAI-compatible tool-calling provider adapters.
  *
- * Both configured providers (Groq, OpenRouter) speak the same
- * `chat/completions` dialect, so one adapter serves both and swapping a model —
- * or a vendor — is a configuration change plus this file, not a rewrite.
+ * OpenAI, Groq and OpenRouter all speak the same `chat/completions` dialect, so
+ * one adapter serves all three and swapping a model — or a vendor — is a
+ * configuration change plus this file, not a rewrite.
  *
  * Contract, deliberately narrow:
  *  - `complete()` returns parsed text and tool calls, or `null` when the
@@ -13,18 +13,28 @@
  *    with no name, or arguments that are not a string, is not an instruction.
  *  - A reply is capped (`MAX_TOOL_CALLS_PER_ROUND`) before it can cause work.
  *  - No provider error body is ever returned or logged by this module.
+ *  - A key is read ONLY from its own dedicated env var. Nothing here copies a
+ *    key between providers, and nothing reaches the browser bundle: this module
+ *    is imported exclusively by Pages Functions.
  */
 
 import { MAX_TOOL_CALLS_PER_ROUND, MAX_REPLY_CHARS } from "../../../../src/lib/assistant/schemas.ts";
 
-export type ProviderName = "groq" | "openrouter";
+export type ProviderName = "openai" | "groq" | "openrouter";
 
 const PROVIDER_BASE_URL: Record<ProviderName, string> = {
+  openai: "https://api.openai.com/v1/chat/completions",
   groq: "https://api.groq.com/openai/v1/chat/completions",
   openrouter: "https://openrouter.ai/api/v1/chat/completions",
 };
 
+/** Exposed for a configuration assertion in tests; not a secret. */
+export const openAiEndpoint = (): string => PROVIDER_BASE_URL.openai;
+
 const DEFAULT_MODELS: Record<ProviderName, string[]> = {
+  // gpt-4o-mini is tool-calling capable and inexpensive; the second entry is a
+  // resilience step only used when the first is rate-limited or removed.
+  openai: ["gpt-4o-mini", "gpt-4.1-mini"],
   groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
   openrouter: ["meta-llama/llama-3.3-70b-instruct", "meta-llama/llama-3.1-8b-instruct"],
 };
@@ -73,6 +83,7 @@ export interface Provider {
 }
 
 export interface ProviderEnv {
+  OPENAI_API_KEY?: string;
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   ASSISTANT_MODEL_PRIMARY?: string;
@@ -158,6 +169,33 @@ type Attempt =
   | { ok: true; reply: ProviderReply }
   | { ok: false; fatal: boolean };
 
+/**
+ * Reads a bounded, non-secret classification from an error body.
+ *
+ * The body is never returned or logged; only these two booleans survive, so a
+ * provider cannot use an error payload to smuggle text into a response.
+ */
+function classifyErrorBody(text: string): { quota: boolean } {
+  // Substring probes only. The body itself is discarded by the caller.
+  const quota = /"code"\s*:\s*"(insufficient_quota|billing_hard_limit_reached|quota_exceeded)"/i.test(text);
+  return { quota };
+}
+
+/**
+ * Decides whether an HTTP status ends this provider.
+ *
+ * Auth failures (401/403) can never be fixed by another model on the same key,
+ * so they stop the provider. An exhausted quota (402, or a 429 whose body says
+ * quota) also stops it — retrying burns a turn budget for a guaranteed failure.
+ * A plain 429 is transient and moves on to the next model instead.
+ */
+function isFatalStatus(status: number, body: string): boolean {
+  if (status === 401 || status === 403) return true;
+  if (status === 402) return true;
+  if (status === 429) return classifyErrorBody(body).quota;
+  return false;
+}
+
 function createProvider(config: ProviderConfig): Provider | null {
   const { name, apiKey, models } = config;
   if (!apiKey || models.length === 0) return null;
@@ -166,8 +204,8 @@ function createProvider(config: ProviderConfig): Provider | null {
     name,
     model: models[0],
     async complete(request: ProviderRequest): Promise<ProviderReply | null> {
-      // Model order is a finite fallback chain within one provider: a 429 or a
-      // transient error moves on; an auth error stops the provider entirely.
+      // Model order is a finite fallback chain within one provider: a rate limit
+      // or a transient error moves on; a fatal error stops this provider.
       for (const model of models) {
         const attempt = await callModel(name, apiKey, model, request);
         if (attempt.ok) return attempt.reply;
@@ -212,9 +250,11 @@ async function callModel(
     });
 
     if (!response.ok) {
-      // Drain the body so the connection can be reused; never surface it.
-      await response.text().catch(() => "");
-      return { ok: false, fatal: response.status === 401 || response.status === 403 };
+      // Read the body only to classify it, then drop it. Never surfaced, never
+      // logged, never attached to the returned value.
+      const bodyText = await response.text().catch(() => "");
+      const fatal = isFatalStatus(response.status, bodyText);
+      return { ok: false, fatal };
     }
 
     const payload: unknown = await response.json().catch(() => null);
@@ -256,23 +296,35 @@ export interface ProviderChain {
 }
 
 /**
- * Builds the chain from the environment. A missing key simply omits that
- * provider; when none is configured the orchestrator runs its deterministic
- * fallback instead of failing the request.
+ * Builds the chain from the environment.
+ *
+ * Order is deliberate and reflects what production actually holds:
+ *
+ *  - `primary`   — OpenAI, when `OPENAI_API_KEY` is present.
+ *  - `fallback`  — Groq, when `GROQ_API_KEY` is present.
+ *
+ * OpenRouter is no longer wired into the chain in production: its key is not
+ * configured, so a third slot would only be a dead entry. The adapter still
+ * supports it, and adding it back is a two-line change if a key appears.
+ *
+ * A missing key simply omits that provider; when none is configured the
+ * orchestrator runs its deterministic fallback instead of failing the request.
+ *
+ * Model overrides are server-side only. `ASSISTANT_MODEL_PRIMARY` overrides
+ * whichever provider ends up primary, so the operator can move to a newer model
+ * without a code change.
  */
 export function createProviderChain(env: ProviderEnv): ProviderChain {
-  const primaryModel = env.ASSISTANT_MODEL_PRIMARY?.trim();
-  const fallbackModel = env.ASSISTANT_MODEL_FALLBACK?.trim();
+  const override = env.ASSISTANT_MODEL_PRIMARY?.trim();
 
-  const groqModels = primaryModel ? [primaryModel] : DEFAULT_MODELS.groq;
-  const openRouterModels = fallbackModel ? [fallbackModel] : DEFAULT_MODELS.openrouter;
+  const openAiModels = override ? [override, ...DEFAULT_MODELS.openai] : DEFAULT_MODELS.openai;
+  const groqModels = override ? [override, ...DEFAULT_MODELS.groq] : DEFAULT_MODELS.groq;
 
-  return {
-    primary: createProvider({ name: "groq", apiKey: env.GROQ_API_KEY, models: groqModels }),
-    fallback: createProvider({
-      name: "openrouter",
-      apiKey: env.OPENROUTER_API_KEY,
-      models: openRouterModels,
-    }),
-  };
+  const openai = createProvider({ name: "openai", apiKey: env.OPENAI_API_KEY, models: openAiModels });
+  const groq = createProvider({ name: "groq", apiKey: env.GROQ_API_KEY, models: groqModels });
+
+  if (openai) {
+    return { primary: openai, fallback: groq };
+  }
+  return { primary: groq, fallback: null };
 }

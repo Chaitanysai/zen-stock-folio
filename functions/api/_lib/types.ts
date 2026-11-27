@@ -21,6 +21,11 @@ export interface Env {
   NEWS_API_KEY?: string;
   FINNHUB_API_KEY?: string;
   /** AI providers. */
+  /**
+   * Primary assistant provider. Server-side only: never a VITE_* variable, so
+   * it cannot be inlined into the browser bundle by Vite.
+   */
+  OPENAI_API_KEY?: string;
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   /**

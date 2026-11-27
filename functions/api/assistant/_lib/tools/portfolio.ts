@@ -28,6 +28,38 @@ import { MAX_QUOTE_INSTRUMENTS, loadQuotes, loadSnapshot, loadUsdInr, toolError,
 
 const DEFAULT_HOLDING_LIMIT = 10;
 
+/**
+ * Distinct securities in a set of lot rows.
+ *
+ * The snapshot stores one row per LOT; a ticker can legitimately appear several
+ * times. The dashboard's equity KPI counts distinct holdings, so the assistant
+ * must too — otherwise the same portfolio reads as "4 holdings" on screen and
+ * "6 active positions" in chat.
+ */
+export function countHoldings(stocks: PortfolioStock[]): number {
+  const keys = new Set<string>();
+  for (const stock of stocks) {
+    keys.add(instrumentKey({ market: marketOf(stock), ticker: stock.ticker }));
+  }
+  return keys.size;
+}
+
+/**
+ * Phrases a lot count without implying it is a holding count.
+ *
+ * When every holding is a single lot the two numbers agree and the qualifier is
+ * noise, so it is omitted. When they differ the summary names both, which is
+ * the only wording that cannot be misread.
+ */
+function describePositions(lots: number, holdings: number): string {
+  if (lots === 0) return "no open positions";
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  if (lots === holdings) {
+    return `${plural(lots, "active position")} across ${plural(holdings, "holding")}`;
+  }
+  return `${plural(lots, "active position lot")} across ${plural(holdings, "holding")}`;
+}
+
 /** Market value using the last known price; `0` only for an actually unpriced row. */
 const knownValue = (stock: PortfolioStock): number => {
   const price = stock.status === "Active" ? stock.cmp : stock.exitPrice;
@@ -166,8 +198,12 @@ export async function getPortfolioSummary(ctx: ToolContext): Promise<ToolOutcome
       : null,
   ]);
 
+  const closedClause =
+    closed.length === 0
+      ? ""
+      : `, and ${closed.length} closed position lot${closed.length === 1 ? "" : "s"}`;
   const summary =
-    `Totals in INR: ${active.length} open and ${closed.length} closed position${closed.length === 1 ? "" : "s"}.` +
+    `Totals in INR: ${describePositions(active.length, countHoldings(active))}${closedClause}.` +
     (note ? ` Caveats: ${note}` : "");
 
   return toolOk(
@@ -175,7 +211,16 @@ export async function getPortfolioSummary(ctx: ToolContext): Promise<ToolOutcome
     {
       currency: "INR",
       openPositions: active.length,
+      activeLots: active.length,
+      // Matches the dashboard's equity KPI: distinct tickers among OPEN lots.
+      holdings: countHoldings(active),
       closedPositions: closed.length,
+      closedLots: closed.length,
+      closedHoldings: countHoldings(closed),
+      holdingsNote:
+        active.length === countHoldings(active)
+          ? null
+          : `${active.length} lots across ${countHoldings(active)} distinct holdings; a holding can be held as several lots.`,
       investedInr: totals.investedInr,
       currentValueInr: totals.valueInr,
       unrealisedPnlInr: unrealised,
@@ -203,6 +248,7 @@ export async function getPortfolioSummary(ctx: ToolContext): Promise<ToolOutcome
           hint: realisedUnknown > 0 ? "Some closed lots cannot be scored" : undefined,
         },
         { label: "Open positions", value: active.length, currency: null },
+        { label: "Holdings", value: countHoldings(active), currency: null },
       ],
       note,
     },
@@ -249,7 +295,7 @@ export async function getHoldings(ctx: ToolContext, args: GetHoldingsArgs): Prom
   const summary =
     `${rows.length} ${status === "all" ? "" : `${status} `}position${rows.length === 1 ? "" : "s"}` +
     (ordered.length > selected.length ? ` (largest ${selected.length} of ${ordered.length})` : "") +
-    ".";
+    ` across ${countHoldings(pool)} distinct holding${countHoldings(pool) === 1 ? "" : "s"}.`;
 
   return toolOk(
     summary,
@@ -257,6 +303,7 @@ export async function getHoldings(ctx: ToolContext, args: GetHoldingsArgs): Prom
       status,
       count: ordered.length,
       shown: rows.length,
+      holdings: countHoldings(pool),
       quotesLive: quoteLoad.live,
       rows: rows.slice(0, 20),
       truncated: rows.length > 20,
