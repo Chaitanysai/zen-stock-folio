@@ -955,7 +955,13 @@ export default function Index() {
 
       {/* Assistant: read-only in this phase. Mounted inside the authenticated
           shell so it only exists for a signed-in user. */}
-      <AssistantRoot />
+      <AssistantRoot
+        chartEntity={
+          sectionId === "charts" && chartSymbol
+            ? { ticker: chartSymbol, market: chartMarket }
+            : null
+        }
+      />
 
       <MobileMenu
         open={mobileNav}

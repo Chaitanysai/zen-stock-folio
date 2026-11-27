@@ -10,6 +10,8 @@ interface Props {
   sending: boolean;
   onSuggestion: (text: string) => void;
   onRetry: () => void;
+  /** Section-specific openers; defaults to the general set. */
+  suggestions?: readonly string[];
 }
 
 /**
@@ -54,7 +56,7 @@ function TypingDots() {
   );
 }
 
-export function AssistantThread({ messages, sending, onSuggestion, onRetry }: Props) {
+export function AssistantThread({ messages, sending, onSuggestion, onRetry, suggestions }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,7 +81,7 @@ export function AssistantThread({ messages, sending, onSuggestion, onRetry }: Pr
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {ASSISTANT_SUGGESTIONS.map((suggestion) => (
+          {(suggestions ?? ASSISTANT_SUGGESTIONS).map((suggestion) => (
             <button
               key={suggestion}
               type="button"
