@@ -70,7 +70,7 @@ const cardKey = (card: AssistantCard): string => {
   }
 };
 
-/** Tries the primary provider, then the fallback, for one round. */
+/** Tries each configured provider in priority order for one round. */
 async function askProviders(
   chain: ProviderChain,
   system: string,
@@ -90,6 +90,10 @@ async function askProviders(
   }
   if (chain.fallback) {
     const reply = await chain.fallback.complete(request);
+    if (reply) return reply;
+  }
+  if (chain.tertiary) {
+    const reply = await chain.tertiary.complete(request);
     if (reply) return reply;
   }
   return null;
@@ -153,7 +157,7 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<Assis
   };
 
   const chain = createProviderChain(ctx.env);
-  if (!chain.primary && !chain.fallback) return degradedTurn("no_provider");
+  if (!chain.primary && !chain.fallback && !chain.tertiary) return degradedTurn("no_provider");
 
   const tools = modelToolSpecs();
   const system = buildSystemPrompt({ now: ctx.now, ...input.context });

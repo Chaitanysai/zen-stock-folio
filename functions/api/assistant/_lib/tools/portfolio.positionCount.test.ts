@@ -60,6 +60,22 @@ describe("position counting — lots vs distinct holdings", () => {
     lot({ id: "b1", ticker: "INFY", quantity: 20 }),
   ];
 
+  it('preserves the "6 active position lots across 4 holdings" regression', async () => {
+    const stocks = [
+      lot({ id: "r1", ticker: "RELIANCE" }),
+      lot({ id: "r2", ticker: "RELIANCE" }),
+      lot({ id: "t1", ticker: "TCS" }),
+      lot({ id: "i1", ticker: "INFY" }),
+      lot({ id: "h1", ticker: "HDFCBANK" }),
+      lot({ id: "h2", ticker: "HDFCBANK" }),
+    ];
+    const outcome = await getPortfolioSummary(ctxWith(stocks));
+    if (outcome.status !== "ok") throw new Error("expected ok");
+
+    expect(outcome.summary).toContain("6 active position lots");
+    expect(outcome.summary).toContain("across 4 holdings");
+  });
+
   it("reports distinct holdings separately from active lots", async () => {
     const outcome = await getPortfolioSummary(ctxWith(snapshotStocks));
     expect(outcome.status).toBe("ok");
