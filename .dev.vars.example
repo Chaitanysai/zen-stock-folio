@@ -18,17 +18,19 @@ NEWS_API_KEY=
 FINNHUB_API_KEY=
 
 # AI
-# OPENAI_API_KEY is the assistant's primary provider. Server-side secret only:
-# set it with `wrangler pages secret put OPENAI_API_KEY`, never in a VITE_ var.
+# AssistZF server-side secrets only. Production uses `wrangler pages secret put
+# <NAME>`; never use a VITE_ prefix. Priority: Gemini, OpenAI, then Groq.
+GEMINI_API_KEY=
 OPENAI_API_KEY=
 GROQ_API_KEY=
 OPENROUTER_API_KEY=
 
 # Assistant (optional). Leave ASSISTANT_ENABLED unset to keep the assistant on;
 # set it to "false" to withdraw the route without a code change. The model
-# overrides are optional and only change which model id each provider uses.
-# Defaults: gpt-4o-mini (OpenAI primary), llama-3.3-70b-versatile (Groq secondary).
+# overrides are optional and server-side only.
+# Defaults: gemini-3.5-flash-lite, gpt-4o-mini, llama-3.3-70b-versatile.
 # ASSISTANT_ENABLED=true
+# ASSISTANT_MODEL_GEMINI=gemini-3.5-flash-lite
 # ASSISTANT_MODEL_PRIMARY=gpt-4o-mini
 # ASSISTANT_MODEL_FALLBACK=llama-3.3-70b-versatile
 

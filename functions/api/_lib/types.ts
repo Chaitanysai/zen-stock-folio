@@ -25,6 +25,7 @@ export interface Env {
    * Primary assistant provider. Server-side only: never a VITE_* variable, so
    * it cannot be inlined into the browser bundle by Vite.
    */
+  GEMINI_API_KEY?: string;
   OPENAI_API_KEY?: string;
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
@@ -35,6 +36,7 @@ export interface Env {
    */
   ASSISTANT_ENABLED?: string;
   /** Override the primary/fallback model ids without a rebuild. */
+  ASSISTANT_MODEL_GEMINI?: string;
   ASSISTANT_MODEL_PRIMARY?: string;
   ASSISTANT_MODEL_FALLBACK?: string;
   /** Upstox ops callback: OAuth client + shared ops secret (never a user-facing route). */
